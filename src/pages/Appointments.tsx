@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,18 +69,15 @@ const Appointments = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   
-  // Format date as YYYY-MM-DD for API calls
   const formatDateForAPI = (date: Date): string => {
     return format(date, "yyyy-MM-dd");
   };
   
-  // Handle navigation between days
   const navigateDay = (direction: 'prev' | 'next') => {
     const newDate = direction === 'prev' ? subDays(currentDate, 1) : addDays(currentDate, 1);
     setCurrentDate(newDate);
   };
 
-  // Fetch appointments for the current date
   useEffect(() => {
     if (!user) return;
     
@@ -111,7 +107,6 @@ const Appointments = () => {
         
         if (error) throw error;
         
-        // Transform the data to match our Appointment interface
         const transformedData = data.map(item => ({
           id: item.id,
           date: item.date,
@@ -148,19 +143,16 @@ const Appointments = () => {
     fetchAppointments();
   }, [user, currentDate, statusFilter]);
 
-  // Filter appointments by search term
   const filteredAppointments = appointments.filter(appointment => 
     appointment.pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     appointment.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     appointment.service.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get day of week in Portuguese
   const getDayOfWeek = (date: Date): string => {
     return format(date, "EEEE, dd 'de' MMMM", { locale: ptBR });
   };
 
-  // Placeholder for handle status change
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -170,7 +162,6 @@ const Appointments = () => {
       
       if (error) throw error;
       
-      // Update local state
       setAppointments(prevAppointments => 
         prevAppointments.map(appt => 
           appt.id === id 
@@ -211,7 +202,6 @@ const Appointments = () => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-6">
-        {/* Calendar sidebar */}
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -252,7 +242,6 @@ const Appointments = () => {
               </div>
             </div>
 
-            {/* Status filter */}
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por status</label>
               <Select
@@ -274,7 +263,6 @@ const Appointments = () => {
           </CardContent>
         </Card>
 
-        {/* Appointments for the selected day */}
         <Card className="md:col-span-3">
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -303,7 +291,6 @@ const Appointments = () => {
                 </Button>
               </div>
               
-              {/* Search box */}
               <div className="w-full sm:w-auto">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -318,7 +305,6 @@ const Appointments = () => {
               </div>
             </div>
             
-            {/* Status badge legend */}
             <div className="flex flex-wrap gap-2 mt-4">
               <Badge className="bg-green-500">Confirmado</Badge>
               <Badge className="bg-amber-500">Pendente</Badge>
