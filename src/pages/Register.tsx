@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -13,7 +12,6 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "atendente">("admin");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,10 +42,9 @@ const Register = () => {
     
     try {
       setIsLoading(true);
-      await signUp(email, password, role);
+      await signUp(email, password, "admin");
       navigate("/dashboard");
     } catch (error) {
-      // Error is already handled in the signUp function
       console.error("Registration error handling in component:", error);
     } finally {
       setIsLoading(false);
@@ -129,28 +126,6 @@ const Register = () => {
                   )}
                 </button>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tipo de usuário</Label>
-              <RadioGroup 
-                defaultValue="admin" 
-                value={role} 
-                onValueChange={(value) => setRole(value as "admin" | "atendente")}
-                className="flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="admin" id="admin" />
-                  <Label htmlFor="admin" className="cursor-pointer">Administrador</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="atendente" id="atendente" />
-                  <Label htmlFor="atendente" className="cursor-pointer">Atendente</Label>
-                </div>
-              </RadioGroup>
-              <p className="text-xs text-gray-500">
-                Administradores têm acesso completo. Atendentes não podem ver relatórios financeiros.
-              </p>
             </div>
 
             <Button

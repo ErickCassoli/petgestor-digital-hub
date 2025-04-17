@@ -106,9 +106,9 @@ const Dashboard = () => {
           .select(`
             date,
             time,
-            pets!inner(name),
-            clients!inner(name),
-            services!inner(name)
+            pets (name),
+            clients (name),
+            services (name)
           `)
           .eq('user_id', user.id)
           .eq('status', 'confirmed')
@@ -118,9 +118,9 @@ const Dashboard = () => {
           .limit(4);
         
         const formattedAppointments = upcomingAppointments?.map(appt => ({
-          pet_name: appt.pets.name,
-          client_name: appt.clients.name,
-          service_name: appt.services.name,
+          pet_name: appt.pets?.name || '',
+          client_name: appt.clients?.name || '',
+          service_name: appt.services?.name || '',
           date: appt.date,
           time: appt.time
         })) || [];
