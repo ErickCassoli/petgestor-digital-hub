@@ -1,10 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, Package, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface MetricCardProps {
   title: string;
@@ -50,7 +50,7 @@ interface LowStockProduct {
   min_stock: number;
 }
 
-interface AppointmentJoin {
+interface AppointmentDataFromDB {
   date: string;
   time: string;
   pets: { name: string } | null;
@@ -60,6 +60,7 @@ interface AppointmentJoin {
 
 const Dashboard = () => {
   const { user, profile, isInTrialPeriod } = useAuth();
+  const { toast } = useToast();
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     clientCount: 0,
     appointmentsToday: 0,
@@ -125,7 +126,7 @@ const Dashboard = () => {
           .order('time', { ascending: true })
           .limit(4);
         
-        const formattedAppointments = (upcomingAppointments as AppointmentJoin[] || []).map(appt => ({
+        const formattedAppointments = (upcomingAppointments as unknown as AppointmentDataFromDB[] || []).map(appt => ({
           pet_name: appt.pets?.name || '',
           client_name: appt.clients?.name || '',
           service_name: appt.services?.name || '',
@@ -138,7 +139,7 @@ const Dashboard = () => {
           .from('products')
           .select('name, stock, min_stock')
           .eq('user_id', user.id)
-          .lt('stock', supabase.rpc('least', { a: 'min_stock', b: 5 }))
+          .lt('stock', 5)
           .order('stock', { ascending: true })
           .limit(4);
         
@@ -153,15 +154,19 @@ const Dashboard = () => {
         setLowStockProducts(lowStockItems || []);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar dados",
+          description: "Ocorreu um erro ao buscar os dados do dashboard."
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchDashboardData();
-  }, [user]);
+  }, [user, toast]);
 
-  // Fallback data if still loading
   const metricCards = [
     {
       title: "Clientes",

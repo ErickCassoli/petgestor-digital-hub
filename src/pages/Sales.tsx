@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Card, 
@@ -25,7 +25,8 @@ import {
   Calendar,
   ArrowUpDown,
   ChevronDown,
-  Check
+  Check,
+  Loader2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,89 +35,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-
-// Fix the type issue by adding a more specific type for the mock data
-const MOCK_SALES: Sale[] = [
-  { 
-    id: "1", 
-    date: "2023-04-14",
-    client: "João Silva",
-    type: "service",
-    description: "Banho e Tosa - Max",
-    value: 80.00
-  },
-  { 
-    id: "2", 
-    date: "2023-04-14",
-    client: "Maria Oliveira",
-    type: "product", 
-    description: "Ração Premium Cães Adultos",
-    value: 89.90
-  },
-  { 
-    id: "3", 
-    date: "2023-04-13",
-    client: "Pedro Santos",
-    type: "service", 
-    description: "Consulta Veterinária - Luna",
-    value: 120.00
-  },
-  { 
-    id: "4", 
-    date: "2023-04-13",
-    client: "Ana Costa",
-    type: "product", 
-    description: "Antipulgas Comprimido",
-    value: 45.90
-  },
-  { 
-    id: "5", 
-    date: "2023-04-12",
-    client: "Carlos Mendes",
-    type: "service", 
-    description: "Banho - Mel",
-    value: 50.00
-  },
-  { 
-    id: "6", 
-    date: "2023-04-12",
-    client: "Paula Ferreira",
-    type: "product", 
-    description: "Coleira Ajustável G",
-    value: 35.90
-  },
-  { 
-    id: "7", 
-    date: "2023-04-11",
-    client: "Lucas Almeida",
-    type: "both", 
-    description: "Banho + Ração Gatos",
-    value: 130.00
-  },
-  { 
-    id: "8", 
-    date: "2023-04-10",
-    client: "Fernanda Lima",
-    type: "service", 
-    description: "Tosa - Rex",
-    value: 60.00
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
+import { format, startOfMonth, subDays, subMonths, subWeeks } from "date-fns";
 
 interface Sale {
   id: string;
-  date: string;
-  client: string;
+  sale_date: string;
+  client_id: string | null;
   type: "service" | "product" | "both";
-  description: string;
-  value: number;
+  total: number;
+  payment_method: string | null;
+  clients?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 const periodOptions = [
   { label: "Hoje", value: "today" },
   { label: "Esta semana", value: "week" },
   { label: "Este mês", value: "month" },
-  { label: "Personalizado", value: "custom" }
+  { label: "Último mês", value: "lastMonth" }
 ];
 
 const typeOptions = [
@@ -129,30 +68,110 @@ const typeOptions = [
 const Sales = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [sales, setSales] = useState<Sale[]>(MOCK_SALES);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [selectedType, setSelectedType] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalServices, setTotalServices] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  // Fetch sales data from Supabase
+  useEffect(() => {
+    const fetchSales = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('sales')
+          .select(`
+            *,
+            clients (id, name)
+          `)
+          .eq('user_id', user.id)
+          .order('sale_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        setSales(data as Sale[]);
+      } catch (error) {
+        console.error('Error fetching sales:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar vendas",
+          description: "Ocorreu um erro ao buscar as vendas."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSales();
+  }, [user, toast]);
 
   // Filter sales based on selected period and type
-  const filteredSales = sales.filter((sale) => {
-    const typeMatch = selectedType === "all" || sale.type === selectedType;
-    // In a full implementation, we would filter by actual date ranges
-    return typeMatch;
-  });
-
-  // Calculate totals
-  const totalSales = filteredSales.reduce((sum, sale) => sum + sale.value, 0);
-  const totalServices = filteredSales
-    .filter((sale) => sale.type === "service" || sale.type === "both")
-    .reduce((sum, sale) => sum + sale.value, 0);
-  const totalProducts = filteredSales
-    .filter((sale) => sale.type === "product" || sale.type === "both")
-    .reduce((sum, sale) => sum + sale.value, 0);
+  useEffect(() => {
+    if (!sales.length) {
+      setFilteredSales([]);
+      setTotalSales(0);
+      setTotalServices(0);
+      setTotalProducts(0);
+      return;
+    }
+    
+    let startDate: Date | null = null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Determine the start date based on the selected period
+    switch (selectedPeriod) {
+      case "today":
+        startDate = today;
+        break;
+      case "week":
+        startDate = subDays(today, 7);
+        break;
+      case "month":
+        startDate = startOfMonth(today);
+        break;
+      case "lastMonth":
+        startDate = startOfMonth(subMonths(today, 1));
+        break;
+      default:
+        startDate = startOfMonth(today);
+    }
+    
+    // Filter by date and type
+    const filtered = sales.filter(sale => {
+      const saleDate = new Date(sale.sale_date);
+      const dateMatch = startDate ? saleDate >= startDate : true;
+      const typeMatch = selectedType === "all" || sale.type === selectedType;
+      
+      return dateMatch && typeMatch;
+    });
+    
+    setFilteredSales(filtered);
+    
+    // Calculate totals
+    const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
+    const services = filtered
+      .filter(sale => sale.type === "service" || sale.type === "both")
+      .reduce((sum, sale) => sum + Number(sale.total), 0);
+    const products = filtered
+      .filter(sale => sale.type === "product" || sale.type === "both")
+      .reduce((sum, sale) => sum + Number(sale.total), 0);
+    
+    setTotalSales(total);
+    setTotalServices(services);
+    setTotalProducts(products);
+  }, [sales, selectedPeriod, selectedType]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    return format(date, 'dd/MM/yyyy');
   };
 
   // Get period label
@@ -166,6 +185,16 @@ const Sales = () => {
     const option = typeOptions.find(opt => opt.value === selectedType);
     return option ? option.label : "Tipo";
   };
+
+  // JSX for the loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-petblue-600" />
+        <span className="ml-2 text-lg text-gray-600">Carregando...</span>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -297,24 +326,30 @@ const Sales = () => {
                 <TableRow>
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Descrição</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Método</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
-                    <TableCell>{formatDate(sale.date)}</TableCell>
-                    <TableCell>{sale.client}</TableCell>
-                    <TableCell>{sale.description}</TableCell>
+                    <TableCell>{formatDate(sale.sale_date)}</TableCell>
+                    <TableCell>{sale.clients?.name || "Cliente não informado"}</TableCell>
                     <TableCell>
                       {sale.type === "service" && "Serviço"}
                       {sale.type === "product" && "Produto"}
                       {sale.type === "both" && "Misto"}
                     </TableCell>
+                    <TableCell>
+                      {sale.payment_method === "cash" && "Dinheiro"}
+                      {sale.payment_method === "credit" && "Cartão de Crédito"}
+                      {sale.payment_method === "debit" && "Cartão de Débito"}
+                      {sale.payment_method === "pix" && "PIX"}
+                      {!sale.payment_method && "Não informado"}
+                    </TableCell>
                     <TableCell className="text-right font-medium">
-                      {sale.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {Number(sale.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Card, 
@@ -20,7 +20,8 @@ import {
   FileText,
   ShoppingCart,
   Users,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,20 +31,43 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { format, startOfMonth, subDays, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
 const periodOptions = [
   { label: "Últimos 7 dias", value: "7days" },
   { label: "Últimos 30 dias", value: "30days" },
   { label: "Este mês", value: "thisMonth" },
   { label: "Último mês", value: "lastMonth" },
-  { label: "Este ano", value: "thisYear" },
-  { label: "Personalizado", value: "custom" }
+  { label: "Este ano", value: "thisYear" }
 ];
+
+interface ReportMetrics {
+  totalRevenue: number;
+  servicesRevenue: number;
+  productsRevenue: number;
+  mixedRevenue: number;
+  salesCount: number;
+  servicesSalesCount: number;
+  productsSalesCount: number;
+  mixedSalesCount: number;
+  salesChart?: { date: string; value: number }[];
+  topProducts?: { id: string; name: string; quantity: number; revenue: number }[];
+  topServices?: { id: string; name: string; quantity: number; revenue: number }[];
+  topClients?: { id: string; name: string; visits: number; spent: number }[];
+  totalClients?: number;
+  totalVisits?: number;
+}
 
 const Reports = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState("30days");
+  const [activeTab, setActiveTab] = useState("revenue");
+  const [loading, setLoading] = useState(true);
+  const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
   // Get period label
   const getPeriodLabel = () => {
@@ -57,7 +81,98 @@ const Reports = () => {
       title: "Exportando relatório",
       description: `O relatório será exportado em formato ${format.toUpperCase()}.`,
     });
+    // Implementation for exporting would go here
   };
+
+  // Calculate date range based on selected period
+  const getDateRange = () => {
+    const today = new Date();
+    let startDate: Date;
+    let endDate = new Date();
+    
+    switch (selectedPeriod) {
+      case "7days":
+        startDate = subDays(today, 7);
+        break;
+      case "30days":
+        startDate = subDays(today, 30);
+        break;
+      case "thisMonth":
+        startDate = startOfMonth(today);
+        break;
+      case "lastMonth":
+        startDate = startOfMonth(subMonths(today, 1));
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+        break;
+      case "thisYear":
+        startDate = new Date(today.getFullYear(), 0, 1);
+        break;
+      default:
+        startDate = subDays(today, 30);
+    }
+    
+    return { startDate, endDate };
+  };
+
+  // Fetch report data
+  useEffect(() => {
+    const fetchReportData = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const { startDate, endDate } = getDateRange();
+        
+        const { data, error } = await supabase.functions.invoke('generate-report', {
+          body: {
+            userId: user.id,
+            reportType: activeTab,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          }
+        });
+        
+        if (error) throw error;
+        
+        setReportData(data as ReportMetrics);
+      } catch (error) {
+        console.error('Error fetching report data:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao gerar relatório",
+          description: "Ocorreu um erro ao buscar os dados para o relatório."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReportData();
+  }, [user, toast, activeTab, selectedPeriod]);
+
+  // Format currency
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  // Format date for charts
+  const formatChartDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return format(date, 'dd/MM', { locale: ptBR });
+  };
+
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+  // JSX for the loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-petblue-600" />
+        <span className="ml-2 text-lg text-gray-600">Carregando...</span>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -115,61 +230,69 @@ const Reports = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Faturamento Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">R$ 8.950,00</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">+12% em relação ao período anterior</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Serviços</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <FileText className="h-5 w-5 text-petblue-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">R$ 5.780,00</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">64% do faturamento total</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Produtos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <ShoppingCart className="h-5 w-5 text-amber-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">R$ 3.170,00</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">36% do faturamento total</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Clientes Atendidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Users className="h-5 w-5 text-indigo-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">78</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">+8 novos clientes</p>
-          </CardContent>
-        </Card>
-      </div>
+      {reportData && activeTab === "revenue" && (
+        <div className="grid gap-6 md:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Faturamento Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center">
+                <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.totalRevenue)}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">{reportData.salesCount} vendas no período</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Serviços</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center">
+                <FileText className="h-5 w-5 text-petblue-600 mr-2" />
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.servicesRevenue)}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {Math.round((reportData.servicesRevenue / reportData.totalRevenue) * 100) || 0}% do faturamento total
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Produtos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center">
+                <ShoppingCart className="h-5 w-5 text-amber-600 mr-2" />
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.productsRevenue)}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {Math.round((reportData.productsRevenue / reportData.totalRevenue) * 100) || 0}% do faturamento total
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Vendas Mistas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center">
+                <ShoppingCart className="h-5 w-5 text-indigo-600 mr-2" />
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.mixedRevenue)}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {Math.round((reportData.mixedRevenue / reportData.totalRevenue) * 100) || 0}% do faturamento total
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      <Tabs defaultValue="revenue">
+      <Tabs defaultValue="revenue" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="revenue">Faturamento</TabsTrigger>
           <TabsTrigger value="services">Serviços</TabsTrigger>
@@ -189,16 +312,43 @@ const Reports = () => {
                   Evolução do faturamento ao longo do tempo
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex justify-center items-center p-6">
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <LineChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                    <p>Gráfico de Faturamento por Período</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      (Simulação - seria implementado com Recharts)
-                    </p>
+              <CardContent className="p-4 h-80">
+                {reportData && reportData.salesChart && reportData.salesChart.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsLineChart
+                      data={reportData.salesChart}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tickFormatter={formatChartDate}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis tickFormatter={(value) => `R$ ${value}`} />
+                      <Tooltip 
+                        formatter={(value) => [formatCurrency(Number(value)), "Faturamento"]}
+                        labelFormatter={formatChartDate}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="value" 
+                        stroke="#3b82f6" 
+                        activeDot={{ r: 8 }} 
+                        name="Faturamento"
+                      />
+                    </RechartsLineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <LineChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                      <p>Sem dados de faturamento no período selecionado</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -212,16 +362,42 @@ const Reports = () => {
                   Distribuição entre serviços e produtos
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex justify-center items-center p-6">
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <PieChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                    <p>Gráfico de Distribuição de Receita</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      (Simulação - seria implementado com Recharts)
-                    </p>
+              <CardContent className="p-4 h-80">
+                {reportData && reportData.totalRevenue > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={[
+                          { name: 'Serviços', value: reportData.servicesRevenue },
+                          { name: 'Produtos', value: reportData.productsRevenue },
+                          { name: 'Mistos', value: reportData.mixedRevenue }
+                        ].filter(item => item.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {[
+                          { name: 'Serviços', value: reportData.servicesRevenue },
+                          { name: 'Produtos', value: reportData.productsRevenue },
+                          { name: 'Mistos', value: reportData.mixedRevenue }
+                        ].filter(item => item.value > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <PieChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                      <p>Sem dados de receita no período selecionado</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -238,16 +414,40 @@ const Reports = () => {
                 Ranking dos serviços mais populares no período
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex justify-center items-center p-6">
-              <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <BarChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                  <p>Gráfico de Serviços Mais Vendidos</p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    (Simulação - seria implementado com Recharts)
-                  </p>
+            <CardContent className="p-4 h-80">
+              {reportData && reportData.topServices && reportData.topServices.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart
+                    data={reportData.topServices.slice(0, 10)}
+                    layout="vertical"
+                    margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(value) => value.toString()} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      width={100}
+                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        if (name === "quantity") return [`${value} unidades`, "Quantidade"];
+                        return [formatCurrency(Number(value)), "Faturamento"];
+                      }}
+                    />
+                    <Bar dataKey="quantity" fill="#3b82f6" name="Quantidade" />
+                    <Bar dataKey="revenue" fill="#22c55e" name="Faturamento" />
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <FileText className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p>Sem dados de serviços no período selecionado</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -263,16 +463,40 @@ const Reports = () => {
                 Ranking dos produtos mais populares no período
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex justify-center items-center p-6">
-              <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <BarChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                  <p>Gráfico de Produtos Mais Vendidos</p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    (Simulação - seria implementado com Recharts)
-                  </p>
+            <CardContent className="p-4 h-80">
+              {reportData && reportData.topProducts && reportData.topProducts.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart
+                    data={reportData.topProducts.slice(0, 10)}
+                    layout="vertical"
+                    margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(value) => value.toString()} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      width={100}
+                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        if (name === "quantity") return [`${value} unidades`, "Quantidade"];
+                        return [formatCurrency(Number(value)), "Faturamento"];
+                      }}
+                    />
+                    <Bar dataKey="quantity" fill="#f59e0b" name="Quantidade" />
+                    <Bar dataKey="revenue" fill="#ef4444" name="Faturamento" />
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <ShoppingCart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p>Sem dados de produtos no período selecionado</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -289,16 +513,39 @@ const Reports = () => {
                   Ranking dos clientes que mais visitaram o petshop
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex justify-center items-center p-6">
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <BarChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                    <p>Gráfico de Clientes Frequentes</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      (Simulação - seria implementado com Recharts)
-                    </p>
+              <CardContent className="p-4 h-80">
+                {reportData && reportData.topClients && reportData.topClients.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart
+                      data={reportData.topClients.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tickFormatter={(value) => value.toString()} />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        width={100}
+                        tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                      />
+                      <Tooltip 
+                        formatter={(value, name) => {
+                          if (name === "visits") return [`${value} visitas`, "Visitas"];
+                          return [formatCurrency(Number(value)), "Gasto Total"];
+                        }}
+                      />
+                      <Bar dataKey="visits" fill="#8884d8" name="Visitas" />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <Users className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                      <p>Sem dados de clientes no período selecionado</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -306,22 +553,42 @@ const Reports = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <LineChart className="h-5 w-5 mr-2" />
-                  Novos Clientes
+                  Gasto por Cliente
                 </CardTitle>
                 <CardDescription>
-                  Evolução de novos clientes ao longo do tempo
+                  Clientes que mais gastaram no período
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex justify-center items-center p-6">
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <LineChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                    <p>Gráfico de Novos Clientes</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      (Simulação - seria implementado com Recharts)
-                    </p>
+              <CardContent className="p-4 h-80">
+                {reportData && reportData.topClients && reportData.topClients.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart
+                      data={reportData.topClients.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tickFormatter={(value) => `R$ ${value}`} />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        width={100}
+                        tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                      />
+                      <Tooltip 
+                        formatter={(value) => [formatCurrency(Number(value)), "Gasto Total"]}
+                      />
+                      <Bar dataKey="spent" fill="#82ca9d" name="Gasto Total" />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <LineChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                      <p>Sem dados de gastos de clientes no período selecionado</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

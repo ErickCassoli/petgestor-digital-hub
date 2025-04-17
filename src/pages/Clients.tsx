@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Card, 
@@ -23,7 +23,7 @@ import {
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle, 
+  DialogTitle,
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -36,74 +36,19 @@ import {
   Phone,
   Mail,
   Home,
-  Dog
+  Dog,
+  Loader2
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// Mock data for clients and pets
-const MOCK_CLIENTS = [
-  { 
-    id: "1", 
-    name: "João Silva", 
-    email: "joao.silva@email.com", 
-    phone: "(11) 98765-4321", 
-    address: "Rua das Flores, 123", 
-    pets: [
-      { id: "1", name: "Rex", type: "Cachorro", breed: "Labrador", age: 3 },
-      { id: "2", name: "Mia", type: "Gato", breed: "Siamês", age: 2 }
-    ] 
-  },
-  { 
-    id: "2", 
-    name: "Maria Oliveira", 
-    email: "maria.oliveira@email.com", 
-    phone: "(11) 91234-5678", 
-    address: "Av. Paulista, 1000", 
-    pets: [
-      { id: "3", name: "Thor", type: "Cachorro", breed: "Golden Retriever", age: 5 }
-    ] 
-  },
-  { 
-    id: "3", 
-    name: "Pedro Santos", 
-    email: "pedro.santos@email.com", 
-    phone: "(11) 99876-5432", 
-    address: "Rua Augusta, 500", 
-    pets: [
-      { id: "4", name: "Luna", type: "Cachorro", breed: "Poodle", age: 2 },
-      { id: "5", name: "Nina", type: "Gato", breed: "Persa", age: 4 }
-    ] 
-  },
-  { 
-    id: "4", 
-    name: "Ana Costa", 
-    email: "ana.costa@email.com", 
-    phone: "(11) 95432-1098", 
-    address: "Rua Consolação, 250", 
-    pets: [
-      { id: "6", name: "Max", type: "Cachorro", breed: "Shih Tzu", age: 1 }
-    ] 
-  },
-  { 
-    id: "5", 
-    name: "Carlos Mendes", 
-    email: "carlos.mendes@email.com", 
-    phone: "(11) 93456-7890", 
-    address: "Av. Rebouças, 750", 
-    pets: [
-      { id: "7", name: "Mel", type: "Cachorro", breed: "Yorkshire", age: 3 },
-      { id: "8", name: "Bob", type: "Cachorro", breed: "Buldogue", age: 2 }
-    ] 
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 interface Client {
   id: string;
   name: string;
-  email: string;
-  phone: string;
-  address: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
   pets: Pet[];
 }
 
@@ -111,21 +56,24 @@ interface Pet {
   id: string;
   name: string;
   type: string;
-  breed: string;
-  age: number;
+  breed: string | null;
+  age: number | null;
+  client_id: string;
 }
 
 const Clients = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState<Client[]>(MOCK_CLIENTS);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isPetDialogOpen, setIsPetDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletePetDialogOpen, setIsDeletePetDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [clientFormData, setClientFormData] = useState({
     name: "",
     email: "",
@@ -139,15 +87,64 @@ const Clients = () => {
     age: "",
   });
 
+  // Fetch clients and pets data from Supabase
+  useEffect(() => {
+    const fetchClientsAndPets = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        // Fetch clients
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (clientsError) throw clientsError;
+        
+        // Fetch pets
+        const { data: petsData, error: petsError } = await supabase
+          .from('pets')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (petsError) throw petsError;
+        
+        // Organize data: add pets to their respective clients
+        const clientsWithPets = clientsData.map(client => {
+          const clientPets = petsData.filter(pet => pet.client_id === client.id);
+          return {
+            ...client,
+            pets: clientPets
+          };
+        });
+        
+        setClients(clientsWithPets);
+        setPets(petsData);
+      } catch (error) {
+        console.error('Error fetching clients and pets:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar dados",
+          description: "Ocorreu um erro ao buscar os clientes e pets."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchClientsAndPets();
+  }, [user, toast]);
+
   // Filter clients based on search term
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.includes(searchTerm) ||
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.phone && client.phone.includes(searchTerm)) ||
     client.pets.some((pet) => 
       pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pet.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pet.breed.toLowerCase().includes(searchTerm.toLowerCase())
+      (pet.breed && pet.breed.toLowerCase().includes(searchTerm.toLowerCase()))
     )
   );
 
@@ -158,9 +155,9 @@ const Clients = () => {
     if (client) {
       setClientFormData({
         name: client.name,
-        email: client.email,
-        phone: client.phone,
-        address: client.address,
+        email: client.email || "",
+        phone: client.phone || "",
+        address: client.address || "",
       });
     } else {
       setClientFormData({
@@ -186,8 +183,8 @@ const Clients = () => {
       setPetFormData({
         name: pet.name,
         type: pet.type,
-        breed: pet.breed,
-        age: pet.age.toString(),
+        breed: pet.breed || "",
+        age: pet.age?.toString() || "",
       });
     } else {
       setPetFormData({
@@ -202,131 +199,204 @@ const Clients = () => {
   };
 
   // Handle client form submission
-  const handleClientSubmit = () => {
-    if (!clientFormData.name || !clientFormData.email || !clientFormData.phone) {
+  const handleClientSubmit = async () => {
+    if (!user) return;
+    
+    if (!clientFormData.name) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, preencha os campos obrigatórios.",
+        description: "Por favor, preencha o nome do cliente.",
       });
       return;
     }
     
-    if (selectedClient) {
-      // Edit existing client
-      setClients(
-        clients.map((client) =>
+    try {
+      if (selectedClient) {
+        // Edit existing client
+        const { error } = await supabase
+          .from('clients')
+          .update({
+            name: clientFormData.name,
+            email: clientFormData.email || null,
+            phone: clientFormData.phone || null,
+            address: clientFormData.address || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedClient.id);
+        
+        if (error) throw error;
+        
+        // Update local state
+        setClients(clients.map(client =>
           client.id === selectedClient.id
             ? {
                 ...client,
-                ...clientFormData,
+                name: clientFormData.name,
+                email: clientFormData.email || null,
+                phone: clientFormData.phone || null,
+                address: clientFormData.address || null
               }
             : client
-        )
-      );
-      
+        ));
+        
+        toast({
+          title: "Cliente atualizado",
+          description: `${clientFormData.name} foi atualizado com sucesso.`,
+        });
+      } else {
+        // Add new client
+        const { data, error } = await supabase
+          .from('clients')
+          .insert({
+            name: clientFormData.name,
+            email: clientFormData.email || null,
+            phone: clientFormData.phone || null,
+            address: clientFormData.address || null,
+            user_id: user.id
+          })
+          .select();
+        
+        if (error) throw error;
+        
+        // Update local state
+        if (data && data.length > 0) {
+          const newClient = {
+            ...data[0],
+            pets: []
+          };
+          setClients([...clients, newClient]);
+        }
+        
+        toast({
+          title: "Cliente adicionado",
+          description: `${clientFormData.name} foi adicionado com sucesso.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving client:', error);
       toast({
-        title: "Cliente atualizado",
-        description: `${clientFormData.name} foi atualizado com sucesso.`,
+        variant: "destructive",
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar o cliente.",
       });
-    } else {
-      // Add new client
-      const newClient: Client = {
-        id: Date.now().toString(),
-        ...clientFormData,
-        pets: [],
-      };
-      
-      setClients([...clients, newClient]);
-      
-      toast({
-        title: "Cliente adicionado",
-        description: `${clientFormData.name} foi adicionado com sucesso.`,
-      });
+    } finally {
+      setIsClientDialogOpen(false);
     }
-    
-    setIsClientDialogOpen(false);
   };
 
   // Handle pet form submission
-  const handlePetSubmit = () => {
-    if (!petFormData.name || !petFormData.type || !petFormData.breed || !petFormData.age) {
+  const handlePetSubmit = async () => {
+    if (!user || !selectedClient) return;
+    
+    if (!petFormData.name || !petFormData.type) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos.",
+        description: "Por favor, preencha o nome e tipo do pet.",
       });
       return;
     }
     
-    if (!selectedClient) return;
+    let age: number | null = null;
+    if (petFormData.age) {
+      age = parseInt(petFormData.age);
+      if (isNaN(age) || age <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Idade inválida",
+          description: "Por favor, informe uma idade válida.",
+        });
+        return;
+      }
+    }
     
-    const age = parseInt(petFormData.age);
-    
-    if (isNaN(age) || age <= 0) {
+    try {
+      if (selectedPet) {
+        // Edit existing pet
+        const { error } = await supabase
+          .from('pets')
+          .update({
+            name: petFormData.name,
+            type: petFormData.type,
+            breed: petFormData.breed || null,
+            age: age,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedPet.id);
+        
+        if (error) throw error;
+        
+        // Update local state
+        const updatedPet = {
+          ...selectedPet,
+          name: petFormData.name,
+          type: petFormData.type,
+          breed: petFormData.breed || null,
+          age: age
+        };
+        
+        setPets(pets.map(pet => pet.id === selectedPet.id ? updatedPet : pet));
+        
+        setClients(clients.map(client =>
+          client.id === selectedClient.id
+            ? {
+                ...client,
+                pets: client.pets.map(pet => pet.id === selectedPet.id ? updatedPet : pet)
+              }
+            : client
+        ));
+        
+        toast({
+          title: "Pet atualizado",
+          description: `${petFormData.name} foi atualizado com sucesso.`,
+        });
+      } else {
+        // Add new pet
+        const { data, error } = await supabase
+          .from('pets')
+          .insert({
+            name: petFormData.name,
+            type: petFormData.type,
+            breed: petFormData.breed || null,
+            age: age,
+            client_id: selectedClient.id,
+            user_id: user.id
+          })
+          .select();
+        
+        if (error) throw error;
+        
+        // Update local state
+        if (data && data.length > 0) {
+          const newPet = data[0];
+          setPets([...pets, newPet]);
+          
+          setClients(clients.map(client =>
+            client.id === selectedClient.id
+              ? {
+                  ...client,
+                  pets: [...client.pets, newPet]
+                }
+              : client
+          ));
+        }
+        
+        toast({
+          title: "Pet adicionado",
+          description: `${petFormData.name} foi adicionado com sucesso.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving pet:', error);
       toast({
         variant: "destructive",
-        title: "Idade inválida",
-        description: "Por favor, informe uma idade válida.",
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar o pet.",
       });
-      return;
+    } finally {
+      setIsPetDialogOpen(false);
     }
-    
-    if (selectedPet) {
-      // Edit existing pet
-      setClients(
-        clients.map((client) =>
-          client.id === selectedClient.id
-            ? {
-                ...client,
-                pets: client.pets.map((pet) =>
-                  pet.id === selectedPet.id
-                    ? {
-                        ...pet,
-                        name: petFormData.name,
-                        type: petFormData.type,
-                        breed: petFormData.breed,
-                        age,
-                      }
-                    : pet
-                ),
-              }
-            : client
-        )
-      );
-      
-      toast({
-        title: "Pet atualizado",
-        description: `${petFormData.name} foi atualizado com sucesso.`,
-      });
-    } else {
-      // Add new pet
-      const newPet: Pet = {
-        id: Date.now().toString(),
-        name: petFormData.name,
-        type: petFormData.type,
-        breed: petFormData.breed,
-        age,
-      };
-      
-      setClients(
-        clients.map((client) =>
-          client.id === selectedClient.id
-            ? {
-                ...client,
-                pets: [...client.pets, newPet],
-              }
-            : client
-        )
-      );
-      
-      toast({
-        title: "Pet adicionado",
-        description: `${petFormData.name} foi adicionado com sucesso.`,
-      });
-    }
-    
-    setIsPetDialogOpen(false);
   };
 
   // Open delete confirmation dialog
@@ -346,41 +416,86 @@ const Clients = () => {
   };
 
   // Handle client deletion
-  const handleDeleteClient = () => {
+  const handleDeleteClient = async () => {
     if (!selectedClient) return;
     
-    setClients(clients.filter((client) => client.id !== selectedClient.id));
-    
-    toast({
-      title: "Cliente removido",
-      description: `${selectedClient.name} foi removido com sucesso.`,
-    });
-    
-    setIsDeleteDialogOpen(false);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', selectedClient.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setClients(clients.filter(client => client.id !== selectedClient.id));
+      setPets(pets.filter(pet => pet.client_id !== selectedClient.id));
+      
+      toast({
+        title: "Cliente removido",
+        description: `${selectedClient.name} foi removido com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover",
+        description: "Ocorreu um erro ao remover o cliente.",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   // Handle pet deletion
-  const handleDeletePet = () => {
-    if (!selectedClient || !selectedPet) return;
+  const handleDeletePet = async () => {
+    if (!selectedPet) return;
     
-    setClients(
-      clients.map((client) =>
-        client.id === selectedClient.id
+    try {
+      const { error } = await supabase
+        .from('pets')
+        .delete()
+        .eq('id', selectedPet.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setPets(pets.filter(pet => pet.id !== selectedPet.id));
+      
+      setClients(clients.map(client =>
+        client.id === selectedPet.client_id
           ? {
               ...client,
-              pets: client.pets.filter((pet) => pet.id !== selectedPet.id),
+              pets: client.pets.filter(pet => pet.id !== selectedPet.id)
             }
           : client
-      )
-    );
-    
-    toast({
-      title: "Pet removido",
-      description: `${selectedPet.name} foi removido com sucesso.`,
-    });
-    
-    setIsDeletePetDialogOpen(false);
+      ));
+      
+      toast({
+        title: "Pet removido",
+        description: `${selectedPet.name} foi removido com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Error deleting pet:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover",
+        description: "Ocorreu um erro ao remover o pet.",
+      });
+    } finally {
+      setIsDeletePetDialogOpen(false);
+    }
   };
+
+  // JSX for the loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-petblue-600" />
+        <span className="ml-2 text-lg text-gray-600">Carregando...</span>
+      </div>
+    );
+  }
 
   return (
     <div>
