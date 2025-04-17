@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,16 +115,16 @@ const Appointments = () => {
           status: item.status as "pending" | "confirmed" | "cancelled" | "completed",
           notes: item.notes,
           pet: {
-            id: item.pets.id,
-            name: item.pets.name
+            id: item.pets?.id || "",
+            name: item.pets?.name || ""
           },
           client: {
-            id: item.clients.id,
-            name: item.clients.name
+            id: item.clients?.id || "",
+            name: item.clients?.name || ""
           },
           service: {
-            id: item.services.id,
-            name: item.services.name
+            id: item.services?.id || "",
+            name: item.services?.name || ""
           }
         }));
         
