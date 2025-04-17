@@ -2,10 +2,25 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 const ProtectedRoute = () => {
   const { user, loading, isInTrialPeriod, isSubscriptionActive, profile } = useAuth();
   const location = useLocation();
+
+  // Routes that require admin role
+  const adminOnlyRoutes = ["/relatorios", "/assinatura"];
+  const currentPathIsAdminOnly = adminOnlyRoutes.includes(location.pathname);
+
+  useEffect(() => {
+    // Show a toast message when accessing a restricted route
+    if (profile?.role === "atendente" && currentPathIsAdminOnly) {
+      toast.error("Acesso restrito", {
+        description: "Você não tem permissão para acessar esta página."
+      });
+    }
+  }, [profile?.role, currentPathIsAdminOnly]);
 
   if (loading) {
     // Show loading spinner or skeleton
@@ -28,7 +43,7 @@ const ProtectedRoute = () => {
   }
 
   // Check role-based access for specific routes
-  if (profile?.role === "atendente" && (location.pathname === "/relatorios" || location.pathname === "/assinatura")) {
+  if (profile?.role === "atendente" && currentPathIsAdminOnly) {
     return <Navigate to="/dashboard" replace />;
   }
 

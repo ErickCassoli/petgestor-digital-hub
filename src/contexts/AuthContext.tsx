@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { toast as sonnerToast } from "sonner";
 
 interface Profile {
   id: string;
@@ -20,6 +21,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, role: "admin" | "atendente") => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Omit<Profile, "id">>) => Promise<void>;
   isSubscriptionActive: boolean;
   isInTrialPeriod: boolean;
 }
@@ -36,26 +38,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isInTrialPeriod = profile?.trial_end_date ? new Date() < new Date(profile.trial_end_date) : false;
   const isSubscriptionActive = profile?.is_subscribed || false;
 
+  // Function to fetch user profile
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      
+      return data as Profile;
+    } catch (error) {
+      console.error('Error in fetchProfile:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, newSession) => {
+        console.log('Auth state changed:', event);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
         
-        if (session?.user) {
-          try {
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (error) throw error;
-            setProfile(data as Profile);
-          } catch (error) {
-            console.error('Error fetching profile:', error);
-          }
+        if (newSession?.user) {
+          // Use setTimeout to prevent potential deadlocks
+          setTimeout(async () => {
+            const userProfile = await fetchProfile(newSession.user.id);
+            setProfile(userProfile);
+          }, 0);
         } else {
           setProfile(null);
         }
@@ -65,22 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // THEN check for existing session
     const getSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        setSession(existingSession);
+        setUser(existingSession?.user ?? null);
         
-        if (session?.user) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Error fetching profile:', error);
-          } else {
-            setProfile(data as Profile);
-          }
+        if (existingSession?.user) {
+          const userProfile = await fetchProfile(existingSession.user.id);
+          setProfile(userProfile);
         }
       } catch (error) {
         console.error('Error getting session:', error);
@@ -106,16 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) throw error;
       
-      toast({
-        title: "Login realizado com sucesso",
-        description: "Bem-vindo de volta ao PetGestor!",
+      sonnerToast.success("Login realizado com sucesso", {
+        description: "Bem-vindo de volta ao PetGestor!"
       });
     } catch (error: any) {
       console.error("Sign in error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro no login",
-        description: error.message || "Verifique seu e-mail e senha.",
+      sonnerToast.error("Erro no login", {
+        description: error.message || "Verifique seu e-mail e senha."
       });
       throw error;
     } finally {
@@ -138,16 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) throw error;
       
-      toast({
-        title: "Conta criada com sucesso",
-        description: "Bem-vindo ao PetGestor!",
+      sonnerToast.success("Conta criada com sucesso", {
+        description: "Bem-vindo ao PetGestor!"
       });
     } catch (error: any) {
       console.error("Sign up error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro no cadastro",
-        description: error.message || "Verifique os dados informados.",
+      sonnerToast.error("Erro no cadastro", {
+        description: error.message || "Verifique os dados informados."
       });
       throw error;
     } finally {
@@ -160,17 +162,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      toast({
-        title: "Logout realizado",
-        description: "Você saiu da sua conta com sucesso.",
+      sonnerToast.success("Logout realizado", {
+        description: "Você saiu da sua conta com sucesso."
       });
     } catch (error: any) {
       console.error("Sign out error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao sair",
-        description: error.message || "Ocorreu um erro ao fazer logout.",
+      sonnerToast.error("Erro ao sair", {
+        description: error.message || "Ocorreu um erro ao fazer logout."
       });
+    }
+  };
+
+  const updateProfile = async (updates: Partial<Omit<Profile, "id">>): Promise<void> => {
+    if (!user) throw new Error("No user logged in");
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Refresh profile after update
+      const updatedProfile = await fetchProfile(user.id);
+      setProfile(updatedProfile);
+      
+      sonnerToast.success("Perfil atualizado", {
+        description: "Suas informações foram atualizadas com sucesso."
+      });
+    } catch (error: any) {
+      console.error("Update profile error:", error);
+      sonnerToast.error("Erro ao atualizar perfil", {
+        description: error.message || "Ocorreu um erro ao atualizar suas informações."
+      });
+      throw error;
     }
   };
 
@@ -182,6 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    updateProfile,
     isSubscriptionActive,
     isInTrialPeriod,
   };

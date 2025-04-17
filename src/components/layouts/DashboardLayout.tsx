@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -12,11 +12,23 @@ import {
   CreditCard, 
   LogOut, 
   Menu, 
-  X
+  X,
+  User,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { toast as sonnerToast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -30,7 +42,7 @@ interface SidebarItem {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, profile, signOut, isInTrialPeriod } = useAuth();
+  const { user, profile, signOut, isInTrialPeriod, isSubscriptionActive } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,9 +51,32 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
 
+  // Close sidebar on navigation or window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    closeSidebar();
+  }, [location.pathname]);
+
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      sonnerToast.error("Erro ao sair", {
+        description: "Ocorreu um erro ao tentar sair da conta."
+      });
+    }
   };
 
   const sidebarItems: SidebarItem[] = [
@@ -58,6 +93,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const filteredItems = sidebarItems.filter(item => 
     profile && item.rolesWithAccess.includes(profile.role)
   );
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (profile?.name) {
+      return profile.name
+        .split(' ')
+        .map(name => name[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+    }
+    return user?.email?.substring(0, 2).toUpperCase() || '??';
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
@@ -102,6 +150,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         )}
 
+        {!isInTrialPeriod && !isSubscriptionActive && profile?.role === 'admin' && (
+          <div className="bg-red-50 p-3 border-b border-red-200">
+            <p className="text-sm text-red-800 font-medium">
+              Seu período de avaliação terminou. 
+              <Link to="/assinatura" className="block mt-1 font-bold text-red-800 hover:underline">
+                Assinar agora
+              </Link>
+            </p>
+          </div>
+        )}
+
         <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
           {filteredItems.map((item) => (
             <Link
@@ -123,21 +182,41 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-medium text-gray-800">{user?.email}</p>
-              <p className="text-sm text-gray-500">
-                {profile?.role === "admin" ? "Administrador" : "Atendente"}
-              </p>
+            <div className="flex items-center space-x-3">
+              <Avatar className="bg-petblue-100 text-petblue-700">
+                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium text-gray-800 truncate max-w-[160px]">
+                  {profile?.name || user?.email}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {profile?.role === "admin" ? "Administrador" : "Atendente"}
+                </p>
+              </div>
             </div>
           </div>
-          <Button
-            variant="outline"
-            className="w-full justify-start text-gray-700"
-            onClick={handleSignOut}
-          >
-            <LogOut size={18} className="mr-2" />
-            Sair
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-start text-gray-700">
+                <Settings size={18} className="mr-2" />
+                Opções
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Perfil</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sair</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 

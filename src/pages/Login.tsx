@@ -1,30 +1,36 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { toast as sonnerToast } from "sonner";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if user is already logged in
+  if (user) {
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+    navigate(from, { replace: true });
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email.trim() || !password.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos.",
+      sonnerToast.error("Campos obrigatórios", {
+        description: "Por favor, preencha todos os campos."
       });
       return;
     }
@@ -32,8 +38,8 @@ const Login = () => {
     try {
       setIsLoading(true);
       await signIn(email, password);
-      navigate("/dashboard");
-    } catch (error) {
+      // Navigation will happen automatically through the auth state change in AuthContext
+    } catch (error: any) {
       // Error is already handled in the signIn function
       console.error("Login error handling in component:", error);
     } finally {

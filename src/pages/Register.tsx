@@ -7,11 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<"admin" | "atendente">("admin");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +25,7 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!email.trim() || !password.trim() || !confirmPassword.trim() || !name.trim()) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
@@ -42,7 +45,7 @@ const Register = () => {
     
     try {
       setIsLoading(true);
-      await signUp(email, password, "admin");
+      await signUp(email, password, role);
       navigate("/dashboard");
     } catch (error) {
       console.error("Registration error handling in component:", error);
@@ -66,6 +69,18 @@ const Register = () => {
 
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Seu nome completo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -126,6 +141,20 @@ const Register = () => {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de Conta</Label>
+              <RadioGroup value={role} onValueChange={(value) => setRole(value as "admin" | "atendente")} className="flex space-x-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="admin" id="admin" />
+                  <Label htmlFor="admin" className="cursor-pointer">Administrador</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="atendente" id="atendente" />
+                  <Label htmlFor="atendente" className="cursor-pointer">Atendente</Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <Button
