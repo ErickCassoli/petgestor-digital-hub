@@ -35,13 +35,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 
-// Mock data for sales
-const MOCK_SALES = [
+// Fix the type issue by adding a more specific type for the mock data
+const MOCK_SALES: Sale[] = [
   { 
     id: "1", 
     date: "2023-04-14",
     client: "João Silva",
-    type: "service", 
+    type: "service",
     description: "Banho e Tosa - Max",
     value: 80.00
   },

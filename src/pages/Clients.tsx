@@ -36,7 +36,7 @@ import {
   Phone,
   Mail,
   Home,
-  Paw
+  Dog
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -471,7 +471,7 @@ const Clients = () => {
                                   key={pet.id}
                                   className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-petblue-100 text-petblue-800"
                                 >
-                                  <Paw className="h-3 w-3 mr-1" />
+                                  <Dog className="h-3 w-3 mr-1" />
                                   {pet.name}
                                 </span>
                               ))}
@@ -494,7 +494,7 @@ const Clients = () => {
                               size="icon"
                               onClick={() => openPetDialog(client.id)}
                             >
-                              <Paw className="h-4 w-4 text-gray-500" />
+                              <Dog className="h-4 w-4 text-gray-500" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -522,7 +522,7 @@ const Clients = () => {
             <CardContent>
               {filteredClients.flatMap(client => client.pets).length === 0 ? (
                 <div className="text-center py-8">
-                  <Paw className="h-12 w-12 mx-auto text-gray-300" />
+                  <Dog className="h-12 w-12 mx-auto text-gray-300" />
                   <p className="mt-2 text-gray-500 font-medium">Nenhum pet encontrado</p>
                   <p className="text-gray-400">Adicione pets aos seus clientes</p>
                 </div>
