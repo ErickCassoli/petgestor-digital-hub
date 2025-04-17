@@ -30,7 +30,7 @@ interface SidebarItem {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, signOut, isInTrialPeriod } = useAuth();
+  const { user, profile, signOut, isInTrialPeriod } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,7 +56,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   // Filter items based on user role
   const filteredItems = sidebarItems.filter(item => 
-    user && item.rolesWithAccess.includes(user.role)
+    profile && item.rolesWithAccess.includes(profile.role)
   );
 
   return (
@@ -95,8 +95,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         {isInTrialPeriod && (
           <div className="bg-amber-50 p-3 border-b border-amber-200">
             <p className="text-sm text-amber-800 font-medium">
-              Período de avaliação: {user?.trialEndDate ? 
-                `${Math.ceil((new Date(user.trialEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
+              Período de avaliação: {profile?.trial_end_date ? 
+                `${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
                 '7 dias'}
             </p>
           </div>
@@ -126,7 +126,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div>
               <p className="font-medium text-gray-800">{user?.email}</p>
               <p className="text-sm text-gray-500">
-                {user?.role === "admin" ? "Administrador" : "Atendente"}
+                {profile?.role === "admin" ? "Administrador" : "Atendente"}
               </p>
             </div>
           </div>

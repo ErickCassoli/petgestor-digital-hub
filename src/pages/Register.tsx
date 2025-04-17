@@ -47,12 +47,8 @@ const Register = () => {
       await signUp(email, password, role);
       navigate("/dashboard");
     } catch (error) {
-      console.error("Registration error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro no cadastro",
-        description: "Ocorreu um erro ao criar sua conta. Tente novamente.",
-      });
+      // Error is already handled in the signUp function
+      console.error("Registration error handling in component:", error);
     } finally {
       setIsLoading(false);
     }

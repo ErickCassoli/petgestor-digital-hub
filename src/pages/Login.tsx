@@ -34,12 +34,8 @@ const Login = () => {
       await signIn(email, password);
       navigate("/dashboard");
     } catch (error) {
-      console.error("Login error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro no login",
-        description: "Verifique seu e-mail e senha e tente novamente.",
-      });
+      // Error is already handled in the signIn function
+      console.error("Login error handling in component:", error);
     } finally {
       setIsLoading(false);
     }

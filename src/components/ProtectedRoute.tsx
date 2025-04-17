@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 
 const ProtectedRoute = () => {
-  const { user, loading, isInTrialPeriod, isSubscriptionActive } = useAuth();
+  const { user, loading, isInTrialPeriod, isSubscriptionActive, profile } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -28,7 +28,7 @@ const ProtectedRoute = () => {
   }
 
   // Check role-based access for specific routes
-  if (user.role === "atendente" && (location.pathname === "/relatorios" || location.pathname === "/assinatura")) {
+  if (profile?.role === "atendente" && (location.pathname === "/relatorios" || location.pathname === "/assinatura")) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -1,8 +1,10 @@
 
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, Package, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MetricCardProps {
   title: string;
@@ -27,35 +29,156 @@ const MetricCard = ({ title, value, description, icon: Icon, href }: MetricCardP
   </Link>
 );
 
-const Dashboard = () => {
-  const { user, isInTrialPeriod } = useAuth();
+interface DashboardMetrics {
+  clientCount: number;
+  appointmentsToday: number;
+  productCount: number;
+  monthlySales: number;
+}
 
-  // Mock data for dashboard
-  const metrics = [
+interface AppointmentPreview {
+  pet_name: string;
+  client_name: string;
+  service_name: string;
+  date: string;
+  time: string;
+}
+
+interface LowStockProduct {
+  name: string;
+  stock: number;
+  min_stock: number;
+}
+
+const Dashboard = () => {
+  const { user, profile, isInTrialPeriod } = useAuth();
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    clientCount: 0,
+    appointmentsToday: 0,
+    productCount: 0,
+    monthlySales: 0
+  });
+  const [appointments, setAppointments] = useState<AppointmentPreview[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return;
+      
+      try {
+        // Fetch client count
+        const { count: clientCount } = await supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        
+        // Fetch today's appointments
+        const today = new Date().toISOString().split('T')[0];
+        const { count: appointmentsToday } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('date', today);
+        
+        // Fetch product count
+        const { count: productCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        
+        // Fetch monthly sales total
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        
+        const { data: salesData } = await supabase
+          .from('sales')
+          .select('total')
+          .eq('user_id', user.id)
+          .gte('sale_date', startOfMonth.toISOString());
+        
+        const monthlySales = salesData?.reduce((sum, sale) => sum + Number(sale.total), 0) || 0;
+        
+        // Fetch upcoming appointments
+        const { data: upcomingAppointments } = await supabase
+          .from('appointments')
+          .select(`
+            date,
+            time,
+            pets!inner(name),
+            clients!inner(name),
+            services!inner(name)
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'confirmed')
+          .gte('date', today)
+          .order('date', { ascending: true })
+          .order('time', { ascending: true })
+          .limit(4);
+        
+        const formattedAppointments = upcomingAppointments?.map(appt => ({
+          pet_name: appt.pets.name,
+          client_name: appt.clients.name,
+          service_name: appt.services.name,
+          date: appt.date,
+          time: appt.time
+        })) || [];
+        
+        // Fetch low stock products
+        const { data: lowStockItems } = await supabase
+          .from('products')
+          .select('name, stock, min_stock')
+          .eq('user_id', user.id)
+          .lt('stock', supabase.rpc('least', { a: 'min_stock', b: 5 }))
+          .order('stock', { ascending: true })
+          .limit(4);
+        
+        setMetrics({
+          clientCount: clientCount || 0,
+          appointmentsToday: appointmentsToday || 0,
+          productCount: productCount || 0,
+          monthlySales: monthlySales
+        });
+        
+        setAppointments(formattedAppointments);
+        setLowStockProducts(lowStockItems || []);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, [user]);
+
+  // Fallback data if still loading
+  const metricCards = [
     {
       title: "Clientes",
-      value: "42",
+      value: loading ? "--" : metrics.clientCount.toString(),
       description: "Total de clientes cadastrados",
       icon: Users,
       href: "/clientes"
     },
     {
       title: "Agendamentos",
-      value: "12",
+      value: loading ? "--" : metrics.appointmentsToday.toString(),
       description: "Agendamentos para hoje",
       icon: Calendar,
       href: "/agendamentos"
     },
     {
       title: "Produtos",
-      value: "87",
+      value: loading ? "--" : metrics.productCount.toString(),
       description: "Produtos em estoque",
       icon: Package,
       href: "/produtos"
     },
     {
       title: "Vendas",
-      value: "R$ 3.240",
+      value: loading ? "--" : `R$ ${metrics.monthlySales.toFixed(2)}`,
       description: "Faturamento do mês",
       icon: ShoppingCart,
       href: "/vendas"
@@ -68,20 +191,20 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Bem-vindo, {user?.email}. Aqui está um resumo do seu petshop.
+            Bem-vindo, {profile?.name || user?.email}. Aqui está um resumo do seu petshop.
           </p>
         </div>
         {isInTrialPeriod && (
           <div className="mt-4 sm:mt-0 bg-amber-50 text-amber-800 px-4 py-2 rounded-lg border border-amber-200 text-sm">
-            <span className="font-medium">Período de avaliação:</span> {user?.trialEndDate ? 
-              `${Math.ceil((new Date(user.trialEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
+            <span className="font-medium">Período de avaliação:</span> {profile?.trial_end_date ? 
+              `${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
               '7 dias'}
           </div>
         )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((metric, index) => (
+        {metricCards.map((metric, index) => (
           <MetricCard
             key={index}
             title={metric.title}
@@ -99,47 +222,40 @@ const Dashboard = () => {
             <CardTitle>Próximos Agendamentos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  pet: "Max",
-                  tutor: "João Silva",
-                  service: "Banho e Tosa",
-                  time: "Hoje, 14:00"
-                },
-                {
-                  pet: "Luna",
-                  tutor: "Maria Oliveira",
-                  service: "Consulta Veterinária",
-                  time: "Hoje, 15:30"
-                },
-                {
-                  pet: "Thor",
-                  tutor: "Pedro Santos",
-                  service: "Banho",
-                  time: "Hoje, 16:45"
-                },
-                {
-                  pet: "Mel",
-                  tutor: "Ana Costa",
-                  service: "Tosa",
-                  time: "Amanhã, 09:15"
-                },
-              ].map((appointment, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{appointment.pet} ({appointment.tutor})</p>
-                    <p className="text-sm text-gray-500">{appointment.service}</p>
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(4)].map((_, index) => (
+                  <div key={index} className="h-14 bg-gray-100 animate-pulse rounded-lg"></div>
+                ))}
+              </div>
+            ) : appointments.length > 0 ? (
+              <div className="space-y-4">
+                {appointments.map((appointment, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{appointment.pet_name} ({appointment.client_name})</p>
+                      <p className="text-sm text-gray-500">{appointment.service_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {new Date(appointment.date).toLocaleDateString('pt-BR')}, {appointment.time.substring(0, 5)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{appointment.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-gray-500">Nenhum agendamento próximo encontrado.</p>
+                <Link to="/agendamentos" className="text-petblue-600 hover:text-petblue-800 mt-2 inline-block">
+                  Criar novo agendamento
+                </Link>
+              </div>
+            )}
+            
             <div className="mt-4 text-center">
               <Link
                 to="/agendamentos"
@@ -156,43 +272,38 @@ const Dashboard = () => {
             <CardTitle>Produtos com Baixo Estoque</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  name: "Ração Premium Cães Adultos",
-                  stock: "3 unidades",
-                  min: "5 unidades"
-                },
-                {
-                  name: "Shampoo Neutro",
-                  stock: "2 unidades",
-                  min: "5 unidades"
-                },
-                {
-                  name: "Antipulgas Comprimido",
-                  stock: "4 unidades",
-                  min: "10 unidades"
-                },
-                {
-                  name: "Escova de Pelos",
-                  stock: "1 unidade",
-                  min: "3 unidades"
-                },
-              ].map((product, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{product.name}</p>
-                    <p className="text-sm text-red-500">Estoque: {product.stock}</p>
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(4)].map((_, index) => (
+                  <div key={index} className="h-14 bg-gray-100 animate-pulse rounded-lg"></div>
+                ))}
+              </div>
+            ) : lowStockProducts.length > 0 ? (
+              <div className="space-y-4">
+                {lowStockProducts.map((product, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{product.name}</p>
+                      <p className="text-sm text-red-500">Estoque: {product.stock} unidades</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Mínimo: {product.min_stock} unidades</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Mínimo: {product.min}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-gray-500">Nenhum produto com estoque baixo encontrado.</p>
+                <Link to="/produtos" className="text-petblue-600 hover:text-petblue-800 mt-2 inline-block">
+                  Gerenciar produtos
+                </Link>
+              </div>
+            )}
+            
             <div className="mt-4 text-center">
               <Link
                 to="/produtos"
