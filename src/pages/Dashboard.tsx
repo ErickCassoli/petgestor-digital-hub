@@ -50,6 +50,14 @@ interface LowStockProduct {
   min_stock: number;
 }
 
+interface AppointmentJoin {
+  date: string;
+  time: string;
+  pets: { name: string } | null;
+  clients: { name: string } | null;
+  services: { name: string } | null;
+}
+
 const Dashboard = () => {
   const { user, profile, isInTrialPeriod } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics>({
@@ -117,13 +125,13 @@ const Dashboard = () => {
           .order('time', { ascending: true })
           .limit(4);
         
-        const formattedAppointments = upcomingAppointments?.map(appt => ({
+        const formattedAppointments = (upcomingAppointments as AppointmentJoin[] || []).map(appt => ({
           pet_name: appt.pets?.name || '',
           client_name: appt.clients?.name || '',
           service_name: appt.services?.name || '',
           date: appt.date,
           time: appt.time
-        })) || [];
+        }));
         
         // Fetch low stock products
         const { data: lowStockItems } = await supabase

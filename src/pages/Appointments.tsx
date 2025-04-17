@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +44,17 @@ interface Appointment {
     id: string;
     name: string;
   };
+}
+
+interface AppointmentData {
+  id: string;
+  date: string;
+  time: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  notes: string | null;
+  pets: { id: string; name: string } | null;
+  clients: { id: string; name: string } | null;
+  services: { id: string; name: string } | null;
 }
 
 const statusBadgeStyles = {
@@ -96,9 +106,9 @@ const Appointments = () => {
             time,
             status,
             notes,
-            pets:pet_id (id, name),
-            clients!inner (id, name),
-            services:service_id (id, name)
+            pets(id, name),
+            clients(id, name),
+            services(id, name)
           `)
           .eq('user_id', user.id)
           .eq('date', formatDateForAPI(currentDate));
@@ -112,23 +122,23 @@ const Appointments = () => {
         if (error) throw error;
         
         // Transform the data to match our Appointment interface
-        const transformedData = data.map(item => ({
+        const transformedData = (data as AppointmentData[]).map(item => ({
           id: item.id,
           date: item.date,
           time: item.time,
           status: item.status as "pending" | "confirmed" | "cancelled" | "completed",
           notes: item.notes,
           pet: {
-            id: item.pets.id,
-            name: item.pets.name
+            id: item.pets?.id || "",
+            name: item.pets?.name || ""
           },
           client: {
-            id: item.clients.id,
-            name: item.clients.name
+            id: item.clients?.id || "",
+            name: item.clients?.name || ""
           },
           service: {
-            id: item.services.id,
-            name: item.services.name
+            id: item.services?.id || "",
+            name: item.services?.name || ""
           }
         }));
         
