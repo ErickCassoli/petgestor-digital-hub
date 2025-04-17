@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, CreditCard, ShieldCheck, Clock, Calendar, Bad
 import { useToast } from "@/components/ui/use-toast";
 
 const Subscription = () => {
-  const { user, isInTrialPeriod } = useAuth();
+  const { user, profile, isInTrialPeriod } = useAuth();
   const { toast } = useToast();
 
   const handleSubscribe = () => {
@@ -47,8 +47,8 @@ const Subscription = () => {
                     <div>
                       <h3 className="text-lg font-medium text-gray-900">Período de Avaliação</h3>
                       <p className="text-gray-500">
-                        {user?.trialEndDate ? 
-                          `Restam ${Math.ceil((new Date(user.trialEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias` : 
+                        {profile?.trial_end_date ? 
+                          `Restam ${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias` : 
                           'Restam 7 dias'}
                       </p>
                     </div>
@@ -99,7 +99,7 @@ const Subscription = () => {
                   <span className="text-gray-600">Data de término</span>
                   <span className="font-medium text-gray-900">
                     {isInTrialPeriod ? 
-                      (user?.trialEndDate ? new Date(user.trialEndDate).toLocaleDateString('pt-BR') : '-') : 
+                      (profile?.trial_end_date ? new Date(profile.trial_end_date).toLocaleDateString('pt-BR') : '-') : 
                       "-"}
                   </span>
                 </div>
@@ -107,7 +107,7 @@ const Subscription = () => {
                   <span className="text-gray-600">Próxima cobrança</span>
                   <span className="font-medium text-gray-900">
                     {isInTrialPeriod ? 
-                      (user?.trialEndDate ? new Date(user.trialEndDate).toLocaleDateString('pt-BR') : '-') : 
+                      (profile?.trial_end_date ? new Date(profile.trial_end_date).toLocaleDateString('pt-BR') : '-') : 
                       "-"}
                   </span>
                 </div>

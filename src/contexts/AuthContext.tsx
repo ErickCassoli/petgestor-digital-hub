@@ -93,10 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ 
+      const { error } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
       });
@@ -107,8 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login realizado com sucesso",
         description: "Bem-vindo de volta ao PetGestor!",
       });
-      
-      return data;
     } catch (error: any) {
       console.error("Sign in error:", error);
       toast({
@@ -122,10 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, role: "admin" | "atendente") => {
+  const signUp = async (email: string, password: string, role: "admin" | "atendente"): Promise<void> => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ 
+      const { error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
@@ -141,8 +139,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Conta criada com sucesso",
         description: "Bem-vindo ao PetGestor!",
       });
-      
-      return data;
     } catch (error: any) {
       console.error("Sign up error:", error);
       toast({
@@ -156,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
