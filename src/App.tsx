@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,8 +17,8 @@ import Subscription from "@/pages/Subscription";
 import ExpiredSubscription from "@/pages/ExpiredSubscription";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import NotFound from "@/pages/NotFound";
+import Services from "@/pages/Services";
 
-// Create a new query client with specific settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +52,7 @@ const App = () => (
               <Route path="/vendas" element={<Sales />} />
               <Route path="/relatorios" element={<Reports />} />
               <Route path="/assinatura" element={<Subscription />} />
+              <Route path="/servicos" element={<Services />} />
             </Route>
             
             {/* Redirect /admin to /dashboard for convenience */}

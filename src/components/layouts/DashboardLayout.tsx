@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +13,8 @@ import {
   Menu, 
   X,
   User,
-  Settings
+  Settings,
+  Pencil
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
 
-  // Close sidebar on navigation or window resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -84,17 +83,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/clientes", label: "Clientes e Pets", icon: Users, rolesWithAccess: ["admin", "atendente"] },
     { path: "/agendamentos", label: "Agendamentos", icon: Calendar, rolesWithAccess: ["admin", "atendente"] },
     { path: "/produtos", label: "Produtos e Estoque", icon: Package, rolesWithAccess: ["admin", "atendente"] },
+    { path: "/servicos", label: "Serviços", icon: Pencil, rolesWithAccess: ["admin", "atendente"] },
     { path: "/vendas", label: "Vendas", icon: ShoppingCart, rolesWithAccess: ["admin", "atendente"] },
     { path: "/relatorios", label: "Relatórios", icon: BarChart, rolesWithAccess: ["admin"] },
     { path: "/assinatura", label: "Plano", icon: CreditCard, rolesWithAccess: ["admin"] },
   ];
 
-  // Filter items based on user role
   const filteredItems = sidebarItems.filter(item => 
     profile && item.rolesWithAccess.includes(profile.role)
   );
 
-  // Get user initials for avatar
   const getUserInitials = () => {
     if (profile?.name) {
       return profile.name
@@ -109,7 +107,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Mobile Menu Button */}
       <button
         className="md:hidden fixed z-50 top-4 left-4 p-2 rounded-md bg-white shadow-md text-petblue-600"
         onClick={toggleSidebar}
@@ -118,7 +115,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Sidebar Backdrop (Mobile) */}
       {sidebarOpen && (
         <div 
           className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
@@ -127,7 +123,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         />
       )}
 
-      {/* Sidebar */}
       <aside 
         className={cn(
           "w-72 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-40 transition-transform duration-300 ease-in-out transform md:translate-x-0 flex flex-col",
@@ -220,7 +215,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className={cn(
         "flex-1 p-6 md:ml-72 transition-all duration-300",
       )}>
