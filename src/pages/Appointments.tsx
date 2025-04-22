@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, Clock, FileText, User, X } from "lucide-react";
+import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, Clock, FileText, User, X, Edit, Trash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import AppointmentForm from "@/components/AppointmentForm";
 
 interface Appointment {
   id: string;
@@ -32,14 +33,12 @@ interface Appointment {
   };
 }
 
-// Function to format date for display
 const formatDate = (date: Date) => {
   return format(date, "EEEE, d 'de' MMMM", {
     locale: ptBR,
   });
 };
 
-// Function to format date for API
 const formatDateForAPI = (date: Date) => {
   return format(date, "yyyy-MM-dd");
 };
@@ -73,29 +72,20 @@ const Appointments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedEdit, setSelectedEdit] = useState<Appointment | null>(null);
 
-  // Navigate to previous day
-  const goToPreviousDay = () => {
-    setCurrentDate(subDays(currentDate, 1));
-  };
+  const goToPreviousDay = () => setCurrentDate(subDays(currentDate, 1));
+  const goToNextDay = () => setCurrentDate(addDays(currentDate, 1));
 
-  // Navigate to next day
-  const goToNextDay = () => {
-    setCurrentDate(addDays(currentDate, 1));
-  };
-
-  // Fetch appointments for the current date
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!user) return;
-
       setLoading(true);
       try {
-        // Get appointments for the current date
         const { data, error } = await supabase
           .from('appointments')
           .select(`
@@ -109,46 +99,48 @@ const Appointments = () => {
             services(id, name)
           `)
           .eq('user_id', user.id)
-          .eq('date', formatDateForAPI(currentDate));
+          .eq('date', formatDateForAPI(currentDate))
+          .order("time", { ascending: true });
 
         if (error) throw error;
-        
-        // Transform the data to match our Appointment interface
+
         const transformedData = (data as unknown as AppointmentDataFromDB[]).map(item => ({
           id: item.id,
           date: item.date,
           time: item.time,
           status: item.status as "pending" | "confirmed" | "cancelled" | "completed",
           notes: item.notes,
-          pet: {
-            id: item.pets?.id || "",
-            name: item.pets?.name || ""
-          },
-          client: {
-            id: item.clients?.id || "",
-            name: item.clients?.name || ""
-          },
-          service: {
-            id: item.services?.id || "",
-            name: item.services?.name || ""
-          }
+          pet: { id: item.pets?.id || "", name: item.pets?.name || "" },
+          client: { id: item.clients?.id || "", name: item.clients?.name || "" },
+          service: { id: item.services?.id || "", name: item.services?.name || "" }
         }));
-        
+
         setAppointments(transformedData);
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar agendamentos",
-          description: "Ocorreu um erro ao buscar os agendamentos."
-        });
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Erro ao carregar agendamentos", description: error?.message });
       } finally {
         setLoading(false);
       }
     };
-
     fetchAppointments();
-  }, [user, currentDate, toast]);
+  }, [user, currentDate, toast, showForm]);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Deseja realmente excluir esse agendamento?")) return;
+    try {
+      const { error } = await supabase.from("appointments").delete().eq("id", id).eq("user_id", user.id);
+      if (error) throw error;
+      toast({ title: "Agendamento excluído com sucesso!" });
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao excluir", description: e.message });
+    }
+  };
+
+  const startEdit = (appt: Appointment) => {
+    setSelectedEdit(appt);
+    setShowForm(true);
+  };
 
   return (
     <div>
@@ -160,7 +152,7 @@ const Appointments = () => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          <Button className="bg-petblue-600 hover:bg-petblue-700">
+          <Button className="bg-petblue-600 hover:bg-petblue-700" onClick={() => { setSelectedEdit(null); setShowForm(true); }}>
             <FileText className="h-4 w-4 mr-2" />
             Novo Agendamento
           </Button>
@@ -180,27 +172,23 @@ const Appointments = () => {
                   variant={"outline"}
                   className={cn(
                     "w-[200px] justify-start text-left font-normal",
-                    !selectedDate && "text-muted-foreground"
+                    !currentDate && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? (
-                    format(selectedDate, "dd/MM/yyyy")
-                  ) : (
-                    <span>Escolha uma data</span>
-                  )}
+                  {format(currentDate, "dd/MM/yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  onDayClick={(date) => {
-                    setCurrentDate(date);
+                  selected={currentDate}
+                  onSelect={(date) => {
+                    setCurrentDate(date ?? new Date());
                     setCalendarOpen(false);
                   }}
                   initialFocus
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
@@ -243,10 +231,26 @@ const Appointments = () => {
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div className="flex gap-2 items-center">
                     <Badge className={statusBadgeStyles[appointment.status]}>
                       {statusLabels[appointment.status]}
                     </Badge>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Editar"
+                      onClick={() => startEdit(appointment)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Excluir"
+                      onClick={() => handleDelete(appointment.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -254,6 +258,14 @@ const Appointments = () => {
           )}
         </CardContent>
       </Card>
+      <AppointmentForm
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        onSuccess={() => setShowForm(false)}
+        defaultValues={selectedEdit || undefined}
+        supabase={supabase}
+        user={user}
+      />
     </div>
   );
 };
