@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,17 +44,6 @@ const formatDateForAPI = (date: Date) => {
   return format(date, "yyyy-MM-dd");
 };
 
-interface AppointmentDataFromDB {
-  id: string;
-  date: string;
-  time: string;
-  status: string;
-  notes: string | null;
-  pets: { id: string; name: string; } | null;
-  clients: { id: string; name: string; } | null;
-  services: { id: string; name: string; } | null;
-}
-
 const statusBadgeStyles = {
   confirmed: "bg-green-500",
   pending: "bg-amber-500",
@@ -86,7 +76,8 @@ const Appointments = () => {
       if (!user) return;
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // Fixed query to use proper joins
+        let { data, error } = await supabase
           .from('appointments')
           .select(`
             id,
@@ -94,9 +85,8 @@ const Appointments = () => {
             time,
             status,
             notes,
-            pets(id, name),
-            clients(id, name),
-            services(id, name)
+            pet_id,
+            service_id
           `)
           .eq('user_id', user.id)
           .eq('date', formatDateForAPI(currentDate))
@@ -104,19 +94,69 @@ const Appointments = () => {
 
         if (error) throw error;
 
-        const transformedData = (data as unknown as AppointmentDataFromDB[]).map(item => ({
-          id: item.id,
-          date: item.date,
-          time: item.time,
-          status: item.status as "pending" | "confirmed" | "cancelled" | "completed",
-          notes: item.notes,
-          pet: { id: item.pets?.id || "", name: item.pets?.name || "" },
-          client: { id: item.clients?.id || "", name: item.clients?.name || "" },
-          service: { id: item.services?.id || "", name: item.services?.name || "" }
-        }));
+        if (!data || data.length === 0) {
+          setAppointments([]);
+          setLoading(false);
+          return;
+        }
+
+        // Get all pet IDs to fetch pet info
+        const petIds = data.map(item => item.pet_id);
+        const { data: petsData, error: petsError } = await supabase
+          .from('pets')
+          .select('id, name, client_id')
+          .in('id', petIds);
+
+        if (petsError) throw petsError;
+
+        // Get all client IDs to fetch client info
+        const clientIds = petsData?.map(pet => pet.client_id) || [];
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('id, name')
+          .in('id', clientIds);
+
+        if (clientsError) throw clientsError;
+
+        // Get all service IDs to fetch service info
+        const serviceIds = data.map(item => item.service_id);
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('id, name')
+          .in('id', serviceIds);
+
+        if (servicesError) throw servicesError;
+
+        // Map data to combine all related information
+        const transformedData = data.map(item => {
+          const pet = petsData?.find(p => p.id === item.pet_id);
+          const client = clientsData?.find(c => c.id === pet?.client_id);
+          const service = servicesData?.find(s => s.id === item.service_id);
+
+          return {
+            id: item.id,
+            date: item.date,
+            time: item.time,
+            status: item.status as "pending" | "confirmed" | "cancelled" | "completed",
+            notes: item.notes,
+            pet: { 
+              id: pet?.id || "", 
+              name: pet?.name || "Pet não encontrado" 
+            },
+            client: { 
+              id: client?.id || "", 
+              name: client?.name || "Cliente não encontrado" 
+            },
+            service: { 
+              id: service?.id || "", 
+              name: service?.name || "Serviço não encontrado" 
+            }
+          };
+        });
 
         setAppointments(transformedData);
       } catch (error: any) {
+        console.error("Error fetching appointments:", error);
         toast({ variant: "destructive", title: "Erro ao carregar agendamentos", description: error?.message });
       } finally {
         setLoading(false);
