@@ -20,7 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get request data
-    const { userId, reportType, startDate, endDate } = await req.json();
+    const { userId, reportType, startDate, endDate, exportFormat } = await req.json();
 
     if (!userId || !reportType) {
       return new Response(
@@ -32,6 +32,8 @@ serve(async (req) => {
     // Format dates
     const formattedStartDate = startDate ? new Date(startDate).toISOString() : null;
     const formattedEndDate = endDate ? new Date(endDate).toISOString() : null;
+
+    console.log(`Generating ${reportType} report for user ${userId} from ${formattedStartDate} to ${formattedEndDate}`);
 
     let reportData;
     let error;
@@ -47,6 +49,7 @@ serve(async (req) => {
       productsSalesCount: 0,
       mixedSalesCount: 0,
       salesChart: [],
+      exportFormat: exportFormat
     };
 
     switch (reportType) {
@@ -100,7 +103,8 @@ serve(async (req) => {
           servicesSalesCount: servicesSales.length,
           productsSalesCount: productsSales.length,
           mixedSalesCount: mixedSales.length,
-          salesChart
+          salesChart,
+          exportFormat
         };
         break;
 
@@ -115,6 +119,7 @@ serve(async (req) => {
           `)
           .eq("sales.user_id", userId)
           .is("service_id", null)
+          .not("product_id", "is", null)
           .gte("sales.sale_date", formattedStartDate)
           .lte("sales.sale_date", formattedEndDate);
 
@@ -123,7 +128,8 @@ serve(async (req) => {
         if (!saleItemsData || saleItemsData.length === 0) {
           reportData = {
             topProducts: [],
-            totalItems: 0
+            totalItems: 0,
+            exportFormat
           };
           break;
         }
@@ -157,7 +163,8 @@ serve(async (req) => {
 
         reportData = {
           topProducts,
-          totalItems: saleItemsData.length
+          totalItems: saleItemsData.length,
+          exportFormat
         };
         break;
 
@@ -172,6 +179,7 @@ serve(async (req) => {
           `)
           .eq("sales.user_id", userId)
           .is("product_id", null)
+          .not("service_id", "is", null)
           .gte("sales.sale_date", formattedStartDate)
           .lte("sales.sale_date", formattedEndDate);
 
@@ -180,7 +188,8 @@ serve(async (req) => {
         if (!serviceItemsData || serviceItemsData.length === 0) {
           reportData = {
             topServices: [],
-            totalItems: 0
+            totalItems: 0,
+            exportFormat
           };
           break;
         }
@@ -214,7 +223,8 @@ serve(async (req) => {
 
         reportData = {
           topServices,
-          totalItems: serviceItemsData.length
+          totalItems: serviceItemsData.length,
+          exportFormat
         };
         break;
 
@@ -237,7 +247,8 @@ serve(async (req) => {
           reportData = {
             topClients: [],
             totalClients: 0,
-            totalVisits: 0
+            totalVisits: 0,
+            exportFormat
           };
           break;
         }
@@ -272,7 +283,8 @@ serve(async (req) => {
         reportData = {
           topClients,
           totalClients: Object.keys(clientSpending).length,
-          totalVisits: clientSalesData.length
+          totalVisits: clientSalesData.length,
+          exportFormat
         };
         break;
 
@@ -285,6 +297,50 @@ serve(async (req) => {
         JSON.stringify({ error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // For CSV export requests
+    if (exportFormat === "csv") {
+      let csvContent = "";
+      let fileName = "";
+      
+      // Generate CSV content based on report type
+      switch (reportType) {
+        case "revenue":
+          fileName = "relatorio_vendas.csv";
+          csvContent = "Data,Valor\n";
+          reportData.salesChart.forEach(item => {
+            csvContent += `${item.date},${item.value.toFixed(2).replace(".", ",")}\n`;
+          });
+          break;
+          
+        case "products":
+          fileName = "relatorio_produtos.csv";
+          csvContent = "Produto,Quantidade,Faturamento\n";
+          reportData.topProducts.forEach(product => {
+            csvContent += `"${product.name}",${product.quantity},${product.revenue.toFixed(2).replace(".", ",")}\n`;
+          });
+          break;
+          
+        case "services":
+          fileName = "relatorio_servicos.csv";
+          csvContent = "Serviço,Quantidade,Faturamento\n";
+          reportData.topServices.forEach(service => {
+            csvContent += `"${service.name}",${service.quantity},${service.revenue.toFixed(2).replace(".", ",")}\n`;
+          });
+          break;
+          
+        case "clients":
+          fileName = "relatorio_clientes.csv";
+          csvContent = "Cliente,Visitas,Total Gasto\n";
+          reportData.topClients.forEach(client => {
+            csvContent += `"${client.name}",${client.visits},${client.spent.toFixed(2).replace(".", ",")}\n`;
+          });
+          break;
+      }
+      
+      reportData.csvContent = csvContent;
+      reportData.fileName = fileName;
     }
 
     return new Response(

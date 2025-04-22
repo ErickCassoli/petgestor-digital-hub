@@ -21,7 +21,8 @@ import {
   ShoppingCart,
   Users,
   TrendingUp,
-  Loader2
+  Loader2,
+  FileSpreadsheet
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,7 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, subDays, subMonths } from "date-fns";
+import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
@@ -59,6 +60,8 @@ interface ReportMetrics {
   topClients?: { id: string; name: string; visits: number; spent: number }[];
   totalClients?: number;
   totalVisits?: number;
+  csvContent?: string;
+  fileName?: string;
 }
 
 const Reports = () => {
@@ -67,6 +70,7 @@ const Reports = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("30days");
   const [activeTab, setActiveTab] = useState("revenue");
   const [loading, setLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
   // Get period label
@@ -76,12 +80,55 @@ const Reports = () => {
   };
 
   // Handle export
-  const handleExport = (format: string) => {
-    toast({
-      title: "Exportando relatório",
-      description: `O relatório será exportado em formato ${format.toUpperCase()}.`,
-    });
-    // Implementation for exporting would go here
+  const handleExport = async (format: string) => {
+    try {
+      setExportLoading(true);
+      const { startDate, endDate } = getDateRange();
+      
+      const { data, error } = await supabase.functions.invoke('generate-report', {
+        body: {
+          userId: user?.id,
+          reportType: activeTab,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          exportFormat: format
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (format === "csv" && data && data.csvContent) {
+        // Create and download CSV file
+        const blob = new Blob([data.csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', data.fileName || `relatorio_${activeTab}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Relatório exportado com sucesso!",
+          description: "O arquivo CSV foi baixado."
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro ao exportar",
+          description: "Não foi possível gerar o arquivo de exportação."
+        });
+      }
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao exportar relatório",
+        description: "Ocorreu um erro ao exportar o relatório."
+      });
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   // Calculate date range based on selected period
@@ -105,7 +152,7 @@ const Reports = () => {
         endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
         break;
       case "thisYear":
-        startDate = new Date(today.getFullYear(), 0, 1);
+        startDate = startOfYear(today);
         break;
       default:
         startDate = subDays(today, 30);
@@ -186,7 +233,7 @@ const Reports = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-petblue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2 text-lg text-gray-600">Carregando...</span>
       </div>
     );
@@ -228,18 +275,19 @@ const Reports = () => {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="bg-petblue-600 hover:bg-petblue-700">
-                <Download className="h-4 w-4 mr-2" />
+              <Button 
+                className="bg-primary hover:bg-primary/90"
+                disabled={exportLoading}
+              >
+                {exportLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                )}
                 Exportar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                Exportar como PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("excel")}>
-                Exportar como Excel
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("csv")}>
                 Exportar como CSV
               </DropdownMenuItem>
@@ -269,7 +317,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center">
-                <FileText className="h-5 w-5 text-petblue-600 mr-2" />
+                <FileText className="h-5 w-5 text-blue-600 mr-2" />
                 <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.servicesRevenue || 0)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
@@ -620,4 +668,3 @@ const Reports = () => {
 };
 
 export default Reports;
-

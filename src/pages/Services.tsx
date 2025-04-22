@@ -5,6 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Search } from "lucide-react";
 
 interface Service {
   id: string;
@@ -18,7 +21,9 @@ export default function Services() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // For new/editable service
   const [editId, setEditId] = useState<string | null>(null);
@@ -38,6 +43,7 @@ export default function Services() {
       return;
     }
     setServices(data || []);
+    setFilteredServices(data || []);
     setLoading(false);
   };
 
@@ -45,6 +51,20 @@ export default function Services() {
     fetchServices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Filter services when search term changes
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredServices(services);
+      return;
+    }
+    
+    const filtered = services.filter(service => 
+      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredServices(filtered);
+  }, [searchTerm, services]);
 
   // Handle field change on add/edit
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -125,92 +145,138 @@ export default function Services() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto mt-6 p-4 bg-white dark:bg-slate-900 rounded shadow">
-      <h1 className="text-2xl font-bold mb-4">Seus Serviços</h1>
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-2">{editId ? "Editar serviço" : "Adicionar novo serviço"}</h2>
-        <div className="flex flex-wrap gap-2 mb-2">
-          <Input
-            name="name"
-            placeholder="Nome do serviço"
-            value={form.name}
-            onChange={handleChange}
-            className="max-w-xs"
-            disabled={loading}
-          />
-          <Input
-            name="price"
-            placeholder="Preço (R$)"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.price}
-            onChange={handleChange}
-            className="max-w-[120px]"
-            disabled={loading}
-          />
-          <Input
-            name="duration"
-            placeholder="Duração (min)"
-            type="number"
-            min="1"
-            value={form.duration}
-            onChange={handleChange}
-            className="max-w-[120px]"
-            disabled={loading}
-          />
-          <Input
-            name="description"
-            placeholder="Descrição curta"
-            value={form.description}
-            onChange={handleChange}
-            className="w-full max-w-md mt-2"
-            disabled={loading}
-          />
-          <div className="w-full mt-2">
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Gerenciar Serviços</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">{editId ? "Editar serviço" : "Adicionar novo serviço"}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium mb-1">Nome do serviço</label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Nome do serviço"
+                value={form.name}
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label htmlFor="price" className="block text-sm font-medium mb-1">Preço (R$)</label>
+              <Input
+                id="price"
+                name="price"
+                placeholder="Preço (R$)"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.price}
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label htmlFor="duration" className="block text-sm font-medium mb-1">Duração (minutos)</label>
+              <Input
+                id="duration"
+                name="duration"
+                placeholder="Duração (min)"
+                type="number"
+                min="1"
+                value={form.duration}
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium mb-1">Descrição</label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Descrição curta"
+                value={form.description}
+                onChange={handleChange}
+                disabled={loading}
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
             <Button onClick={handleSave} disabled={loading}>
-              {editId ? "Salvar edição" : "Adicionar"}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {editId ? "Salvar alterações" : "Adicionar serviço"}
             </Button>
             {editId && (
-              <Button variant="outline" onClick={() => { setEditId(null); setForm({ name: "", price: "", description: "", duration: "" }); }} className="ml-2">
+              <Button variant="outline" onClick={() => { 
+                setEditId(null); 
+                setForm({ name: "", price: "", description: "", duration: "" }); 
+              }}>
                 Cancelar
               </Button>
             )}
           </div>
         </div>
-      </div>
-      <hr className="mb-6" />
-      {loading ? (
-        <p>Carregando...</p>
-      ) : services.length === 0 ? (
-        <p className="text-muted-foreground">Nenhum serviço cadastrado ainda.</p>
-      ) : (
-        <table className="w-full table-auto border">
-          <thead>
-            <tr className="bg-gray-100 dark:bg-gray-800">
-              <th className="p-2 text-left">Nome</th>
-              <th className="p-2">Preço (R$)</th>
-              <th className="p-2">Duração (min)</th>
-              <th className="p-2">Descrição</th>
-              <th className="p-2 text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.map(service => (
-              <tr key={service.id} className="border-t">
-                <td className="p-2">{service.name}</td>
-                <td className="p-2 text-center">{Number(service.price).toFixed(2)}</td>
-                <td className="p-2 text-center">{service.duration}</td>
-                <td className="p-2">{service.description}</td>
-                <td className="p-2 text-center flex gap-2 justify-center">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(service)}>Editar</Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDelete(service.id)}>Excluir</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+        
+        <hr className="my-6" />
+        
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Serviços cadastrados</h2>
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar serviços..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+          
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredServices.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {searchTerm ? "Nenhum serviço encontrado para esta busca." : "Nenhum serviço cadastrado ainda."}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full table-auto">
+                <thead>
+                  <tr className="bg-muted">
+                    <th className="p-2 text-left">Nome</th>
+                    <th className="p-2 text-right">Preço (R$)</th>
+                    <th className="p-2 text-center">Duração (min)</th>
+                    <th className="p-2">Descrição</th>
+                    <th className="p-2 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredServices.map(service => (
+                    <tr key={service.id} className="border-b hover:bg-muted/50">
+                      <td className="p-2">{service.name}</td>
+                      <td className="p-2 text-right">{Number(service.price).toFixed(2)}</td>
+                      <td className="p-2 text-center">{service.duration}</td>
+                      <td className="p-2 max-w-xs truncate">{service.description}</td>
+                      <td className="p-2 text-center">
+                        <div className="flex gap-2 justify-center">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(service)}>Editar</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(service.id)}>Excluir</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
