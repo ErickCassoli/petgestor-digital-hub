@@ -11,6 +11,7 @@ interface Service {
   name: string;
   price: number;
   description: string;
+  duration: number;
 }
 
 export default function Services() {
@@ -21,14 +22,14 @@ export default function Services() {
 
   // For new/editable service
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", description: "" });
+  const [form, setForm] = useState({ name: "", price: "", description: "", duration: "" });
 
   const fetchServices = async () => {
     if (!user) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("services")
-      .select("id, name, price, description")
+      .select("id, name, price, description, duration")
       .eq("user_id", user.id)
       .order("name");
     if (error) {
@@ -53,8 +54,8 @@ export default function Services() {
   // Save new or edited service
   const handleSave = async () => {
     setLoading(true);
-    if (!form.name || !form.price) {
-      toast({ title: "Preencha nome e preço!", variant: "destructive" });
+    if (!form.name || !form.price || !form.duration) {
+      toast({ title: "Preencha nome, preço e duração!", variant: "destructive" });
       setLoading(false);
       return;
     }
@@ -64,6 +65,7 @@ export default function Services() {
         name: form.name,
         price: Number(form.price),
         description: form.description,
+        duration: Number(form.duration)
       }).eq("id", editId).eq("user_id", user.id);
       if (error) {
         toast({ title: "Erro ao salvar!", variant: "destructive" });
@@ -71,7 +73,7 @@ export default function Services() {
         toast({ title: "Serviço atualizado." });
         fetchServices();
         setEditId(null);
-        setForm({ name: "", price: "", description: "" });
+        setForm({ name: "", price: "", description: "", duration: "" });
       }
     } else {
       // Insert new
@@ -79,6 +81,7 @@ export default function Services() {
         name: form.name,
         price: Number(form.price),
         description: form.description,
+        duration: Number(form.duration),
         user_id: user.id
       });
       if (error) {
@@ -86,7 +89,7 @@ export default function Services() {
       } else {
         toast({ title: "Serviço criado!" });
         fetchServices();
-        setForm({ name: "", price: "", description: "" });
+        setForm({ name: "", price: "", description: "", duration: "" });
       }
     }
     setLoading(false);
@@ -95,7 +98,12 @@ export default function Services() {
   // Edit selected service
   const handleEdit = (service: Service) => {
     setEditId(service.id);
-    setForm({ name: service.name, price: service.price.toString(), description: service.description || "" });
+    setForm({ 
+      name: service.name, 
+      price: service.price.toString(), 
+      description: service.description || "",
+      duration: service.duration.toString()
+    });
   };
 
   // Delete service
@@ -110,7 +118,7 @@ export default function Services() {
       fetchServices();
       if (editId === id) {
         setEditId(null);
-        setForm({ name: "", price: "", description: "" });
+        setForm({ name: "", price: "", description: "", duration: "" });
       }
     }
     setLoading(false);
@@ -121,7 +129,7 @@ export default function Services() {
       <h1 className="text-2xl font-bold mb-4">Seus Serviços</h1>
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-2">{editId ? "Editar serviço" : "Adicionar novo serviço"}</h2>
-        <div className="flex gap-2 mb-2">
+        <div className="flex flex-wrap gap-2 mb-2">
           <Input
             name="name"
             placeholder="Nome do serviço"
@@ -142,21 +150,33 @@ export default function Services() {
             disabled={loading}
           />
           <Input
+            name="duration"
+            placeholder="Duração (min)"
+            type="number"
+            min="1"
+            value={form.duration}
+            onChange={handleChange}
+            className="max-w-[120px]"
+            disabled={loading}
+          />
+          <Input
             name="description"
             placeholder="Descrição curta"
             value={form.description}
             onChange={handleChange}
-            className="max-w-xs"
+            className="w-full max-w-md mt-2"
             disabled={loading}
           />
-          <Button onClick={handleSave} disabled={loading}>
-            {editId ? "Salvar edição" : "Adicionar"}
-          </Button>
-          {editId && (
-            <Button variant="outline" onClick={() => { setEditId(null); setForm({ name: "", price: "", description: "" }); }}>
-              Cancelar
+          <div className="w-full mt-2">
+            <Button onClick={handleSave} disabled={loading}>
+              {editId ? "Salvar edição" : "Adicionar"}
             </Button>
-          )}
+            {editId && (
+              <Button variant="outline" onClick={() => { setEditId(null); setForm({ name: "", price: "", description: "", duration: "" }); }} className="ml-2">
+                Cancelar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       <hr className="mb-6" />
@@ -170,6 +190,7 @@ export default function Services() {
             <tr className="bg-gray-100 dark:bg-gray-800">
               <th className="p-2 text-left">Nome</th>
               <th className="p-2">Preço (R$)</th>
+              <th className="p-2">Duração (min)</th>
               <th className="p-2">Descrição</th>
               <th className="p-2 text-center">Ações</th>
             </tr>
@@ -179,6 +200,7 @@ export default function Services() {
               <tr key={service.id} className="border-t">
                 <td className="p-2">{service.name}</td>
                 <td className="p-2 text-center">{Number(service.price).toFixed(2)}</td>
+                <td className="p-2 text-center">{service.duration}</td>
                 <td className="p-2">{service.description}</td>
                 <td className="p-2 text-center flex gap-2 justify-center">
                   <Button size="sm" variant="outline" onClick={() => handleEdit(service)}>Editar</Button>
