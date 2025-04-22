@@ -151,14 +151,32 @@ const Reports = () => {
   }, [user, toast, activeTab, selectedPeriod]);
 
   // Format currency
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | undefined) => {
+    if (value === undefined || value === null) return "R$ 0,00";
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   // Format date for charts
   const formatChartDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return format(date, 'dd/MM', { locale: ptBR });
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return format(date, 'dd/MM', { locale: ptBR });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
+  };
+
+  // Chart tooltip formatter
+  const chartTooltipFormatter = (value: any) => {
+    if (value === undefined || value === null) return ["R$ 0,00", "Faturamento"];
+    try {
+      return [formatCurrency(Number(value)), "Faturamento"];
+    } catch (error) {
+      console.error("Error formatting tooltip value:", error);
+      return ["R$ 0,00", "Faturamento"];
+    }
   };
 
   // Colors for charts
@@ -239,9 +257,9 @@ const Reports = () => {
             <CardContent>
               <div className="flex items-center">
                 <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
-                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.totalRevenue)}</span>
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.totalRevenue || 0)}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-2">{reportData.salesCount} vendas no período</p>
+              <p className="text-xs text-gray-500 mt-2">{reportData.salesCount || 0} vendas no período</p>
             </CardContent>
           </Card>
           
@@ -252,10 +270,10 @@ const Reports = () => {
             <CardContent>
               <div className="flex items-center">
                 <FileText className="h-5 w-5 text-petblue-600 mr-2" />
-                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.servicesRevenue)}</span>
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.servicesRevenue || 0)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {Math.round((reportData.servicesRevenue / reportData.totalRevenue) * 100) || 0}% do faturamento total
+                {Math.round(((reportData.servicesRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do faturamento total
               </p>
             </CardContent>
           </Card>
@@ -267,10 +285,10 @@ const Reports = () => {
             <CardContent>
               <div className="flex items-center">
                 <ShoppingCart className="h-5 w-5 text-amber-600 mr-2" />
-                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.productsRevenue)}</span>
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.productsRevenue || 0)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {Math.round((reportData.productsRevenue / reportData.totalRevenue) * 100) || 0}% do faturamento total
+                {Math.round(((reportData.productsRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do faturamento total
               </p>
             </CardContent>
           </Card>
@@ -282,10 +300,10 @@ const Reports = () => {
             <CardContent>
               <div className="flex items-center">
                 <ShoppingCart className="h-5 w-5 text-indigo-600 mr-2" />
-                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.mixedRevenue)}</span>
+                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.mixedRevenue || 0)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {Math.round((reportData.mixedRevenue / reportData.totalRevenue) * 100) || 0}% do faturamento total
+                {Math.round(((reportData.mixedRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do faturamento total
               </p>
             </CardContent>
           </Card>
@@ -327,9 +345,9 @@ const Reports = () => {
                         textAnchor="end"
                         height={60}
                       />
-                      <YAxis tickFormatter={(value) => `R$ ${value}`} />
+                      <YAxis tickFormatter={(value) => value ? `R$ ${value}` : "R$ 0"} />
                       <Tooltip 
-                        formatter={(value) => [formatCurrency(Number(value)), "Faturamento"]}
+                        formatter={(value) => chartTooltipFormatter(value)}
                         labelFormatter={formatChartDate}
                       />
                       <Line 
@@ -368,26 +386,26 @@ const Reports = () => {
                     <RechartsPieChart>
                       <Pie
                         data={[
-                          { name: 'Serviços', value: reportData.servicesRevenue },
-                          { name: 'Produtos', value: reportData.productsRevenue },
-                          { name: 'Mistos', value: reportData.mixedRevenue }
+                          { name: 'Serviços', value: reportData.servicesRevenue || 0 },
+                          { name: 'Produtos', value: reportData.productsRevenue || 0 },
+                          { name: 'Mistos', value: reportData.mixedRevenue || 0 }
                         ].filter(item => item.value > 0)}
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
                       >
                         {[
-                          { name: 'Serviços', value: reportData.servicesRevenue },
-                          { name: 'Produtos', value: reportData.productsRevenue },
-                          { name: 'Mistos', value: reportData.mixedRevenue }
+                          { name: 'Serviços', value: reportData.servicesRevenue || 0 },
+                          { name: 'Produtos', value: reportData.productsRevenue || 0 },
+                          { name: 'Mistos', value: reportData.mixedRevenue || 0 }
                         ].filter(item => item.value > 0).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value || 0))} />
                     </RechartsPieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -423,15 +441,16 @@ const Reports = () => {
                     margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(value) => value.toString()} />
+                    <XAxis type="number" tickFormatter={(value) => value ? value.toString() : "0"} />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
                       width={100}
-                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                      tickFormatter={(value) => value ? (value.length > 15 ? `${value.substring(0, 15)}...` : value) : ""}
                     />
                     <Tooltip 
                       formatter={(value, name) => {
+                        if (!value) return [0, name === "quantity" ? "Quantidade" : "Faturamento"];
                         if (name === "quantity") return [`${value} unidades`, "Quantidade"];
                         return [formatCurrency(Number(value)), "Faturamento"];
                       }}
@@ -472,15 +491,16 @@ const Reports = () => {
                     margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(value) => value.toString()} />
+                    <XAxis type="number" tickFormatter={(value) => value ? value.toString() : "0"} />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
                       width={100}
-                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                      tickFormatter={(value) => value ? (value.length > 15 ? `${value.substring(0, 15)}...` : value) : ""}
                     />
                     <Tooltip 
                       formatter={(value, name) => {
+                        if (!value) return [0, name === "quantity" ? "Quantidade" : "Faturamento"];
                         if (name === "quantity") return [`${value} unidades`, "Quantidade"];
                         return [formatCurrency(Number(value)), "Faturamento"];
                       }}
@@ -522,17 +542,18 @@ const Reports = () => {
                       margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tickFormatter={(value) => value.toString()} />
+                      <XAxis type="number" tickFormatter={(value) => value ? value.toString() : "0"} />
                       <YAxis 
                         type="category" 
                         dataKey="name" 
                         width={100}
-                        tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                        tickFormatter={(value) => value ? (value.length > 15 ? `${value.substring(0, 15)}...` : value) : ""}
                       />
                       <Tooltip 
                         formatter={(value, name) => {
+                          if (!value) return [0, "Visitas"];
                           if (name === "visits") return [`${value} visitas`, "Visitas"];
-                          return [formatCurrency(Number(value)), "Gasto Total"];
+                          return [formatCurrency(Number(value || 0)), "Gasto Total"];
                         }}
                       />
                       <Bar dataKey="visits" fill="#8884d8" name="Visitas" />
@@ -568,15 +589,15 @@ const Reports = () => {
                       margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tickFormatter={(value) => `R$ ${value}`} />
+                      <XAxis type="number" tickFormatter={(value) => value ? `R$ ${value}` : "R$ 0"} />
                       <YAxis 
                         type="category" 
                         dataKey="name" 
                         width={100}
-                        tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                        tickFormatter={(value) => value ? (value.length > 15 ? `${value.substring(0, 15)}...` : value) : ""}
                       />
                       <Tooltip 
-                        formatter={(value) => [formatCurrency(Number(value)), "Gasto Total"]}
+                        formatter={(value) => value ? [formatCurrency(Number(value)), "Gasto Total"] : ["R$ 0,00", "Gasto Total"]}
                       />
                       <Bar dataKey="spent" fill="#82ca9d" name="Gasto Total" />
                     </RechartsBarChart>
@@ -599,3 +620,4 @@ const Reports = () => {
 };
 
 export default Reports;
+

@@ -36,6 +36,19 @@ serve(async (req) => {
     let reportData;
     let error;
 
+    // Default empty report structure
+    const emptyReport = {
+      totalRevenue: 0,
+      servicesRevenue: 0,
+      productsRevenue: 0,
+      mixedRevenue: 0,
+      salesCount: 0,
+      servicesSalesCount: 0,
+      productsSalesCount: 0,
+      mixedSalesCount: 0,
+      salesChart: [],
+    };
+
     switch (reportType) {
       case "revenue":
         // Get sales data for revenue report
@@ -48,21 +61,27 @@ serve(async (req) => {
 
         if (salesError) throw salesError;
 
-        const totalRevenue = salesData.reduce((sum, sale) => sum + Number(sale.total), 0);
+        if (!salesData || salesData.length === 0) {
+          reportData = emptyReport;
+          break;
+        }
+
+        const totalRevenue = salesData.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
         
         // Get sales by type
         const servicesSales = salesData.filter(sale => sale.type === "service");
         const productsSales = salesData.filter(sale => sale.type === "product");
         const mixedSales = salesData.filter(sale => sale.type === "both");
 
-        const servicesRevenue = servicesSales.reduce((sum, sale) => sum + Number(sale.total), 0);
-        const productsRevenue = productsSales.reduce((sum, sale) => sum + Number(sale.total), 0);
-        const mixedRevenue = mixedSales.reduce((sum, sale) => sum + Number(sale.total), 0);
+        const servicesRevenue = servicesSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+        const productsRevenue = productsSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+        const mixedRevenue = mixedSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
         // Group sales by date
         const salesByDate = salesData.reduce((acc, sale) => {
+          if (!sale.sale_date) return acc;
           const date = sale.sale_date.split('T')[0];
-          acc[date] = (acc[date] || 0) + Number(sale.total);
+          acc[date] = (acc[date] || 0) + Number(sale.total || 0);
           return acc;
         }, {});
 
@@ -101,9 +120,19 @@ serve(async (req) => {
 
         if (saleItemsError) throw saleItemsError;
 
+        if (!saleItemsData || saleItemsData.length === 0) {
+          reportData = {
+            topProducts: [],
+            totalItems: 0
+          };
+          break;
+        }
+
         // Group by product and count
         const productSales = saleItemsData.reduce((acc, item) => {
           const productId = item.product_id;
+          if (!productId) return acc;
+          
           const productName = item.products?.name || "Produto desconhecido";
           
           if (!acc[productId]) {
@@ -115,8 +144,8 @@ serve(async (req) => {
             };
           }
           
-          acc[productId].quantity += item.quantity;
-          acc[productId].revenue += (item.price * item.quantity);
+          acc[productId].quantity += item.quantity || 0;
+          acc[productId].revenue += ((item.price || 0) * (item.quantity || 0));
           
           return acc;
         }, {});
@@ -148,9 +177,19 @@ serve(async (req) => {
 
         if (serviceItemsError) throw serviceItemsError;
 
+        if (!serviceItemsData || serviceItemsData.length === 0) {
+          reportData = {
+            topServices: [],
+            totalItems: 0
+          };
+          break;
+        }
+
         // Group by service and count
         const serviceSales = serviceItemsData.reduce((acc, item) => {
           const serviceId = item.service_id;
+          if (!serviceId) return acc;
+          
           const serviceName = item.services?.name || "Serviço desconhecido";
           
           if (!acc[serviceId]) {
@@ -162,8 +201,8 @@ serve(async (req) => {
             };
           }
           
-          acc[serviceId].quantity += item.quantity;
-          acc[serviceId].revenue += (item.price * item.quantity);
+          acc[serviceId].quantity += item.quantity || 0;
+          acc[serviceId].revenue += ((item.price || 0) * (item.quantity || 0));
           
           return acc;
         }, {});
@@ -194,9 +233,20 @@ serve(async (req) => {
 
         if (clientSalesError) throw clientSalesError;
 
+        if (!clientSalesData || clientSalesData.length === 0) {
+          reportData = {
+            topClients: [],
+            totalClients: 0,
+            totalVisits: 0
+          };
+          break;
+        }
+
         // Group by client and calculate total spent
         const clientSpending = clientSalesData.reduce((acc, sale) => {
           const clientId = sale.client_id;
+          if (!clientId || !sale.clients) return acc;
+          
           const clientName = sale.clients?.name || "Cliente desconhecido";
           
           if (!acc[clientId]) {
@@ -209,7 +259,7 @@ serve(async (req) => {
           }
           
           acc[clientId].visits++;
-          acc[clientId].spent += Number(sale.total);
+          acc[clientId].spent += Number(sale.total || 0);
           
           return acc;
         }, {});

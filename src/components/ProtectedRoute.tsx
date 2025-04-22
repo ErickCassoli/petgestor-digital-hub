@@ -38,7 +38,7 @@ const ProtectedRoute = () => {
 
   // If subscription expired and not in trial period, redirect to expired page
   // Except for the subscription page itself
-  if (!isInTrialPeriod && !isSubscriptionActive && location.pathname !== "/assinatura") {
+  if ((isInTrialPeriod === false) && (isSubscriptionActive === false) && location.pathname !== "/assinatura") {
     return <Navigate to="/expired" replace />;
   }
 
