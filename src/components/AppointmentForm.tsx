@@ -79,7 +79,7 @@ const AppointmentForm = ({ open, onClose, onSuccess, defaultValues, supabase, us
         // Load services
         const { data: servicesData, error: servicesError } = await supabase
           .from("services")
-          .select("id, name")
+          .select("id, name, price, description")
           .eq("user_id", user.id)
           .order("name");
         
@@ -243,7 +243,9 @@ const AppointmentForm = ({ open, onClose, onSuccess, defaultValues, supabase, us
                 >
                   <option value="">Selecione um serviço</option>
                   {services.map(service => (
-                    <option key={service.id} value={service.id}>{service.name}</option>
+                    <option key={service.id} value={service.id}>
+                      {service.name} - R$ {service.price.toFixed(2)}
+                    </option>
                   ))}
                 </select>
               </div>
