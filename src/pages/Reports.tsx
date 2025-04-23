@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -23,7 +22,7 @@ import {
   TrendingUp,
   Loader2,
   FileSpreadsheet,
-  FilePdf
+  File
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,7 +37,6 @@ import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns"
 import { ptBR } from "date-fns/locale";
 import { ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
-// Interfaces
 interface ReportMetrics {
   totalRevenue: number;
   servicesRevenue: number;
@@ -78,7 +76,6 @@ const Reports = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
-  // Date range calculation based on selected period
   const getDateRange = () => {
     const today = new Date();
     let startDate: Date;
@@ -108,7 +105,6 @@ const Reports = () => {
     return { startDate, endDate };
   };
 
-  // Helper functions for formatting and display
   const formatCurrency = (value: number | undefined) => {
     if (value === undefined || value === null) return "R$ 0,00";
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -140,7 +136,6 @@ const Reports = () => {
     return option ? option.label : "Período";
   };
 
-  // Fetch report data
   useEffect(() => {
     const fetchReportData = async () => {
       if (!user) return;
@@ -179,7 +174,6 @@ const Reports = () => {
     fetchReportData();
   }, [user, toast, activeTab, selectedPeriod]);
 
-  // Handle export functionality
   const handleExport = async (format: string) => {
     try {
       setExportLoading(true);
@@ -250,7 +244,6 @@ const Reports = () => {
     }
   };
 
-  // Chart colors
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   if (loading) {
@@ -317,7 +310,7 @@ const Reports = () => {
                 Exportar como Excel (.xlsx)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                <FilePdf className="h-4 w-4 mr-2" />
+                <File className="h-4 w-4 mr-2" />
                 Exportar como PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -687,7 +680,7 @@ const Reports = () => {
                   <div className="h-full flex items-center justify-center">
                     <div className="text-center text-gray-500">
                       <LineChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                      <p>Sem dados de gastos de clientes no período selecionado</p>
+                      <p>Sem dados de gastos de clientes no per��odo selecionado</p>
                     </div>
                   </div>
                 )}
