@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
@@ -57,7 +58,7 @@ serve(async (req) => {
           id, date, time, service_id, user_id, status
         `)
         .eq("user_id", userId)
-        .eq("status", "concluido")
+        .eq("status", "completed")
         .not(
           "id",
           "in",
@@ -107,7 +108,6 @@ serve(async (req) => {
           .from("sales")
           .select("*")
           .eq("user_id", userId)
-          .eq("status", "concluido")
           .gte("sale_date", formattedStartDate)
           .lte("sale_date", formattedEndDate);
 
@@ -171,11 +171,10 @@ serve(async (req) => {
           .from("sale_items")
           .select(`
             *,
-            sales!inner(id,sale_date,user_id,status),
+            sales!inner(id,sale_date,user_id),
             products(name)
           `)
           .eq("sales.user_id", userId)
-          .eq("sales.status", "concluido")
           .is("service_id", null)
           .not("product_id", "is", null)
           .gte("sales.sale_date", formattedStartDate)
@@ -229,11 +228,10 @@ serve(async (req) => {
           .from("sale_items")
           .select(`
             *,
-            sales!inner(id,sale_date,user_id,status),
+            sales!inner(id,sale_date,user_id),
             services(name)
           `)
           .eq("sales.user_id", userId)
-          .eq("sales.status", "concluido")
           .is("product_id", null)
           .not("service_id", "is", null)
           .gte("sales.sale_date", formattedStartDate)
@@ -290,7 +288,6 @@ serve(async (req) => {
             clients(id, name)
           `)
           .eq("user_id", userId)
-          .eq("status", "concluido")
           .not("client_id", "is", null)
           .gte("sale_date", formattedStartDate)
           .lte("sale_date", formattedEndDate);
