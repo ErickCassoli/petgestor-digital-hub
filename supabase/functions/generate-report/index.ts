@@ -51,7 +51,9 @@ serve(async (req) => {
       exportFormat: exportFormat,
     };
 
-    async function fetchDoneAppointmentsRevenue() {
+    // Helper function to fetch completed appointments that aren't already in sales
+    async function fetchCompletedAppointmentsRevenue() {
+      // Get appointments with "completed" status
       const { data: appointments, error: appointmentsError } = await supabase
         .from("appointments")
         .select(`
@@ -76,13 +78,16 @@ serve(async (req) => {
 
       let revenue = 0;
       let chartByDay = {};
+      
       for (const appt of appointments) {
         if (!appt.service_id) continue;
+        
         const { data: service, error: serviceError } = await supabase
           .from("services")
           .select("price")
           .eq("id", appt.service_id)
           .maybeSingle();
+          
         if (!serviceError && service && service.price) {
           revenue += Number(service.price);
           const apptDate = appt.date ? appt.date : null;
@@ -91,10 +96,12 @@ serve(async (req) => {
           }
         }
       }
+      
       const chartArr = Object.entries(chartByDay).map(([date, value]) => ({
         date,
         value: Number(value),
       }));
+      
       return {
         revenue,
         count: appointments.length,
@@ -113,16 +120,17 @@ serve(async (req) => {
 
         if (salesError) throw salesError;
 
-        const doneAppointments = await fetchDoneAppointmentsRevenue();
+        // Get revenue from completed appointments not in sales
+        const completedAppointments = await fetchCompletedAppointmentsRevenue();
 
-        if ((!salesData || salesData.length === 0) && doneAppointments.count === 0) {
+        if ((!salesData || salesData.length === 0) && completedAppointments.count === 0) {
           reportData = emptyReport;
           break;
         }
 
         const totalRevenue =
           (salesData || []).reduce((sum, sale) => sum + Number(sale.total || 0), 0) +
-          doneAppointments.revenue;
+          completedAppointments.revenue;
 
         const servicesSales = (salesData || []).filter((sale) => sale.type === "service");
         const productsSales = (salesData || []).filter((sale) => sale.type === "product");
@@ -139,7 +147,8 @@ serve(async (req) => {
           return acc;
         }, {});
 
-        (doneAppointments.chart || []).forEach(({ date, value }) => {
+        // Add appointment revenue to the chart
+        (completedAppointments.chart || []).forEach(({ date, value }) => {
           salesByDate[date] = (salesByDate[date] || 0) + value;
         });
 
@@ -155,9 +164,9 @@ serve(async (req) => {
           servicesRevenue,
           productsRevenue,
           mixedRevenue,
-          appointmentsRevenue: doneAppointments.revenue,
+          appointmentsRevenue: completedAppointments.revenue,
           salesCount: (salesData || []).length,
-          appointmentsCount: doneAppointments.count,
+          appointmentsCount: completedAppointments.count,
           servicesSalesCount: servicesSales.length,
           productsSalesCount: productsSales.length,
           mixedSalesCount: mixedSales.length,
@@ -239,7 +248,56 @@ serve(async (req) => {
 
         if (serviceItemsError) throw serviceItemsError;
 
-        if (!serviceItemsData || serviceItemsData.length === 0) {
+        // Fetch completed appointments for services report
+        const completedApptsForServices = await fetchCompletedAppointmentsRevenue();
+        const completedServiceItems = [];
+        
+        if (completedApptsForServices.count > 0) {
+          const { data: appointments, error: apptsError } = await supabase
+            .from("appointments")
+            .select(`
+              id, service_id, 
+              services(name)
+            `)
+            .eq("user_id", userId)
+            .eq("status", "completed")
+            .gte("date", startDate ? new Date(startDate).toISOString().split('T')[0] : null)
+            .lte("date", endDate ? new Date(endDate).toISOString().split('T')[0] : null)
+            .not(
+              "id",
+              "in",
+              supabase
+                .from("sales")
+                .select("appointment_id")
+                .eq("user_id", userId)
+            );
+            
+          if (!apptsError && appointments && appointments.length > 0) {
+            for (const appt of appointments) {
+              if (!appt.service_id) continue;
+              
+              const { data: service } = await supabase
+                .from("services")
+                .select("price, name")
+                .eq("id", appt.service_id)
+                .maybeSingle();
+                
+              if (service) {
+                completedServiceItems.push({
+                  service_id: appt.service_id,
+                  services: { name: service.name },
+                  quantity: 1,
+                  price: Number(service.price),
+                });
+              }
+            }
+          }
+        }
+
+        // Combine service items from sales and completed appointments
+        const allServiceItems = [...(serviceItemsData || []), ...completedServiceItems];
+
+        if (allServiceItems.length === 0) {
           reportData = {
             topServices: [],
             totalItems: 0,
@@ -248,7 +306,7 @@ serve(async (req) => {
           break;
         }
 
-        const serviceSales = serviceItemsData.reduce((acc, item) => {
+        const serviceSales = allServiceItems.reduce((acc, item) => {
           const serviceId = item.service_id;
           if (!serviceId) return acc;
           
@@ -275,7 +333,7 @@ serve(async (req) => {
 
         reportData = {
           topServices,
-          totalItems: serviceItemsData.length,
+          totalItems: allServiceItems.length,
           exportFormat
         };
         break;
@@ -294,7 +352,55 @@ serve(async (req) => {
 
         if (clientSalesError) throw clientSalesError;
 
-        if (!clientSalesData || clientSalesData.length === 0) {
+        const { data: clientAppts, error: clientApptsError } = await supabase
+          .from("appointments")
+          .select(`
+            id, date, service_id, 
+            pets(client_id),
+            pets!inner(clients(id, name))
+          `)
+          .eq("user_id", userId)
+          .eq("status", "completed")
+          .gte("date", startDate ? new Date(startDate).toISOString().split('T')[0] : null)
+          .lte("date", endDate ? new Date(endDate).toISOString().split('T')[0] : null)
+          .not(
+            "id",
+            "in",
+            supabase
+              .from("sales")
+              .select("appointment_id")
+              .eq("user_id", userId)
+          );
+
+        if (clientApptsError) throw clientApptsError;
+
+        // Combine client data from sales and appointments
+        const clientData = [...(clientSalesData || [])];
+        const clientApptsRevenue = [];
+        
+        if (clientAppts && clientAppts.length > 0) {
+          for (const appt of clientAppts) {
+            if (!appt.service_id || !appt.pets?.client_id) continue;
+            
+            const { data: service } = await supabase
+              .from("services")
+              .select("price")
+              .eq("id", appt.service_id)
+              .maybeSingle();
+              
+            if (service && service.price) {
+              clientApptsRevenue.push({
+                client_id: appt.pets.client_id,
+                clients: appt.pets.clients,
+                total: Number(service.price),
+              });
+            }
+          }
+        }
+
+        const allClientData = [...clientData, ...clientApptsRevenue];
+
+        if (allClientData.length === 0) {
           reportData = {
             topClients: [],
             totalClients: 0,
@@ -304,11 +410,11 @@ serve(async (req) => {
           break;
         }
 
-        const clientSpending = clientSalesData.reduce((acc, sale) => {
-          const clientId = sale.client_id;
-          if (!clientId || !sale.clients) return acc;
+        const clientSpending = allClientData.reduce((acc, item) => {
+          const clientId = item.client_id;
+          if (!clientId || !item.clients) return acc;
           
-          const clientName = sale.clients?.name || "Cliente desconhecido";
+          const clientName = item.clients?.name || "Cliente desconhecido";
           
           if (!acc[clientId]) {
             acc[clientId] = {
@@ -320,7 +426,7 @@ serve(async (req) => {
           }
           
           acc[clientId].visits++;
-          acc[clientId].spent += Number(sale.total || 0);
+          acc[clientId].spent += Number(item.total || 0);
           
           return acc;
         }, {});
@@ -332,7 +438,7 @@ serve(async (req) => {
         reportData = {
           topClients,
           totalClients: Object.keys(clientSpending).length,
-          totalVisits: clientSalesData.length,
+          totalVisits: allClientData.length,
           exportFormat
         };
         break;
@@ -351,6 +457,7 @@ serve(async (req) => {
       );
     }
 
+    // Handle export formats
     if (["csv", "pdf", "excel", "xlsx"].includes(exportFormat)) {
       let fileName = "";
       let fileContent;

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Card, 
@@ -22,7 +22,8 @@ import {
   Users,
   TrendingUp,
   Loader2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FilePdf
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,6 +38,29 @@ import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns"
 import { ptBR } from "date-fns/locale";
 import { ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
+// Interfaces
+interface ReportMetrics {
+  totalRevenue: number;
+  servicesRevenue: number;
+  productsRevenue: number;
+  mixedRevenue: number;
+  appointmentsRevenue: number;
+  salesCount: number;
+  servicesSalesCount: number;
+  productsSalesCount: number;
+  mixedSalesCount: number;
+  appointmentsCount: number;
+  salesChart?: { date: string; value: number }[];
+  topProducts?: { id: string; name: string; quantity: number; revenue: number }[];
+  topServices?: { id: string; name: string; quantity: number; revenue: number }[];
+  topClients?: { id: string; name: string; visits: number; spent: number }[];
+  totalClients?: number;
+  totalVisits?: number;
+  exportedFile?: string;
+  fileName?: string;
+  fileType?: string;
+}
+
 const periodOptions = [
   { label: "Últimos 7 dias", value: "7days" },
   { label: "Últimos 30 dias", value: "30days" },
@@ -44,25 +68,6 @@ const periodOptions = [
   { label: "Último mês", value: "lastMonth" },
   { label: "Este ano", value: "thisYear" }
 ];
-
-interface ReportMetrics {
-  totalRevenue: number;
-  servicesRevenue: number;
-  productsRevenue: number;
-  mixedRevenue: number;
-  salesCount: number;
-  servicesSalesCount: number;
-  productsSalesCount: number;
-  mixedSalesCount: number;
-  salesChart?: { date: string; value: number }[];
-  topProducts?: { id: string; name: string; quantity: number; revenue: number }[];
-  topServices?: { id: string; name: string; quantity: number; revenue: number }[];
-  topClients?: { id: string; name: string; visits: number; spent: number }[];
-  totalClients?: number;
-  totalVisits?: number;
-  csvContent?: string;
-  fileName?: string;
-}
 
 const Reports = () => {
   const { user } = useAuth();
@@ -73,11 +78,108 @@ const Reports = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
+  // Date range calculation based on selected period
+  const getDateRange = () => {
+    const today = new Date();
+    let startDate: Date;
+    let endDate = new Date();
+    
+    switch (selectedPeriod) {
+      case "7days":
+        startDate = subDays(today, 7);
+        break;
+      case "30days":
+        startDate = subDays(today, 30);
+        break;
+      case "thisMonth":
+        startDate = startOfMonth(today);
+        break;
+      case "lastMonth":
+        startDate = startOfMonth(subMonths(today, 1));
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+        break;
+      case "thisYear":
+        startDate = startOfYear(today);
+        break;
+      default:
+        startDate = subDays(today, 30);
+    }
+    
+    return { startDate, endDate };
+  };
+
+  // Helper functions for formatting and display
+  const formatCurrency = (value: number | undefined) => {
+    if (value === undefined || value === null) return "R$ 0,00";
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const formatChartDate = (dateString: string) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return format(date, 'dd/MM', { locale: ptBR });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
+  };
+
+  const chartTooltipFormatter = (value: any) => {
+    if (value === undefined || value === null) return ["R$ 0,00", "Faturamento"];
+    try {
+      return [formatCurrency(Number(value)), "Faturamento"];
+    } catch (error) {
+      console.error("Error formatting tooltip value:", error);
+      return ["R$ 0,00", "Faturamento"];
+    }
+  };
+
   const getPeriodLabel = () => {
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
     return option ? option.label : "Período";
   };
 
+  // Fetch report data
+  useEffect(() => {
+    const fetchReportData = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const { startDate, endDate } = getDateRange();
+        
+        const { data, error } = await supabase.functions.invoke("generate-report", {
+          body: {
+            userId: user.id,
+            reportType: activeTab,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          }
+        });
+        
+        if (error) {
+          console.error('Error invoking function:', error);
+          throw error;
+        }
+        
+        setReportData(data as ReportMetrics);
+      } catch (error) {
+        console.error('Error fetching report data:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao gerar relatório",
+          description: "Ocorreu um erro ao buscar os dados para o relatório."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReportData();
+  }, [user, toast, activeTab, selectedPeriod]);
+
+  // Handle export functionality
   const handleExport = async (format: string) => {
     try {
       setExportLoading(true);
@@ -115,7 +217,6 @@ const Reports = () => {
         }
 
         const url = URL.createObjectURL(blob);
-
         const link = document.createElement("a");
         link.setAttribute("href", url);
         link.setAttribute(
@@ -149,96 +250,7 @@ const Reports = () => {
     }
   };
 
-  const getDateRange = () => {
-    const today = new Date();
-    let startDate: Date;
-    let endDate = new Date();
-    
-    switch (selectedPeriod) {
-      case "7days":
-        startDate = subDays(today, 7);
-        break;
-      case "30days":
-        startDate = subDays(today, 30);
-        break;
-      case "thisMonth":
-        startDate = startOfMonth(today);
-        break;
-      case "lastMonth":
-        startDate = startOfMonth(subMonths(today, 1));
-        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-        break;
-      case "thisYear":
-        startDate = startOfYear(today);
-        break;
-      default:
-        startDate = subDays(today, 30);
-    }
-    
-    return { startDate, endDate };
-  };
-
-  useEffect(() => {
-    const fetchReportData = async () => {
-      if (!user) return;
-      
-      setLoading(true);
-      try {
-        const { startDate, endDate } = getDateRange();
-        
-        const { data, error } = await supabase.functions.invoke("generate-report", {
-          body: {
-            userId: user.id,
-            reportType: activeTab,
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString()
-          }
-        });
-        
-        if (error) throw error;
-        
-        setReportData(data as ReportMetrics);
-      } catch (error) {
-        console.error('Error fetching report data:', error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao gerar relatório",
-          description: "Ocorreu um erro ao buscar os dados para o relatório."
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchReportData();
-  }, [user, toast, activeTab, selectedPeriod]);
-
-  const formatCurrency = (value: number | undefined) => {
-    if (value === undefined || value === null) return "R$ 0,00";
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
-
-  const formatChartDate = (dateString: string) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      return format(date, 'dd/MM', { locale: ptBR });
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "";
-    }
-  };
-
-  const chartTooltipFormatter = (value: any) => {
-    if (value === undefined || value === null) return ["R$ 0,00", "Faturamento"];
-    try {
-      return [formatCurrency(Number(value)), "Faturamento"];
-    } catch (error) {
-      console.error("Error formatting tooltip value:", error);
-      return ["R$ 0,00", "Faturamento"];
-    }
-  };
-
+  // Chart colors
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   if (loading) {
@@ -290,19 +302,22 @@ const Reports = () => {
                 {exportLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                 )}
                 Exportar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => handleExport("csv")}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Exportar como CSV
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("excel")}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Exportar como Excel (.xlsx)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                <FilePdf className="h-4 w-4 mr-2" />
                 Exportar como PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -321,7 +336,9 @@ const Reports = () => {
                 <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
                 <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.totalRevenue || 0)}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-2">{reportData.salesCount || 0} vendas no período</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {(reportData.salesCount || 0) + (reportData.appointmentsCount || 0)} transações no período
+              </p>
             </CardContent>
           </Card>
           
@@ -332,10 +349,12 @@ const Reports = () => {
             <CardContent>
               <div className="flex items-center">
                 <FileText className="h-5 w-5 text-blue-600 mr-2" />
-                <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.servicesRevenue || 0)}</span>
+                <span className="text-2xl font-bold text-gray-900">
+                  {formatCurrency((reportData.servicesRevenue || 0) + (reportData.appointmentsRevenue || 0))}
+                </span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {Math.round(((reportData.servicesRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do faturamento total
+                {Math.round((((reportData.servicesRevenue || 0) + (reportData.appointmentsRevenue || 0)) / (reportData.totalRevenue || 1)) * 100) || 0}% do total
               </p>
             </CardContent>
           </Card>
@@ -350,7 +369,7 @@ const Reports = () => {
                 <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.productsRevenue || 0)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {Math.round(((reportData.productsRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do faturamento total
+                {Math.round(((reportData.productsRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do total
               </p>
             </CardContent>
           </Card>
@@ -365,7 +384,7 @@ const Reports = () => {
                 <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.mixedRevenue || 0)}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {Math.round(((reportData.mixedRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do faturamento total
+                {Math.round(((reportData.mixedRevenue || 0) / (reportData.totalRevenue || 1)) * 100) || 0}% do total
               </p>
             </CardContent>
           </Card>
@@ -448,7 +467,7 @@ const Reports = () => {
                     <RechartsPieChart>
                       <Pie
                         data={[
-                          { name: 'Serviços', value: reportData.servicesRevenue || 0 },
+                          { name: 'Serviços', value: (reportData.servicesRevenue || 0) + (reportData.appointmentsRevenue || 0) },
                           { name: 'Produtos', value: reportData.productsRevenue || 0 },
                           { name: 'Mistos', value: reportData.mixedRevenue || 0 }
                         ].filter(item => item.value > 0)}
@@ -460,7 +479,7 @@ const Reports = () => {
                         label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
                       >
                         {[
-                          { name: 'Serviços', value: reportData.servicesRevenue || 0 },
+                          { name: 'Serviços', value: (reportData.servicesRevenue || 0) + (reportData.appointmentsRevenue || 0) },
                           { name: 'Produtos', value: reportData.productsRevenue || 0 },
                           { name: 'Mistos', value: reportData.mixedRevenue || 0 }
                         ].filter(item => item.value > 0).map((entry, index) => (

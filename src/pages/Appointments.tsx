@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +75,6 @@ const Appointments = () => {
       if (!user) return;
       setLoading(true);
       try {
-        // Fixed query to use proper joins
         let { data, error } = await supabase
           .from('appointments')
           .select(`
@@ -100,7 +98,6 @@ const Appointments = () => {
           return;
         }
 
-        // Get all pet IDs to fetch pet info
         const petIds = data.map(item => item.pet_id);
         const { data: petsData, error: petsError } = await supabase
           .from('pets')
@@ -109,7 +106,6 @@ const Appointments = () => {
 
         if (petsError) throw petsError;
 
-        // Get all client IDs to fetch client info
         const clientIds = petsData?.map(pet => pet.client_id) || [];
         const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
@@ -118,7 +114,6 @@ const Appointments = () => {
 
         if (clientsError) throw clientsError;
 
-        // Get all service IDs to fetch service info
         const serviceIds = data.map(item => item.service_id);
         const { data: servicesData, error: servicesError } = await supabase
           .from('services')
@@ -127,7 +122,6 @@ const Appointments = () => {
 
         if (servicesError) throw servicesError;
 
-        // Map data to combine all related information
         const transformedData = data.map(item => {
           const pet = petsData?.find(p => p.id === item.pet_id);
           const client = clientsData?.find(c => c.id === pet?.client_id);
