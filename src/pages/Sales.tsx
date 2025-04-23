@@ -422,13 +422,15 @@ const Sales = () => {
           </CardTitle>
           <div className="flex flex-wrap gap-2">
             <div className="relative w-full sm:w-auto max-w-xs">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar cliente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-full"
-              />
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 w-full"
+                />
+              </div>
             </div>
             
             <DropdownMenu>

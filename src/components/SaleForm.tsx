@@ -53,7 +53,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
-  const [selectedClient, setSelectedClient] = useState<string>('');
+  const [selectedClient, setSelectedClient] = useState<string>('no_client');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -156,7 +156,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         .from('sales')
         .insert({
           user_id: user?.id,
-          client_id: selectedClient || null,
+          client_id: selectedClient !== 'no_client' ? selectedClient : null,
           total: totalAmount,
           type: saleType,
           payment_method: paymentMethod,
@@ -234,7 +234,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                 <SelectValue placeholder="Selecione um cliente" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Sem cliente</SelectItem>
+                <SelectItem value="no_client">Sem cliente</SelectItem>
                 {clients.map(client => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
