@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -73,50 +72,68 @@ const Reports = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
-  // Get period label
   const getPeriodLabel = () => {
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
     return option ? option.label : "Período";
   };
 
-  // Handle export
   const handleExport = async (format: string) => {
     try {
       setExportLoading(true);
       const { startDate, endDate } = getDateRange();
       
-      const { data, error } = await supabase.functions.invoke('generate-report', {
+      const { data, error } = await supabase.functions.invoke("generate-report", {
         body: {
           userId: user?.id,
           reportType: activeTab,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
-          exportFormat: format
-        }
+          exportFormat: format,
+        },
       });
       
       if (error) throw error;
       
-      if (format === "csv" && data && data.csvContent) {
-        // Create and download CSV file
-        const blob = new Blob([data.csvContent], { type: 'text/csv;charset=utf-8;' });
+      if (["csv", "pdf", "excel", "xlsx"].includes(format) && data && data.exportedFile) {
+        const byteCharacters = atob(data.exportedFile);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        let blob;
+        if (format === "pdf") {
+          blob = new Blob([byteArray], { type: "application/pdf" });
+        } else if (format === "excel" || format === "xlsx") {
+          blob = new Blob([byteArray], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+        } else {
+          blob = new Blob([byteArray], { type: "text/csv;charset=utf-8;" });
+        }
+
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', data.fileName || `relatorio_${activeTab}.csv`);
+
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute(
+          "download",
+          data.fileName || `relatorio_${activeTab}.${format}`
+        );
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
         toast({
           title: "Relatório exportado com sucesso!",
-          description: "O arquivo CSV foi baixado."
+          description: `O arquivo foi baixado no formato ${format.toUpperCase()}.`,
         });
       } else {
         toast({
           variant: "destructive",
           title: "Erro ao exportar",
-          description: "Não foi possível gerar o arquivo de exportação."
+          description: "Não foi possível gerar o arquivo de exportação.",
         });
       }
     } catch (error) {
@@ -124,14 +141,13 @@ const Reports = () => {
       toast({
         variant: "destructive",
         title: "Erro ao exportar relatório",
-        description: "Ocorreu um erro ao exportar o relatório."
+        description: "Ocorreu um erro ao exportar o relatório.",
       });
     } finally {
       setExportLoading(false);
     }
   };
 
-  // Calculate date range based on selected period
   const getDateRange = () => {
     const today = new Date();
     let startDate: Date;
@@ -161,7 +177,6 @@ const Reports = () => {
     return { startDate, endDate };
   };
 
-  // Fetch report data
   useEffect(() => {
     const fetchReportData = async () => {
       if (!user) return;
@@ -170,7 +185,7 @@ const Reports = () => {
       try {
         const { startDate, endDate } = getDateRange();
         
-        const { data, error } = await supabase.functions.invoke('generate-report', {
+        const { data, error } = await supabase.functions.invoke("generate-report", {
           body: {
             userId: user.id,
             reportType: activeTab,
@@ -197,13 +212,11 @@ const Reports = () => {
     fetchReportData();
   }, [user, toast, activeTab, selectedPeriod]);
 
-  // Format currency
   const formatCurrency = (value: number | undefined) => {
     if (value === undefined || value === null) return "R$ 0,00";
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
-  // Format date for charts
   const formatChartDate = (dateString: string) => {
     if (!dateString) return "";
     try {
@@ -215,7 +228,6 @@ const Reports = () => {
     }
   };
 
-  // Chart tooltip formatter
   const chartTooltipFormatter = (value: any) => {
     if (value === undefined || value === null) return ["R$ 0,00", "Faturamento"];
     try {
@@ -226,10 +238,8 @@ const Reports = () => {
     }
   };
 
-  // Colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
-  // JSX for the loading state
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -272,13 +282,10 @@ const Reports = () => {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                className="bg-primary hover:bg-primary/90"
-                disabled={exportLoading}
-              >
+              <Button className="bg-primary hover:bg-primary/90" disabled={exportLoading}>
                 {exportLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -290,6 +297,12 @@ const Reports = () => {
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => handleExport("csv")}>
                 Exportar como CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("excel")}>
+                Exportar como Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                Exportar como PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
