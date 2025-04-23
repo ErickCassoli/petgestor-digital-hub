@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
@@ -54,11 +53,12 @@ serve(async (req) => {
 
     switch (reportType) {
       case "revenue":
-        // Get sales data for revenue report
+        // Only include sales with status 'concluido'
         const { data: salesData, error: salesError } = await supabase
           .from("sales")
           .select("*")
           .eq("user_id", userId)
+          .eq("status", "concluido")
           .gte("sale_date", formattedStartDate)
           .lte("sale_date", formattedEndDate);
 
@@ -109,15 +109,16 @@ serve(async (req) => {
         break;
 
       case "products":
-        // Get top selling products
+        // Only include sale_items whose sales have status 'concluido'
         const { data: saleItemsData, error: saleItemsError } = await supabase
           .from("sale_items")
           .select(`
             *,
-            sales!inner(sale_date, user_id),
+            sales!inner(id,sale_date,user_id,status),
             products(name)
           `)
           .eq("sales.user_id", userId)
+          .eq("sales.status", "concluido")
           .is("service_id", null)
           .not("product_id", "is", null)
           .gte("sales.sale_date", formattedStartDate)
@@ -169,15 +170,16 @@ serve(async (req) => {
         break;
 
       case "services":
-        // Get top selling services
+        // Only include sale_items whose sales have status 'concluido'
         const { data: serviceItemsData, error: serviceItemsError } = await supabase
           .from("sale_items")
           .select(`
             *,
-            sales!inner(sale_date, user_id),
+            sales!inner(id,sale_date,user_id,status),
             services(name)
           `)
           .eq("sales.user_id", userId)
+          .eq("sales.status", "concluido")
           .is("product_id", null)
           .not("service_id", "is", null)
           .gte("sales.sale_date", formattedStartDate)
@@ -229,7 +231,7 @@ serve(async (req) => {
         break;
 
       case "clients":
-        // Get client data
+        // Only include sales with status 'concluido'
         const { data: clientSalesData, error: clientSalesError } = await supabase
           .from("sales")
           .select(`
@@ -237,6 +239,7 @@ serve(async (req) => {
             clients(id, name)
           `)
           .eq("user_id", userId)
+          .eq("status", "concluido")
           .not("client_id", "is", null)
           .gte("sale_date", formattedStartDate)
           .lte("sale_date", formattedEndDate);
