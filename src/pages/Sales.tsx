@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -122,7 +121,6 @@ const Sales = () => {
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Fetch sales data from Supabase
   const fetchSales = async () => {
     if (!user) return;
     
@@ -156,7 +154,6 @@ const Sales = () => {
     fetchSales();
   }, [user, toast]);
 
-  // Fetch sale details
   const fetchSaleDetails = async (saleId: string) => {
     if (!saleId) return;
     
@@ -184,7 +181,6 @@ const Sales = () => {
     }
   };
 
-  // Filter sales based on selected period, type, payment method, and search term
   useEffect(() => {
     if (!sales.length) {
       setFilteredSales([]);
@@ -198,7 +194,6 @@ const Sales = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Determine the start date based on the selected period
     switch (selectedPeriod) {
       case "today":
         startDate = today;
@@ -216,14 +211,12 @@ const Sales = () => {
         startDate = startOfMonth(today);
     }
     
-    // Filter by date, type, payment method, and search term
     const filtered = sales.filter(sale => {
       const saleDate = new Date(sale.sale_date);
       const dateMatch = startDate ? saleDate >= startDate : true;
       const typeMatch = selectedType === "all" || sale.type === selectedType;
       const paymentMatch = selectedPaymentMethod === "all" || sale.payment_method === selectedPaymentMethod;
       
-      // Search by client name or sale ID
       const searchMatch = !searchTerm.trim() || 
         (sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
          sale.id.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -233,7 +226,6 @@ const Sales = () => {
     
     setFilteredSales(filtered);
     
-    // Calculate totals
     const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
     const services = filtered
       .filter(sale => sale.type === "service" || sale.type === "both")
@@ -247,7 +239,6 @@ const Sales = () => {
     setTotalProducts(products);
   }, [sales, selectedPeriod, selectedType, selectedPaymentMethod, searchTerm]);
 
-  // Handle export to CSV
   const exportToCSV = () => {
     if (filteredSales.length === 0) {
       toast({ title: "Não há dados para exportar" });
@@ -257,10 +248,8 @@ const Sales = () => {
     setExportLoading(true);
     
     try {
-      // Create CSV headers
       let csvContent = "Data,Cliente,Tipo,Método de Pagamento,Valor\n";
       
-      // Add data rows
       filteredSales.forEach(sale => {
         const date = format(new Date(sale.sale_date), 'dd/MM/yyyy');
         const client = sale.clients?.name || "Cliente não informado";
@@ -274,7 +263,6 @@ const Sales = () => {
         csvContent += `${date},"${client}",${type},${paymentMethod},${value}\n`;
       });
       
-      // Create downloadable link
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -297,25 +285,21 @@ const Sales = () => {
     }
   };
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return format(date, 'dd/MM/yyyy HH:mm');
   };
 
-  // Get period label
   const getPeriodLabel = () => {
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
     return option ? option.label : "Período";
   };
 
-  // Get type label
   const getTypeLabel = () => {
     const option = typeOptions.find(opt => opt.value === selectedType);
     return option ? option.label : "Tipo";
   };
 
-  // Get payment method label
   const getPaymentMethodLabel = () => {
     const option = paymentMethodOptions.find(opt => opt.value === selectedPaymentMethod);
     return option ? option.label : "Forma de Pagamento";
@@ -328,7 +312,6 @@ const Sales = () => {
     
     setLoading(true);
     try {
-      // Delete sale items first
       const { error: itemsError } = await supabase
         .from('sale_items')
         .delete()
@@ -336,7 +319,6 @@ const Sales = () => {
       
       if (itemsError) throw itemsError;
       
-      // Then delete the sale
       const { error: saleError } = await supabase
         .from('sales')
         .delete()
@@ -359,7 +341,6 @@ const Sales = () => {
     }
   };
 
-  // JSX for the loading state
   if (loading && sales.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -440,13 +421,15 @@ const Sales = () => {
             Registro de Vendas
           </CardTitle>
           <div className="flex flex-wrap gap-2">
-            <Input
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:w-auto max-w-xs"
-              prefix={<Search className="h-4 w-4 mr-2" />}
-            />
+            <div className="relative w-full sm:w-auto max-w-xs">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-full"
+              />
+            </div>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -621,7 +604,6 @@ const Sales = () => {
         </CardFooter>
       </Card>
 
-      {/* New Sale Form Dialog */}
       <Dialog open={showNewSaleForm} onOpenChange={setShowNewSaleForm}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-auto">
           <SaleForm 
@@ -634,7 +616,6 @@ const Sales = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Sale Details Sheet */}
       <Sheet open={showSaleDetails} onOpenChange={setShowSaleDetails}>
         <SheetContent className="sm:max-w-md">
           <SheetHeader>
