@@ -175,6 +175,7 @@ async function generateRevenueReport(supabase, userId: string, startDate: string
     };
   }
 
+  // Calculate total revenue from sales directly using the total field
   const totalRevenue = salesData.reduce((sum, sale) => sum + Number(sale.total || 0), 0) + completedAppointments.revenue;
 
   const servicesSales = (salesData || []).filter((sale) => sale.type === "service");
@@ -183,6 +184,7 @@ async function generateRevenueReport(supabase, userId: string, startDate: string
   const servicesRevenue = servicesSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const productsRevenue = productsSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
+  // Group sales by date for chart
   const salesByDate = (salesData || []).reduce((acc, sale) => {
     if (!sale.sale_date) return acc;
     

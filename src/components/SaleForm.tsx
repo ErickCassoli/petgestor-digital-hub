@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { Search, Plus, Minus, X, Trash2, ShoppingBag, FileText, Save } from "lucide-react";
 import DiscountSurchargeForm from "./sales/DiscountSurchargeForm";
+import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Client {
   id: string;
@@ -162,6 +163,11 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       return;
     }
 
+    if (discountAmount > subtotal) {
+      toast({ title: "O desconto não pode ser maior que o valor total", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     try {
       // Determine sale type based on first item
@@ -178,7 +184,6 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
           type: saleType,
-          payment_method: 'cash', // Default payment method
           sale_date: new Date().toISOString()
         })
         .select()
@@ -240,11 +245,13 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   );
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Nova Venda</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-6">
+    <>
+      <DialogHeader>
+        <DialogTitle>Nova Venda</DialogTitle>
+        <DialogDescription>Adicione produtos ou serviços para registrar uma nova venda</DialogDescription>
+      </DialogHeader>
+      
+      <div className="grid gap-6 py-4">
         <div>
           <Label htmlFor="client">Cliente (opcional)</Label>
           <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -432,18 +439,18 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
             </div>
           </div>
         </div>
-      </CardContent>
+      </div>
 
-      <CardFooter className="flex justify-between">
+      <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onCancel}>
           <X className="h-4 w-4 mr-2" />
           Cancelar
         </Button>
-        <Button onClick={handleSaveSale} disabled={selectedItems.length === 0 || loading}>
+        <Button onClick={handleSaveSale} disabled={selectedItems.length === 0 || loading || discountAmount > subtotal}>
           <Save className="h-4 w-4 mr-2" />
           {loading ? "Salvando..." : "Finalizar venda"}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </>
   );
 }

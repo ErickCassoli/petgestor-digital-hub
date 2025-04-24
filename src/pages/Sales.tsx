@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -41,7 +42,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, subDays, subMonths, subWeeks } from "date-fns";
+import { format, startOfMonth, subDays, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import SaleForm from "@/components/SaleForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { 
@@ -58,7 +60,6 @@ interface Sale {
   client_id: string | null;
   type: "service" | "product";
   total: number;
-  payment_method: string | null;
   subtotal: number | null;
   discount_amount: number | null;
   surcharge_amount: number | null;
@@ -93,16 +94,7 @@ const periodOptions = [
 const typeOptions = [
   { label: "Todos", value: "all" },
   { label: "Serviços", value: "service" },
-  { label: "Produtos", value: "product" },
-  { label: "Mistos", value: "both" }
-];
-
-const paymentMethodOptions = [
-  { label: "Todos", value: "all" },
-  { label: "Dinheiro", value: "cash" },
-  { label: "Cartão de Crédito", value: "credit" },
-  { label: "Cartão de Débito", value: "debit" },
-  { label: "PIX", value: "pix" }
+  { label: "Produtos", value: "product" }
 ];
 
 const Sales = () => {
@@ -112,7 +104,6 @@ const Sales = () => {
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [showNewSaleForm, setShowNewSaleForm] = useState(false);
@@ -218,13 +209,12 @@ const Sales = () => {
       const saleDate = new Date(sale.sale_date);
       const dateMatch = startDate ? saleDate >= startDate : true;
       const typeMatch = selectedType === "all" || sale.type === selectedType;
-      const paymentMatch = selectedPaymentMethod === "all" || sale.payment_method === selectedPaymentMethod;
       
       const searchMatch = !searchTerm.trim() || 
         (sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
          sale.id.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      return dateMatch && typeMatch && paymentMatch && searchMatch;
+      return dateMatch && typeMatch && searchMatch;
     });
     
     setFilteredSales(filtered);
@@ -240,7 +230,7 @@ const Sales = () => {
     setTotalSales(total);
     setTotalServices(services);
     setTotalProducts(products);
-  }, [sales, selectedPeriod, selectedType, selectedPaymentMethod, searchTerm]);
+  }, [sales, selectedPeriod, selectedType, searchTerm]);
 
   const exportToCSV = () => {
     if (filteredSales.length === 0) {
@@ -251,19 +241,18 @@ const Sales = () => {
     setExportLoading(true);
     
     try {
-      let csvContent = "Data,Cliente,Tipo,Método de Pagamento,Valor\n";
+      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total\n";
       
       filteredSales.forEach(sale => {
         const date = format(new Date(sale.sale_date), 'dd/MM/yyyy');
         const client = sale.clients?.name || "Cliente não informado";
-        const type = sale.type === "service" ? "Serviço" : sale.type === "product" ? "Produto" : "Misto";
-        const paymentMethod = sale.payment_method === "cash" ? "Dinheiro" : 
-                              sale.payment_method === "credit" ? "Cartão de Crédito" : 
-                              sale.payment_method === "debit" ? "Cartão de Débito" : 
-                              sale.payment_method === "pix" ? "PIX" : "Não informado";
+        const type = sale.type === "service" ? "Serviço" : "Produto";
+        const subtotal = Number(sale.subtotal || 0).toFixed(2).replace('.', ',');
+        const discount = Number(sale.discount_amount || 0).toFixed(2).replace('.', ',');
+        const surcharge = Number(sale.surcharge_amount || 0).toFixed(2).replace('.', ',');
         const value = Number(sale.total).toFixed(2).replace('.', ',');
         
-        csvContent += `${date},"${client}",${type},${paymentMethod},${value}\n`;
+        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${value}\n`;
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -290,7 +279,7 @@ const Sales = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return format(date, 'dd/MM/yyyy HH:mm');
+    return format(date, 'dd/MM/yyyy HH:mm', { locale: ptBR });
   };
 
   const getPeriodLabel = () => {
@@ -301,11 +290,6 @@ const Sales = () => {
   const getTypeLabel = () => {
     const option = typeOptions.find(opt => opt.value === selectedType);
     return option ? option.label : "Tipo";
-  };
-
-  const getPaymentMethodLabel = () => {
-    const option = paymentMethodOptions.find(opt => opt.value === selectedPaymentMethod);
-    return option ? option.label : "Forma de Pagamento";
   };
 
   const handleDeleteSale = async (saleId: string) => {
@@ -477,30 +461,6 @@ const Sales = () => {
                   >
                     {option.label}
                     {selectedType === option.value && (
-                      <Check className="h-4 w-4 ml-2" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex justify-between">
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  {getPaymentMethodLabel()}
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {paymentMethodOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => setSelectedPaymentMethod(option.value)}
-                    className="flex items-center justify-between"
-                  >
-                    {option.label}
-                    {selectedPaymentMethod === option.value && (
                       <Check className="h-4 w-4 ml-2" />
                     )}
                   </DropdownMenuItem>
