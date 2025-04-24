@@ -414,17 +414,6 @@ const LandingPage = () => {
               <ul className="space-y-2">
                 <li><a href="#features" className="footer-link">Recursos</a></li>
                 <li><a href="#pricing" className="footer-link">Preço</a></li>
-                <li><a href="#" className="footer-link">Atualizações</a></li>
-                <li><a href="#" className="footer-link">FAQ</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Empresa</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="footer-link">Sobre nós</a></li>
-                <li><a href="#" className="footer-link">Blog</a></li>
-                <li><a href="#" className="footer-link">Carreiras</a></li>
-                <li><a href="#" className="footer-link">Contato</a></li>
               </ul>
             </div>
             <div>
