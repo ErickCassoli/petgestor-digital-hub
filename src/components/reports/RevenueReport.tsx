@@ -93,15 +93,15 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Vendas Mistas</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Agendamentos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <ShoppingCart className="h-5 w-5 text-indigo-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{formatCurrency(data.mixedRevenue || 0)}</span>
+              <FileText className="h-5 w-5 text-indigo-600 mr-2" />
+              <span className="text-2xl font-bold text-gray-900">{formatCurrency(data.appointmentsRevenue || 0)}</span>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              {Math.round(((data.mixedRevenue || 0) / (data.totalRevenue || 1)) * 100) || 0}% do total
+              {Math.round(((data.appointmentsRevenue || 0) / (data.totalRevenue || 1)) * 100) || 0}% do total
             </p>
           </CardContent>
         </Card>
@@ -175,8 +175,7 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
                   <Pie
                     data={[
                       { name: 'Serviços', value: (data.servicesRevenue || 0) + (data.appointmentsRevenue || 0) },
-                      { name: 'Produtos', value: data.productsRevenue || 0 },
-                      { name: 'Mistos', value: data.mixedRevenue || 0 }
+                      { name: 'Produtos', value: data.productsRevenue || 0 }
                     ].filter(item => item.value > 0)}
                     cx="50%"
                     cy="50%"
@@ -187,8 +186,7 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
                   >
                     {[
                       { name: 'Serviços', value: (data.servicesRevenue || 0) + (data.appointmentsRevenue || 0) },
-                      { name: 'Produtos', value: data.productsRevenue || 0 },
-                      { name: 'Mistos', value: data.mixedRevenue || 0 }
+                      { name: 'Produtos', value: data.productsRevenue || 0 }
                     ].filter(item => item.value > 0).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
@@ -228,12 +227,10 @@ async function generateRevenueReport(supabase, userId, formattedStartDate, forma
       totalRevenue: 0,
       servicesRevenue: 0,
       productsRevenue: 0,
-      mixedRevenue: 0,
       appointmentsRevenue: 0,
       salesCount: 0,
       servicesSalesCount: 0,
       productsSalesCount: 0,
-      mixedSalesCount: 0,
       appointmentsCount: 0,
       salesChart: [],
     };
@@ -245,11 +242,9 @@ async function generateRevenueReport(supabase, userId, formattedStartDate, forma
 
   const servicesSales = (salesData || []).filter((sale) => sale.type === "service");
   const productsSales = (salesData || []).filter((sale) => sale.type === "product");
-  const mixedSales = (salesData || []).filter((sale) => sale.type === "both");
 
   const servicesRevenue = servicesSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const productsRevenue = productsSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
-  const mixedRevenue = mixedSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
   const salesByDate = (salesData || []).reduce((acc, sale) => {
     if (!sale.sale_date) return acc;
@@ -274,13 +269,11 @@ async function generateRevenueReport(supabase, userId, formattedStartDate, forma
     totalRevenue,
     servicesRevenue,
     productsRevenue,
-    mixedRevenue,
     appointmentsRevenue: completedAppointments.revenue,
     salesCount: (salesData || []).length,
     appointmentsCount: completedAppointments.count,
     servicesSalesCount: servicesSales.length,
     productsSalesCount: productsSales.length,
-    mixedSalesCount: mixedSales.length,
     salesChart,
   };
 }
