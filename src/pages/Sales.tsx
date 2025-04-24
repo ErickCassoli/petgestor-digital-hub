@@ -56,9 +56,12 @@ interface Sale {
   id: string;
   sale_date: string;
   client_id: string | null;
-  type: "service" | "product" | "both";
+  type: "service" | "product";
   total: number;
   payment_method: string | null;
+  subtotal: number | null;
+  discount_amount: number | null;
+  surcharge_amount: number | null;
   clients?: {
     id: string;
     name: string;
