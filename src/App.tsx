@@ -20,6 +20,10 @@ import NotFound from "@/pages/NotFound";
 import Services from "@/pages/Services";
 import ForgotPassword from "@/pages/ForgotPassword";
 import UpdatePassword from "@/pages/UpdatePassword";
+import ConfirmedEmail from "@/pages/ConfirmedEmail";
+
+
+
 
 
 
@@ -48,6 +52,7 @@ const App = () => (
             <Route path="/expired" element={<ExpiredSubscription />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/atualizar-senha" element={<UpdatePassword />} />
+            <Route path="/confirmed-email" element={<ConfirmedEmail />} />
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>

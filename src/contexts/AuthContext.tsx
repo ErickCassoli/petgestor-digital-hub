@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
-
+  
   const signUp = async (email: string, password: string, role: "admin" | "atendente"): Promise<void> => {
     setLoading(true);
     try {
@@ -136,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email, 
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/ConfirmedEmail`,
           data: {
             role: role,
           }
@@ -178,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/UpdatePassword`, // substitua com a URL da sua página de redefinição
+        redirectTo: `${window.location.origin}/UpdatePassword`,
       });
   
       if (error) throw error;
