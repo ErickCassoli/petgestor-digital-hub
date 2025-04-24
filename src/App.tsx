@@ -18,6 +18,10 @@ import ExpiredSubscription from "@/pages/ExpiredSubscription";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import NotFound from "@/pages/NotFound";
 import Services from "@/pages/Services";
+import ForgotPassword from "@/pages/ForgotPassword";
+import UpdatePassword from "@/pages/UpdatePassword";
+
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +46,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/expired" element={<ExpiredSubscription />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/atualizar-senha" element={<UpdatePassword />} />
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>

@@ -24,6 +24,7 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Omit<Profile, "id">>) => Promise<void>;
   isSubscriptionActive: boolean;
   isInTrialPeriod: boolean;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -173,6 +174,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string): Promise<void> => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/UpdatePassword`, // substitua com a URL da sua página de redefinição
+      });
+  
+      if (error) throw error;
+  
+      sonnerToast.success("Verifique seu e-mail", {
+        description: "Enviamos um link para redefinir sua senha.",
+      });
+    } catch (error: any) {
+      console.error("Erro ao solicitar redefinição de senha:", error);
+      sonnerToast.error("Erro ao redefinir senha", {
+        description: error.message || "Não foi possível enviar o e-mail de recuperação.",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateProfile = async (updates: Partial<Omit<Profile, "id">>): Promise<void> => {
     if (!user) throw new Error("No user logged in");
     
@@ -211,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateProfile,
     isSubscriptionActive,
     isInTrialPeriod,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
