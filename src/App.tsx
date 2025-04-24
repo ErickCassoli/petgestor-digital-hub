@@ -51,7 +51,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/expired" element={<ExpiredSubscription />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/atualizar-senha" element={<UpdatePassword />} />
+            <Route path="/UpadatePassword" element={<UpdatePassword />} />
             <Route path="/confirmed-email" element={<ConfirmedEmail />} />
             
             {/* Protected routes */}
