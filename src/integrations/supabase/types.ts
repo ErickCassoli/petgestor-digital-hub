@@ -266,9 +266,12 @@ export type Database = {
           appointment_id: string | null
           client_id: string | null
           created_at: string | null
+          discount_amount: number | null
           id: string
           payment_method: string | null
           sale_date: string | null
+          subtotal: number | null
+          surcharge_amount: number | null
           total: number
           type: string
           updated_at: string | null
@@ -278,9 +281,12 @@ export type Database = {
           appointment_id?: string | null
           client_id?: string | null
           created_at?: string | null
+          discount_amount?: number | null
           id?: string
           payment_method?: string | null
           sale_date?: string | null
+          subtotal?: number | null
+          surcharge_amount?: number | null
           total: number
           type: string
           updated_at?: string | null
@@ -290,9 +296,12 @@ export type Database = {
           appointment_id?: string | null
           client_id?: string | null
           created_at?: string | null
+          discount_amount?: number | null
           id?: string
           payment_method?: string | null
           sale_date?: string | null
+          subtotal?: number | null
+          surcharge_amount?: number | null
           total?: number
           type?: string
           updated_at?: string | null

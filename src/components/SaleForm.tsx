@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { Search, Plus, Minus, X, Trash2, ShoppingBag, FileText, Save } from "lucide-react";
+import DiscountSurchargeForm from "./sales/DiscountSurchargeForm";
 
 interface Client {
   id: string;
@@ -57,10 +57,10 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [surchargeAmount, setSurchargeAmount] = useState(0);
+  const [currentType, setCurrentType] = useState<'product' | 'service'>('product');
 
-  // Calculate totals
-  const totalAmount = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
   useEffect(() => {
     fetchClients();
     fetchProducts();
@@ -97,7 +97,28 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     setServices(data || []);
   };
 
+  // Calculate subtotal
+  const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  // Calculate total with discounts and surcharges
+  const totalAmount = subtotal - discountAmount + surchargeAmount;
+
   const handleAddItem = (item: Product | Service, type: 'product' | 'service') => {
+    // Check if we're mixing types
+    if (selectedItems.length > 0) {
+      const existingType = selectedItems[0].type;
+      if (type !== existingType) {
+        toast({
+          title: "Tipo de item inválido",
+          description: `Esta venda já contém ${existingType === 'product' ? 'produtos' : 'serviços'}. Não é possível misturar tipos.`,
+          variant: "destructive"
+        });
+        return;
+      }
+    } else {
+      setCurrentType(type);
+    }
+
     // Check if item already exists in the cart
     const existingItemIndex = selectedItems.findIndex(
       i => i.itemId === item.id && i.type === type
@@ -143,13 +164,8 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
 
     setLoading(true);
     try {
-      // Determine sale type based on items
-      const hasProducts = selectedItems.some(item => item.type === 'product');
-      const hasServices = selectedItems.some(item => item.type === 'service');
-      let saleType = 'both';
-      
-      if (hasProducts && !hasServices) saleType = 'product';
-      if (!hasProducts && hasServices) saleType = 'service';
+      // Determine sale type based on first item
+      const saleType = selectedItems[0].type;
 
       // Create the sale record
       const { data: saleData, error: saleError } = await supabase
@@ -158,6 +174,9 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
           total: totalAmount,
+          subtotal: subtotal,
+          discount_amount: discountAmount,
+          surcharge_amount: surchargeAmount,
           type: saleType,
           payment_method: paymentMethod,
           sale_date: new Date().toISOString()
@@ -183,8 +202,8 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       if (itemsError) throw itemsError;
 
       // Update product stock if applicable
-      if (hasProducts) {
-        for (const item of selectedItems.filter(i => i.type === 'product')) {
+      if (saleType === 'product') {
+        for (const item of selectedItems) {
           const product = products.find(p => p.id === item.itemId);
           if (product) {
             const newStock = Math.max(0, product.stock - item.quantity);
@@ -263,7 +282,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="mb-4">
-              <Label>Adicionar itens</Label>
+              <Label>Adicionar itens ({currentType === 'product' ? 'Produtos' : 'Serviços'})</Label>
               <div className="flex gap-2 mt-1">
                 <Input 
                   placeholder="Buscar..." 
@@ -274,19 +293,31 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
               </div>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'services')}>
+            <Tabs value={currentType} onValueChange={(v) => {
+              if (selectedItems.length === 0) {
+                setCurrentType(v as 'product' | 'service');
+              }
+            }}>
               <TabsList className="w-full mb-4">
-                <TabsTrigger value="products" className="flex-1">
+                <TabsTrigger 
+                  value="product" 
+                  className="flex-1"
+                  disabled={selectedItems.length > 0 && currentType !== 'product'}
+                >
                   <ShoppingBag className="h-4 w-4 mr-2" />
                   Produtos
                 </TabsTrigger>
-                <TabsTrigger value="services" className="flex-1">
+                <TabsTrigger 
+                  value="service" 
+                  className="flex-1"
+                  disabled={selectedItems.length > 0 && currentType !== 'service'}
+                >
                   <FileText className="h-4 w-4 mr-2" />
                   Serviços
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="products" className="max-h-[300px] overflow-y-auto">
+              <TabsContent value="product" className="max-h-[300px] overflow-y-auto">
                 {filteredProducts.length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground">
                     {searchTerm 
@@ -318,7 +349,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                 )}
               </TabsContent>
               
-              <TabsContent value="services" className="max-h-[300px] overflow-y-auto">
+              <TabsContent value="service" className="max-h-[300px] overflow-y-auto">
                 {filteredServices.length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground">
                     {searchTerm 
@@ -407,10 +438,14 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                 </div>
               )}
               
-              <div className="p-3 border-t flex justify-between font-medium">
-                <span>Total:</span>
-                <span>R$ {totalAmount.toFixed(2)}</span>
-              </div>
+              <DiscountSurchargeForm
+                subtotal={subtotal}
+                discountAmount={discountAmount}
+                surchargeAmount={surchargeAmount}
+                onDiscountChange={setDiscountAmount}
+                onSurchargeChange={setSurchargeAmount}
+                className="p-4 border-t"
+              />
             </div>
           </div>
         </div>
