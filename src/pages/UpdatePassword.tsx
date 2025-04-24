@@ -16,18 +16,16 @@ const UpdatePassword = () => {
   const navigate = useNavigate();
 
   // When the page loads, grab the session from the URL (magic link)
-  useEffect(() => {
-    supabase.auth
-      .getSessionFromUrl({ storeSession: true })
-      .then(({ error }) => {
-        if (error) {
-          console.error("Erro ao processar o link de recuperação:", error);
+  useEffect(() => {(async () => {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          console.error("Erro ao obter sessão de recuperação:", error);
           sonnerToast.error("Link inválido ou expirado", {
             description: "Solicite um novo link de recuperação.",
           });
           navigate("/forgot-password", { replace: true });
         }
-      });
+      })();
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
