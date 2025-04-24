@@ -38,6 +38,8 @@ export default function DiscountSurchargeForm({
     }
   };
 
+  const total = subtotal - discountAmount + surchargeAmount;
+
   return (
     <div className={cn("space-y-4", className)}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -80,7 +82,7 @@ export default function DiscountSurchargeForm({
         </div>
         <div className="flex justify-between font-medium border-t pt-2 mt-2">
           <span>Total:</span>
-          <span className="font-mono">{formatCurrency(subtotal - discountAmount + surchargeAmount)}</span>
+          <span className="font-mono">{formatCurrency(total)}</span>
         </div>
       </div>
     </div>

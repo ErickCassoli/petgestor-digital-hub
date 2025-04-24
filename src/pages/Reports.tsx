@@ -12,15 +12,10 @@ import { Button } from "@/components/ui/button";
 import { 
   Calendar, 
   Download, 
-  BarChart, 
-  PieChart,
-  LineChart,
   ChevronDown,
   Check,
   FileText,
   ShoppingCart,
-  Users,
-  TrendingUp,
   Loader2,
   FileSpreadsheet,
   File
@@ -39,7 +34,6 @@ import { ptBR } from "date-fns/locale";
 import RevenueReport from "@/components/reports/RevenueReport";
 import ServicesReport from "@/components/reports/ServicesReport";
 import ProductsReport from "@/components/reports/ProductsReport";
-import ClientsReport from "@/components/reports/ClientsReport";
 import { ReportMetrics } from "@/types/reports";
 
 const periodOptions = [
@@ -278,7 +272,6 @@ const Reports = () => {
           <TabsTrigger value="revenue">Faturamento</TabsTrigger>
           <TabsTrigger value="services">Serviços</TabsTrigger>
           <TabsTrigger value="products">Produtos</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="revenue">
@@ -291,10 +284,6 @@ const Reports = () => {
 
         <TabsContent value="products">
           <ProductsReport data={reportData} />
-        </TabsContent>
-
-        <TabsContent value="clients">
-          <ClientsReport data={reportData} />
         </TabsContent>
       </Tabs>
     </div>

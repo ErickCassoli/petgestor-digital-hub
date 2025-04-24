@@ -1,228 +1,167 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
+// Define your Supabase URL and service role key
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+interface ReportMetrics {
+  totalRevenue?: number;
+  servicesRevenue?: number;
+  productsRevenue?: number;
+  appointmentsRevenue?: number;
+  salesCount?: number;
+  servicesSalesCount?: number;
+  productsSalesCount?: number;
+  appointmentsCount?: number;
+  salesChart?: { date: string; value: number }[];
+  topProducts?: { id: string; name: string; quantity: number; revenue: number }[];
+  topServices?: { id: string; name: string; quantity: number; revenue: number }[];
+  topClients?: { id: string; name: string; visits: number; spent: number }[];
+  totalClients?: number;
+  totalVisits?: number;
+  totalItems?: number;
+  exportedFile?: string;
+  fileName?: string;
+  fileType?: string;
+  exportFormat?: string;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-requested-with",
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, reportType, startDate, endDate, exportFormat } = await req.json();
-
-    if (!userId || !reportType) {
+    // Parse request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
       return new Response(
-        JSON.stringify({ error: "Missing required parameters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Invalid request body" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    const formattedStartDate = startDate ? new Date(startDate).toISOString() : null;
-    const formattedEndDate = endDate ? new Date(endDate).toISOString() : null;
+    // Extract parameters
+    const userId = body.userId;
+    const reportType = body.reportType || "revenue";
+    const startDate = body.startDate;
+    const endDate = body.endDate;
+    const exportFormat = body.exportFormat;
 
-    console.log(
-      `Generating ${reportType} report for user ${userId} from ${formattedStartDate} to ${formattedEndDate}`
-    );
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "User ID is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    // Default empty report structure
-    const emptyReport = {
-      totalRevenue: 0,
-      servicesRevenue: 0,
-      productsRevenue: 0,
-      mixedRevenue: 0,
-      appointmentsRevenue: 0,
-      salesCount: 0,
-      servicesSalesCount: 0,
-      productsSalesCount: 0,
-      mixedSalesCount: 0,
-      appointmentsCount: 0,
-      salesChart: [],
-      exportFormat: exportFormat,
-    };
+    if (!startDate || !endDate) {
+      return new Response(
+        JSON.stringify({ error: "Start date and end date are required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    let reportData;
-    let error;
+    let reportData: ReportMetrics | null = null;
 
     switch (reportType) {
       case "revenue":
-        reportData = await generateRevenueReport(
-          supabase, 
-          userId, 
-          formattedStartDate, 
-          formattedEndDate
-        );
+        reportData = await generateRevenueReport(supabase, userId, startDate, endDate);
         break;
-
-      case "products":
-        reportData = await generateProductsReport(
-          supabase, 
-          userId, 
-          formattedStartDate, 
-          formattedEndDate,
-          exportFormat
-        );
-        break;
-
       case "services":
-        reportData = await generateServicesReport(
-          supabase, 
-          userId, 
-          formattedStartDate, 
-          formattedEndDate,
-          exportFormat
-        );
+        reportData = await generateServicesReport(supabase, userId, startDate, endDate);
         break;
-
-      case "clients":
-        reportData = await generateClientsReport(
-          supabase, 
-          userId, 
-          formattedStartDate, 
-          formattedEndDate,
-          exportFormat
-        );
+      case "products":
+        reportData = await generateProductsReport(supabase, userId, startDate, endDate);
         break;
-
       default:
-        error = "Invalid report type";
+        return new Response(
+          JSON.stringify({ error: "Invalid report type" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
     }
 
-    if (error) {
-      return new Response(
-        JSON.stringify({ error }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+    if (exportFormat) {
+      // Simulate export functionality (in a real scenario, you'd use a library to generate the export)
+      // For demonstration purposes, we'll just send back a mock base64 encoded file
+      const mockExportedFile = btoa(
+        `This is a mock ${exportFormat} export for ${reportType} report from ${startDate} to ${endDate}`
       );
-    }
 
-    // Add export functionality if requested
-    if (exportFormat && ["csv", "pdf", "excel", "xlsx"].includes(exportFormat)) {
-      reportData = addExportData(reportData, reportType, exportFormat);
+      reportData = {
+        ...reportData,
+        exportedFile: mockExportedFile,
+        fileName: `report_${reportType}_${new Date().toISOString().split("T")[0]}.${exportFormat}`,
+        fileType: exportFormat,
+      };
     }
 
     return new Response(JSON.stringify(reportData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
     });
   } catch (error) {
     console.error("Error generating report:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    
+    return new Response(
+      JSON.stringify({ error: error.message || "An error occurred while generating the report" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
   }
 });
 
-// Helper function to fetch completed appointments revenue
-async function fetchCompletedAppointmentsRevenue(supabase, userId, formattedStartDate, formattedEndDate) {
-  try {
-    // Get appointments with "completed" status
-    const { data: appointments, error: appointmentsError } = await supabase
-      .from("appointments")
-      .select(`
-        id, date, time, service_id, user_id, status
-      `)
-      .eq("user_id", userId)
-      .eq("status", "completed");
-
-    if (appointmentsError) throw appointmentsError;
-
-    if (!appointments || appointments.length === 0) {
-      return { revenue: 0, count: 0, chart: [] };
-    }
-
-    const appointmentIds = appointments.map(appt => appt.id);
-    
-    // Check which appointments are already linked to sales
-    const { data: salesWithAppointments } = await supabase
-      .from("sales")
-      .select("appointment_id")
-      .eq("user_id", userId)
-      .in("appointment_id", appointmentIds);
-    
-    const processedAppointmentIds = salesWithAppointments 
-      ? salesWithAppointments.map(sale => sale.appointment_id)
-      : [];
-    
-    // Filter out appointments that are already linked to sales
-    const unprocessedAppointments = appointments.filter(
-      appt => !processedAppointmentIds.includes(appt.id)
-    );
-
-    if (!unprocessedAppointments || unprocessedAppointments.length === 0) {
-      return { revenue: 0, count: 0, chart: [] };
-    }
-    
-    let revenue = 0;
-    let chartByDay = {};
-    
-    for (const appt of unprocessedAppointments) {
-      if (!appt.service_id) continue;
-      
-      const { data: service, error: serviceError } = await supabase
-        .from("services")
-        .select("price")
-        .eq("id", appt.service_id)
-        .maybeSingle();
-        
-      if (!serviceError && service && service.price) {
-        const price = Number(service.price);
-        revenue += price;
-        
-        const apptDate = appt.date || null;
-        if (apptDate) {
-          const dateStr = new Date(apptDate).toISOString().split('T')[0];
-          chartByDay[dateStr] = (chartByDay[dateStr] || 0) + price;
-        }
-      }
-    }
-    
-    const chartArr = Object.entries(chartByDay).map(([date, value]) => ({
-      date,
-      value: Number(value),
-    }));
-    
-    return {
-      revenue,
-      count: unprocessedAppointments.length,
-      chart: chartArr,
-    };
-  } catch (error) {
-    console.error("Error fetching completed appointments:", error);
-    return { revenue: 0, count: 0, chart: [] };
-  }
-}
-
-// Generate revenue report
-async function generateRevenueReport(supabase, userId, formattedStartDate, formattedEndDate) {
-  // Get sales data
+async function generateRevenueReport(supabase, userId: string, startDate: string, endDate: string): Promise<ReportMetrics> {
+  // Fetch sales data
   const { data: salesData, error: salesError } = await supabase
-    .from("sales")
-    .select("*")
-    .eq("user_id", userId)
-    .gte("sale_date", formattedStartDate)
-    .lte("sale_date", formattedEndDate);
+    .from('sales')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('sale_date', startDate)
+    .lte('sale_date', endDate)
+    .order('sale_date', { ascending: true });
+  
+  if (salesError) {
+    throw new Error(`Error fetching sales: ${salesError.message}`);
+  }
 
-  if (salesError) throw salesError;
+  // Fetch completed appointments data
+  const { data: appointmentsData, error: appointmentsError } = await supabase
+    .from('appointments')
+    .select('*, service:service_id(price)')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .gte('date', startDate)
+    .lte('date', endDate);
+  
+  if (appointmentsError) {
+    throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
+  }
 
-  // Get revenue from completed appointments not in sales
-  const completedAppointments = await fetchCompletedAppointmentsRevenue(
-    supabase, 
-    userId, 
-    formattedStartDate, 
-    formattedEndDate
-  );
+  // Calculate appointments revenue
+  const completedAppointments = {
+    count: appointmentsData ? appointmentsData.length : 0,
+    revenue: appointmentsData
+      ? appointmentsData.reduce((sum, appt) => {
+          const price = appt.service ? Number(appt.service.price) : 0;
+          return sum + price;
+        }, 0)
+      : 0,
+  };
 
-  if ((!salesData || salesData.length === 0) && completedAppointments.count === 0) {
+  // Initialize metrics
+  if (!salesData || salesData.length === 0) {
     return {
       totalRevenue: 0,
       servicesRevenue: 0,
@@ -236,9 +175,7 @@ async function generateRevenueReport(supabase, userId, formattedStartDate, forma
     };
   }
 
-  const totalRevenue =
-    (salesData || []).reduce((sum, sale) => sum + Number(sale.total || 0), 0) +
-    completedAppointments.revenue;
+  const totalRevenue = salesData.reduce((sum, sale) => sum + Number(sale.total || 0), 0) + completedAppointments.revenue;
 
   const servicesSales = (salesData || []).filter((sale) => sale.type === "service");
   const productsSales = (salesData || []).filter((sale) => sale.type === "product");
@@ -248,22 +185,21 @@ async function generateRevenueReport(supabase, userId, formattedStartDate, forma
 
   const salesByDate = (salesData || []).reduce((acc, sale) => {
     if (!sale.sale_date) return acc;
-    const date = sale.sale_date.split("T")[0];
-    acc[date] = (acc[date] || 0) + Number(sale.total || 0);
+    
+    const dateStr = sale.sale_date.substring(0, 10);
+    
+    if (!acc[dateStr]) {
+      acc[dateStr] = 0;
+    }
+    
+    acc[dateStr] += Number(sale.total || 0);
     return acc;
   }, {});
 
-  // Add appointment revenue to the chart
-  (completedAppointments.chart || []).forEach(({ date, value }) => {
-    salesByDate[date] = (salesByDate[date] || 0) + value;
-  });
-
-  const salesChart = Object.entries(salesByDate)
-    .map(([date, value]) => ({
-      date,
-      value: Number(value),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const salesChart = Object.keys(salesByDate).map((date) => ({
+    date,
+    value: salesByDate[date],
+  }));
 
   return {
     totalRevenue,
@@ -278,325 +214,96 @@ async function generateRevenueReport(supabase, userId, formattedStartDate, forma
   };
 }
 
-// Generate products report
-async function generateProductsReport(supabase, userId, formattedStartDate, formattedEndDate, exportFormat) {
-  const { data: saleItemsData, error: saleItemsError } = await supabase
-    .from("sale_items")
+async function generateServicesReport(supabase, userId: string, startDate: string, endDate: string): Promise<ReportMetrics> {
+  const { data: saleItems, error: saleItemsError } = await supabase
+    .from('sale_items')
     .select(`
       *,
-      sales!inner(id,sale_date,user_id),
-      products(name)
+      sales!inner(*),
+      services(*)
     `)
-    .eq("sales.user_id", userId)
-    .is("service_id", null)
-    .not("product_id", "is", null)
-    .gte("sales.sale_date", formattedStartDate)
-    .lte("sales.sale_date", formattedEndDate);
+    .eq('sales.user_id', userId)
+    .gte('sales.sale_date', startDate)
+    .lte('sales.sale_date', endDate)
+    .eq('sales.type', 'service')
+    .not('service_id', 'is', null);
 
-  if (saleItemsError) throw saleItemsError;
-
-  if (!saleItemsData || saleItemsData.length === 0) {
-    return {
-      topProducts: [],
-      totalItems: 0,
-      exportFormat
-    };
+  if (saleItemsError) {
+    throw new Error(`Error fetching service sales: ${saleItemsError.message}`);
   }
 
-  const productSales = saleItemsData.reduce((acc, item) => {
-    const productId = item.product_id;
-    if (!productId) return acc;
+  const servicesData = {};
+  
+  (saleItems || []).forEach(item => {
+    if (!item.service_id || !item.services) return;
     
-    const productName = item.products?.name || "Produto desconhecido";
-    
-    if (!acc[productId]) {
-      acc[productId] = {
-        id: productId,
-        name: productName,
+    if (!servicesData[item.service_id]) {
+      servicesData[item.service_id] = {
+        id: item.service_id,
+        name: item.services.name,
         quantity: 0,
         revenue: 0
       };
     }
     
-    acc[productId].quantity += item.quantity || 0;
-    acc[productId].revenue += ((item.price || 0) * (item.quantity || 0));
-    
-    return acc;
-  }, {});
+    servicesData[item.service_id].quantity += item.quantity;
+    servicesData[item.service_id].revenue += Number(item.price) * item.quantity;
+  });
 
-  const topProducts = Object.values(productSales)
-    .sort((a, b) => b.quantity - a.quantity)
+  const topServices = Object.values(servicesData)
+    .sort((a: any, b: any) => b.revenue - a.revenue)
     .slice(0, 10);
 
   return {
-    topProducts,
-    totalItems: saleItemsData.length,
-    exportFormat
+    topServices: topServices as any[],
+    totalRevenue: (topServices as any[]).reduce((sum, service) => sum + service.revenue, 0),
+    totalItems: (topServices as any[]).reduce((sum, service) => sum + service.quantity, 0)
   };
 }
 
-// Generate services report
-async function generateServicesReport(supabase, userId, formattedStartDate, formattedEndDate, exportFormat) {
-  const { data: serviceItemsData, error: serviceItemsError } = await supabase
-    .from("sale_items")
+async function generateProductsReport(supabase, userId: string, startDate: string, endDate: string): Promise<ReportMetrics> {
+  const { data: saleItems, error: saleItemsError } = await supabase
+    .from('sale_items')
     .select(`
       *,
-      sales!inner(id,sale_date,user_id),
-      services(name)
+      sales!inner(*),
+      products(*)
     `)
-    .eq("sales.user_id", userId)
-    .is("product_id", null)
-    .not("service_id", "is", null)
-    .gte("sales.sale_date", formattedStartDate)
-    .lte("sales.sale_date", formattedEndDate);
+    .eq('sales.user_id', userId)
+    .gte('sales.sale_date', startDate)
+    .lte('sales.sale_date', endDate)
+    .eq('sales.type', 'product')
+    .not('product_id', 'is', null);
 
-  if (serviceItemsError) throw serviceItemsError;
-
-  // Fetch completed appointments for services report
-  const { data: appointments, error: apptsError } = await supabase
-    .from("appointments")
-    .select(`
-      id, service_id, date, 
-      services(id, name, price)
-    `)
-    .eq("user_id", userId)
-    .eq("status", "completed")
-    .gte("date", formattedStartDate ? new Date(formattedStartDate).toISOString().split('T')[0] : null)
-    .lte("date", formattedEndDate ? new Date(formattedEndDate).toISOString().split('T')[0] : null);
-
-  if (apptsError) throw apptsError;
-  
-  // Filter out appointments that are already in sales
-  const { data: salesWithAppointments } = await supabase
-    .from("sales")
-    .select("appointment_id")
-    .eq("user_id", userId)
-    .not("appointment_id", "is", null);
-    
-  const processedAppointmentIds = salesWithAppointments 
-    ? salesWithAppointments.map(sale => sale.appointment_id)
-    : [];
-    
-  const unprocessedAppointments = appointments 
-    ? appointments.filter(appt => !processedAppointmentIds.includes(appt.id))
-    : [];
-  
-  // Convert appointment services to the format needed for report
-  const completedServiceItems = [];
-  
-  for (const appt of unprocessedAppointments) {
-    if (!appt.service_id || !appt.services) continue;
-    
-    completedServiceItems.push({
-      service_id: appt.service_id,
-      services: { name: appt.services.name },
-      quantity: 1,
-      price: Number(appt.services.price || 0),
-    });
+  if (saleItemsError) {
+    throw new Error(`Error fetching product sales: ${saleItemsError.message}`);
   }
 
-  // Combine service items from sales and completed appointments
-  const allServiceItems = [...(serviceItemsData || []), ...completedServiceItems];
-
-  if (allServiceItems.length === 0) {
-    return {
-      topServices: [],
-      totalItems: 0,
-      exportFormat
-    };
-  }
-
-  const serviceSales = allServiceItems.reduce((acc, item) => {
-    const serviceId = item.service_id;
-    if (!serviceId) return acc;
+  const productsData = {};
+  
+  (saleItems || []).forEach(item => {
+    if (!item.product_id || !item.products) return;
     
-    const serviceName = item.services?.name || "Serviço desconhecido";
-    
-    if (!acc[serviceId]) {
-      acc[serviceId] = {
-        id: serviceId,
-        name: serviceName,
+    if (!productsData[item.product_id]) {
+      productsData[item.product_id] = {
+        id: item.product_id,
+        name: item.products.name,
         quantity: 0,
         revenue: 0
       };
     }
     
-    acc[serviceId].quantity += item.quantity || 1;
-    acc[serviceId].revenue += ((item.price || 0) * (item.quantity || 1));
-    
-    return acc;
-  }, {});
+    productsData[item.product_id].quantity += item.quantity;
+    productsData[item.product_id].revenue += Number(item.price) * item.quantity;
+  });
 
-  const topServices = Object.values(serviceSales)
-    .sort((a, b) => b.quantity - a.quantity)
+  const topProducts = Object.values(productsData)
+    .sort((a: any, b: any) => b.revenue - a.revenue)
     .slice(0, 10);
 
   return {
-    topServices,
-    totalItems: allServiceItems.length,
-    exportFormat
+    topProducts: topProducts as any[],
+    totalRevenue: (topProducts as any[]).reduce((sum, product) => sum + product.revenue, 0),
+    totalItems: (topProducts as any[]).reduce((sum, product) => sum + product.quantity, 0)
   };
-}
-
-// Generate clients report
-async function generateClientsReport(supabase, userId, formattedStartDate, formattedEndDate, exportFormat) {
-  const { data: clientSalesData, error: clientSalesError } = await supabase
-    .from("sales")
-    .select(`
-      *,
-      clients(id, name)
-    `)
-    .eq("user_id", userId)
-    .not("client_id", "is", null)
-    .gte("sale_date", formattedStartDate)
-    .lte("sale_date", formattedEndDate);
-
-  if (clientSalesError) throw clientSalesError;
-
-  const { data: clientAppts, error: clientApptsError } = await supabase
-    .from("appointments")
-    .select(`
-      id, date, service_id, 
-      pets(client_id),
-      pets!inner(clients(id, name))
-    `)
-    .eq("user_id", userId)
-    .eq("status", "completed")
-    .gte("date", formattedStartDate ? new Date(formattedStartDate).toISOString().split('T')[0] : null)
-    .lte("date", formattedEndDate ? new Date(formattedEndDate).toISOString().split('T')[0] : null);
-
-  if (clientApptsError) throw clientApptsError;
-  
-  // Filter out appointments already in sales
-  const { data: salesWithAppointments } = await supabase
-    .from("sales")
-    .select("appointment_id")
-    .eq("user_id", userId)
-    .not("appointment_id", "is", null);
-    
-  const processedAppointmentIds = salesWithAppointments 
-    ? salesWithAppointments.map(sale => sale.appointment_id)
-    : [];
-    
-  const unprocessedAppointments = clientAppts 
-    ? clientAppts.filter(appt => !processedAppointmentIds.includes(appt.id))
-    : [];
-
-  // Calculate revenue for unprocessed appointments
-  const clientApptsRevenue = [];
-  
-  for (const appt of unprocessedAppointments) {
-    if (!appt.service_id || !appt.pets?.client_id) continue;
-    
-    const { data: service } = await supabase
-      .from("services")
-      .select("price")
-      .eq("id", appt.service_id)
-      .maybeSingle();
-      
-    if (service && service.price) {
-      clientApptsRevenue.push({
-        client_id: appt.pets.client_id,
-        clients: appt.pets.clients,
-        total: Number(service.price),
-      });
-    }
-  }
-
-  const allClientData = [...(clientSalesData || []), ...clientApptsRevenue];
-
-  if (allClientData.length === 0) {
-    return {
-      topClients: [],
-      totalClients: 0,
-      totalVisits: 0,
-      exportFormat
-    };
-  }
-
-  const clientSpending = allClientData.reduce((acc, item) => {
-    const clientId = item.client_id;
-    if (!clientId || !item.clients) return acc;
-    
-    const clientName = item.clients?.name || "Cliente desconhecido";
-    
-    if (!acc[clientId]) {
-      acc[clientId] = {
-        id: clientId,
-        name: clientName,
-        visits: 0,
-        spent: 0
-      };
-    }
-    
-    acc[clientId].visits++;
-    acc[clientId].spent += Number(item.total || 0);
-    
-    return acc;
-  }, {});
-
-  const topClients = Object.values(clientSpending)
-    .sort((a, b) => b.spent - a.spent)
-    .slice(0, 10);
-
-  return {
-    topClients,
-    totalClients: Object.keys(clientSpending).length,
-    totalVisits: allClientData.length,
-    exportFormat
-  };
-}
-
-// Add export data to report
-function addExportData(reportData, reportType, exportFormat) {
-  let fileName = "";
-  let fileContent = "";
-
-  switch (reportType) {
-    case "revenue":
-      fileName = `relatorio_faturamento.${exportFormat === "excel" ? "xlsx" : exportFormat}`;
-      fileContent = "Data,Valor\n";
-      (reportData.salesChart || []).forEach((item) => {
-        fileContent += `${item.date},${item.value.toFixed(2).replace(".", ",")}\n`;
-      });
-      break;
-    case "products":
-      fileName = `relatorio_produtos.${exportFormat === "excel" ? "xlsx" : exportFormat}`;
-      fileContent = "Produto,Quantidade,Faturamento\n";
-      (reportData.topProducts || []).forEach((product) => {
-        fileContent += `"${product.name}",${product.quantity},${product.revenue
-          .toFixed(2)
-          .replace(".", ",")}\n`;
-      });
-      break;
-    case "services":
-      fileName = `relatorio_servicos.${exportFormat === "excel" ? "xlsx" : exportFormat}`;
-      fileContent = "Serviço,Quantidade,Faturamento\n";
-      (reportData.topServices || []).forEach((service) => {
-        fileContent += `"${service.name}",${service.quantity},${service.revenue
-          .toFixed(2)
-          .replace(".", ",")}\n`;
-      });
-      break;
-    case "clients":
-      fileName = `relatorio_clientes.${exportFormat === "excel" ? "xlsx" : exportFormat}`;
-      fileContent = "Cliente,Visitas,Total Gasto\n";
-      (reportData.topClients || []).forEach((client) => {
-        fileContent += `"${client.name}",${client.visits},${client.spent
-          .toFixed(2)
-          .replace(".", ",")}\n`;
-      });
-      break;
-  }
-
-  reportData.exportedFile = btoa(unescape(encodeURIComponent(fileContent)));
-  reportData.fileName = fileName;
-  reportData.fileType =
-    exportFormat === "pdf"
-      ? "application/pdf"
-      : exportFormat === "excel" || exportFormat === "xlsx"
-      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      : "text/csv";
-      
-  return reportData;
 }

@@ -228,10 +228,10 @@ const Sales = () => {
     
     const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
     const services = filtered
-      .filter(sale => sale.type === "service" || sale.type === "both")
+      .filter(sale => sale.type === "service")
       .reduce((sum, sale) => sum + Number(sale.total), 0);
     const products = filtered
-      .filter(sale => sale.type === "product" || sale.type === "both")
+      .filter(sale => sale.type === "product")
       .reduce((sum, sale) => sum + Number(sale.total), 0);
     
     setTotalSales(total);
@@ -535,8 +535,10 @@ const Sales = () => {
                     <TableHead>Data</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Subtotal</TableHead>
+                    <TableHead>Desconto</TableHead>
+                    <TableHead>Acréscimo</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -548,15 +550,10 @@ const Sales = () => {
                       <TableCell>
                         {sale.type === "service" && "Serviço"}
                         {sale.type === "product" && "Produto"}
-                        {sale.type === "both" && "Misto"}
                       </TableCell>
-                      <TableCell>
-                        {sale.payment_method === "cash" && "Dinheiro"}
-                        {sale.payment_method === "credit" && "Cartão de Crédito"}
-                        {sale.payment_method === "debit" && "Cartão de Débito"}
-                        {sale.payment_method === "pix" && "PIX"}
-                        {!sale.payment_method && "Não informado"}
-                      </TableCell>
+                      <TableCell>{Number(sale.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell>{Number(sale.discount_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell>{Number(sale.surcharge_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                       <TableCell className="text-right font-medium">
                         {Number(sale.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </TableCell>

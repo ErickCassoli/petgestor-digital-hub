@@ -43,7 +43,7 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
 
   return (
     <>
-      <div className="grid gap-6 md:grid-cols-4 mb-8">
+      <div className="grid gap-6 md:grid-cols-3 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Faturamento Total</CardTitle>
@@ -87,21 +87,6 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
             </div>
             <p className="text-xs text-gray-500 mt-2">
               {Math.round(((data.productsRevenue || 0) / (data.totalRevenue || 1)) * 100) || 0}% do total
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Agendamentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <FileText className="h-5 w-5 text-indigo-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{formatCurrency(data.appointmentsRevenue || 0)}</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {Math.round(((data.appointmentsRevenue || 0) / (data.totalRevenue || 1)) * 100) || 0}% do total
             </p>
           </CardContent>
         </Card>
