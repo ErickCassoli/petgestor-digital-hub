@@ -54,11 +54,12 @@ interface LowStockProduct {
 }
 
 interface AppointmentDataFromDB {
+  id: string;
   date: string;
   time: string;
-  pets: { name: string } | null;
-  clients: { name: string } | null;
-  services: { name: string } | null;
+  pet_id: string;
+  client_id: string;
+  service_id: string;
 }
 
 const Dashboard = () => {
@@ -132,7 +133,6 @@ const Dashboard = () => {
             date,
             time,
             pet_id,
-            client_id,
             service_id
           `)
           .eq('user_id', user.id)
@@ -148,7 +148,6 @@ const Dashboard = () => {
         const formattedAppointments: AppointmentPreview[] = [];
         
         if (appointmentsData && appointmentsData.length > 0) {
-          // Fetch pet names
           for (const appointment of appointmentsData) {
             let petName = 'Sem informação';
             let clientName = 'Sem informação';
@@ -157,21 +156,24 @@ const Dashboard = () => {
             if (appointment.pet_id) {
               const { data: petData } = await supabase
                 .from('pets')
-                .select('name')
+                .select('name, client_id')
                 .eq('id', appointment.pet_id)
                 .single();
                 
-              if (petData) petName = petData.name;
-            }
-            
-            if (appointment.client_id) {
-              const { data: clientData } = await supabase
-                .from('clients')
-                .select('name')
-                .eq('id', appointment.client_id)
-                .single();
+              if (petData) {
+                petName = petData.name;
                 
-              if (clientData) clientName = clientData.name;
+                // Get client name using the client_id from pet
+                if (petData.client_id) {
+                  const { data: clientData } = await supabase
+                    .from('clients')
+                    .select('name')
+                    .eq('id', petData.client_id)
+                    .single();
+                    
+                  if (clientData) clientName = clientData.name;
+                }
+              }
             }
             
             if (appointment.service_id) {
