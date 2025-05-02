@@ -6,6 +6,7 @@ import { Calendar, Users, Package, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { toast as sonnerToast } from "sonner";
 import ClockDateDisplay from "@/components/dashboard/ClockDateDisplay";
 
 interface MetricCardProps {
@@ -72,54 +73,67 @@ const Dashboard = () => {
   const [appointments, setAppointments] = useState<AppointmentPreview[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!user) return;
       
       try {
+        setLoading(true);
+        setError(null);
+        
         // Fetch client count
-        const { count: clientCount } = await supabase
+        const { count: clientCount, error: clientError } = await supabase
           .from('clients')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id);
+          
+        if (clientError) throw clientError;
         
         // Fetch today's appointments
         const today = new Date().toISOString().split('T')[0];
-        const { count: appointmentsToday } = await supabase
+        const { count: appointmentsToday, error: appointmentCountError } = await supabase
           .from('appointments')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('date', today);
+          
+        if (appointmentCountError) throw appointmentCountError;
         
         // Fetch product count
-        const { count: productCount } = await supabase
+        const { count: productCount, error: productError } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id);
+          
+        if (productError) throw productError;
         
         // Fetch monthly sales total
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
         
-        const { data: salesData } = await supabase
+        const { data: salesData, error: salesError } = await supabase
           .from('sales')
           .select('total')
           .eq('user_id', user.id)
           .gte('sale_date', startOfMonth.toISOString());
+          
+        if (salesError) throw salesError;
         
         const monthlySales = salesData?.reduce((sum, sale) => sum + Number(sale.total), 0) || 0;
         
-        // Fetch upcoming appointments - Fixed to ensure we get complete data
-        const { data: upcomingAppointments, error: appointmentsError } = await supabase
+        // Fetch upcoming appointments
+        const { data: appointmentsData, error: appointmentsError } = await supabase
           .from('appointments')
           .select(`
+            id,
             date,
             time,
-            pets:pet_id (name),
-            clients:client_id (name),
-            services:service_id (name)
+            pet_id,
+            client_id,
+            service_id
           `)
           .eq('user_id', user.id)
           .eq('status', 'confirmed')
@@ -128,29 +142,68 @@ const Dashboard = () => {
           .order('time', { ascending: true })
           .limit(4);
         
-        if (appointmentsError) {
-          console.error('Error fetching appointments:', appointmentsError);
-          throw appointmentsError;
+        if (appointmentsError) throw appointmentsError;
+        
+        // Process appointments to get related data
+        const formattedAppointments: AppointmentPreview[] = [];
+        
+        if (appointmentsData && appointmentsData.length > 0) {
+          // Fetch pet names
+          for (const appointment of appointmentsData) {
+            let petName = 'Sem informação';
+            let clientName = 'Sem informação';
+            let serviceName = 'Sem informação';
+            
+            if (appointment.pet_id) {
+              const { data: petData } = await supabase
+                .from('pets')
+                .select('name')
+                .eq('id', appointment.pet_id)
+                .single();
+                
+              if (petData) petName = petData.name;
+            }
+            
+            if (appointment.client_id) {
+              const { data: clientData } = await supabase
+                .from('clients')
+                .select('name')
+                .eq('id', appointment.client_id)
+                .single();
+                
+              if (clientData) clientName = clientData.name;
+            }
+            
+            if (appointment.service_id) {
+              const { data: serviceData } = await supabase
+                .from('services')
+                .select('name')
+                .eq('id', appointment.service_id)
+                .single();
+                
+              if (serviceData) serviceName = serviceData.name;
+            }
+            
+            formattedAppointments.push({
+              pet_name: petName,
+              client_name: clientName,
+              service_name: serviceName,
+              date: appointment.date,
+              time: appointment.time
+            });
+          }
         }
         
-        console.log('Upcoming appointments data:', upcomingAppointments);
-        
-        const formattedAppointments = (upcomingAppointments as unknown as AppointmentDataFromDB[] || []).map(appt => ({
-          pet_name: appt.pets?.name || 'Sem informação',
-          client_name: appt.clients?.name || 'Sem informação',
-          service_name: appt.services?.name || 'Sem informação',
-          date: appt.date,
-          time: appt.time
-        }));
-        
         // Fetch low stock products
-        const { data: lowStockItems } = await supabase
+        const { data: lowStockItems, error: lowStockError } = await supabase
           .from('products')
           .select('name, stock, min_stock')
           .eq('user_id', user.id)
           .lt('stock', 5)
           .order('stock', { ascending: true })
           .limit(4);
+          
+        if (lowStockError) throw lowStockError;
         
         setMetrics({
           clientCount: clientCount || 0,
@@ -163,9 +216,8 @@ const Dashboard = () => {
         setLowStockProducts(lowStockItems || []);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar dados",
+        setError('Ocorreu um erro ao buscar os dados do dashboard.');
+        sonnerToast.error("Erro ao carregar dados", {
           description: "Ocorreu um erro ao buscar os dados do dashboard."
         });
       } finally {
@@ -227,6 +279,13 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <p className="font-medium">{error}</p>
+          <p className="text-sm mt-1">Tente recarregar a página ou entre em contato com o suporte.</p>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {metricCards.map((metric, index) => (
