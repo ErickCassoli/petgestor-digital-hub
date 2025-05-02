@@ -161,7 +161,7 @@ const Appointments = () => {
         .in('date', formattedDates)
         .order("time", { ascending: true });
       
-      if (selectedServiceId) {
+      if (selectedServiceId && selectedServiceId !== "all") {
         query = query.eq('service_id', selectedServiceId);
       }
       
@@ -630,7 +630,10 @@ const Appointments = () => {
         </Tabs>
         
         <div className="flex gap-2 mt-2 sm:mt-0">
-          <Select onValueChange={(value) => setSelectedServiceId(value || null)}>
+          <Select 
+            defaultValue="all"
+            onValueChange={(value) => setSelectedServiceId(value)}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar por serviço" />
             </SelectTrigger>
