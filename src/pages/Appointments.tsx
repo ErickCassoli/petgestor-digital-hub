@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -636,7 +635,7 @@ const Appointments = () => {
               <SelectValue placeholder="Filtrar por serviço" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os serviços</SelectItem>
+              <SelectItem value="all">Todos os serviços</SelectItem>
               {services.map((service) => (
                 <SelectItem key={service.id} value={service.id}>
                   {service.name}
