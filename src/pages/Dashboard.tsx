@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { Calendar, Users, Package, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import ClockDateDisplay from "@/components/dashboard/ClockDateDisplay";
 
 interface MetricCardProps {
   title: string;
@@ -109,15 +111,15 @@ const Dashboard = () => {
         
         const monthlySales = salesData?.reduce((sum, sale) => sum + Number(sale.total), 0) || 0;
         
-        // Fetch upcoming appointments
-        const { data: upcomingAppointments } = await supabase
+        // Fetch upcoming appointments - Fixed to ensure we get complete data
+        const { data: upcomingAppointments, error: appointmentsError } = await supabase
           .from('appointments')
           .select(`
             date,
             time,
-            pets (name),
-            clients (name),
-            services (name)
+            pets:pet_id (name),
+            clients:client_id (name),
+            services:service_id (name)
           `)
           .eq('user_id', user.id)
           .eq('status', 'confirmed')
@@ -126,10 +128,17 @@ const Dashboard = () => {
           .order('time', { ascending: true })
           .limit(4);
         
+        if (appointmentsError) {
+          console.error('Error fetching appointments:', appointmentsError);
+          throw appointmentsError;
+        }
+        
+        console.log('Upcoming appointments data:', upcomingAppointments);
+        
         const formattedAppointments = (upcomingAppointments as unknown as AppointmentDataFromDB[] || []).map(appt => ({
-          pet_name: appt.pets?.name || '',
-          client_name: appt.clients?.name || '',
-          service_name: appt.services?.name || '',
+          pet_name: appt.pets?.name || 'Sem informação',
+          client_name: appt.clients?.name || 'Sem informação',
+          service_name: appt.services?.name || 'Sem informação',
           date: appt.date,
           time: appt.time
         }));
@@ -207,13 +216,16 @@ const Dashboard = () => {
             Bem-vindo, {profile?.name || user?.email}. Aqui está um resumo do seu petshop.
           </p>
         </div>
-        {isInTrialPeriod && (
-          <div className="mt-4 sm:mt-0 bg-amber-50 text-amber-800 px-4 py-2 rounded-lg border border-amber-200 text-sm">
-            <span className="font-medium">Período de avaliação:</span> {profile?.trial_end_date ? 
-              `${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
-              '7 dias'}
-          </div>
-        )}
+        <div className="flex flex-col sm:flex-row gap-4 mt-4 sm:mt-0">
+          <ClockDateDisplay />
+          {isInTrialPeriod && (
+            <div className="bg-amber-50 text-amber-800 px-4 py-2 rounded-lg border border-amber-200 text-sm">
+              <span className="font-medium">Período de avaliação:</span> {profile?.trial_end_date ? 
+                `${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
+                '7 dias'}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
