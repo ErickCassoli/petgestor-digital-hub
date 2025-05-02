@@ -12,13 +12,29 @@ interface SaleDetailsProps {
 }
 
 export function SaleDetails({ saleId, items, isOpen, onClose }: SaleDetailsProps) {
+  // Count items by type
+  const productCount = items.filter(item => item.type === 'product').length;
+  const serviceCount = items.filter(item => item.type === 'service').length;
+  
+  // Get type labels for the header
+  const getTypeLabel = () => {
+    if (productCount > 0 && serviceCount > 0) {
+      return "Produtos e Serviços";
+    } else if (productCount > 0) {
+      return "Produtos";
+    } else if (serviceCount > 0) {
+      return "Serviços";
+    }
+    return "Itens";
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Detalhes da Venda</SheetTitle>
           <SheetDescription>
-            Venda #{saleId && saleId.substring(0, 8)}
+            Venda #{saleId && saleId.substring(0, 8)} • {getTypeLabel()}
           </SheetDescription>
         </SheetHeader>
         <div className="py-4">
@@ -29,8 +45,11 @@ export function SaleDetails({ saleId, items, isOpen, onClose }: SaleDetailsProps
                 <div className="divide-y">
                   {items.map((item) => (
                     <div key={item.id} className="p-3">
-                      <div className="font-medium">
+                      <div className="font-medium flex items-center gap-2">
                         {item.products?.name || item.services?.name || "Item"}
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
+                          {item.type === 'product' ? 'Produto' : 'Serviço'}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>

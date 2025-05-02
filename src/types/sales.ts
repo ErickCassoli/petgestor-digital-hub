@@ -3,7 +3,6 @@ export interface Sale {
   id: string;
   sale_date: string;
   client_id: string | null;
-  type: "service" | "product";
   total: number;
   subtotal: number | null;
   discount_amount: number | null;
@@ -21,6 +20,7 @@ export interface SaleItem {
   service_id: string | null;
   quantity: number;
   price: number;
+  type: "product" | "service";
   products?: {
     name: string;
   } | null;

@@ -127,28 +127,55 @@ export default function Sales() {
     const filtered = sales.filter(sale => {
       const saleDate = new Date(sale.sale_date);
       const dateMatch = startDate ? saleDate >= startDate : true;
-      const typeMatch = selectedType === "all" || sale.type === selectedType;
       
       const searchMatch = !searchTerm.trim() || 
         (sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
          sale.id.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      return dateMatch && typeMatch && searchMatch;
+      return dateMatch && searchMatch;
     });
     
     setFilteredSales(filtered);
     
     const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
-    const services = filtered
-      .filter(sale => sale.type === "service")
-      .reduce((sum, sale) => sum + Number(sale.total), 0);
-    const products = filtered
-      .filter(sale => sale.type === "product")
-      .reduce((sum, sale) => sum + Number(sale.total), 0);
-    
     setTotalSales(total);
-    setTotalServices(services);
-    setTotalProducts(products);
+    
+    // Calculate service and product totals from sale_items
+    const calculateItemTotals = async () => {
+      if (!user || !filtered.length) {
+        setTotalServices(0);
+        setTotalProducts(0);
+        return;
+      }
+      
+      try {
+        const saleIds = filtered.map(sale => sale.id);
+        
+        const { data: saleItems, error } = await supabase
+          .from('sale_items')
+          .select('*')
+          .in('sale_id', saleIds);
+        
+        if (error) throw error;
+        
+        const services = saleItems
+          .filter(item => item.type === 'service')
+          .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+        
+        const products = saleItems
+          .filter(item => item.type === 'product')
+          .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+        
+        setTotalServices(services);
+        setTotalProducts(products);
+      } catch (error) {
+        console.error('Error calculating totals:', error);
+        setTotalServices(0);
+        setTotalProducts(0);
+      }
+    };
+    
+    calculateItemTotals();
   }, [sales, selectedPeriod, selectedType, searchTerm]);
 
   const handleDeleteSale = async (saleId: string) => {
@@ -196,18 +223,17 @@ export default function Sales() {
     setExportLoading(true);
     
     try {
-      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total\n";
+      let csvContent = "Data,Cliente,Subtotal,Desconto,Acréscimo,Valor Total\n";
       
       filteredSales.forEach(sale => {
         const date = format(new Date(sale.sale_date), 'dd/MM/yyyy');
         const client = sale.clients?.name || "Cliente não informado";
-        const type = sale.type === "service" ? "Serviço" : "Produto";
         const subtotal = Number(sale.subtotal || 0).toFixed(2).replace('.', ',');
         const discount = Number(sale.discount_amount || 0).toFixed(2).replace('.', ',');
         const surcharge = Number(sale.surcharge_amount || 0).toFixed(2).replace('.', ',');
         const value = Number(sale.total).toFixed(2).replace('.', ',');
         
-        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${value}\n`;
+        csvContent += `${date},"${client}",${subtotal},${discount},${surcharge},${value}\n`;
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

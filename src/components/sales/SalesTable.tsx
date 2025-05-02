@@ -30,7 +30,6 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
           <TableRow>
             <TableHead>Data</TableHead>
             <TableHead>Cliente</TableHead>
-            <TableHead>Tipo</TableHead>
             <TableHead>Subtotal</TableHead>
             <TableHead>Desconto</TableHead>
             <TableHead>Acréscimo</TableHead>
@@ -43,10 +42,6 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
             <TableRow key={sale.id}>
               <TableCell>{formatDate(sale.sale_date)}</TableCell>
               <TableCell>{sale.clients?.name || "Cliente não informado"}</TableCell>
-              <TableCell>
-                {sale.type === "service" && "Serviço"}
-                {sale.type === "product" && "Produto"}
-              </TableCell>
               <TableCell>{Number(sale.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
               <TableCell>{Number(sale.discount_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
               <TableCell>{Number(sale.surcharge_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
