@@ -154,6 +154,20 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
 
     setLoading(true);
     try {
+      // Determine sale type based on items
+      const hasProducts = selectedItems.some(item => item.type === 'product');
+      const hasServices = selectedItems.some(item => item.type === 'service');
+      
+      // Set the type based on what's in the sale
+      let saleType: "product" | "service" | "mixed";
+      if (hasProducts && hasServices) {
+        saleType = "mixed";
+      } else if (hasProducts) {
+        saleType = "product";
+      } else {
+        saleType = "service";
+      }
+
       // Create the sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
@@ -164,7 +178,8 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           subtotal: subtotal,
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
-          sale_date: new Date().toISOString()
+          sale_date: new Date().toISOString(),
+          type: saleType // Add the type field
         })
         .select()
         .single();

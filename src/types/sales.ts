@@ -7,6 +7,7 @@ export interface Sale {
   subtotal: number | null;
   discount_amount: number | null;
   surcharge_amount: number | null;
+  type: "mixed" | "product" | "service"; // Added type field
   clients?: {
     id: string;
     name: string;

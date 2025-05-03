@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,7 +77,13 @@ export default function Sales() {
       
       if (error) throw error;
       
-      setSaleDetails(data as SaleItem[]);
+      // Ensure each item has a type field as expected by the SaleItem interface
+      const typedData: SaleItem[] = data.map(item => ({
+        ...item,
+        type: item.product_id ? 'product' : 'service'
+      }));
+      
+      setSaleDetails(typedData);
       setShowSaleDetails(true);
     } catch (error) {
       console.error('Error fetching sale details:', error);
@@ -159,11 +164,11 @@ export default function Sales() {
         if (error) throw error;
         
         const services = saleItems
-          .filter(item => item.type === 'service')
+          .filter(item => item.service_id !== null || (item.type === 'service'))
           .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
         
         const products = saleItems
-          .filter(item => item.type === 'product')
+          .filter(item => item.product_id !== null || (item.type === 'product'))
           .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
         
         setTotalServices(services);

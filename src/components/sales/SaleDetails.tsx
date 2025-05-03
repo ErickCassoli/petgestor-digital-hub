@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, X } from "lucide-react";
 import { type SaleItem } from "@/types/sales";
+import { Badge } from "@/components/ui/badge";
 
 interface SaleDetailsProps {
   saleId: string | null;
@@ -47,7 +48,11 @@ export function SaleDetails({ saleId, items, isOpen, onClose }: SaleDetailsProps
                     <div key={item.id} className="p-3">
                       <div className="font-medium flex items-center gap-2">
                         {item.products?.name || item.services?.name || "Item"}
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          item.type === 'product' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
                           {item.type === 'product' ? 'Produto' : 'Serviço'}
                         </span>
                       </div>
