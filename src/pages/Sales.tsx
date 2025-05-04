@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,11 +77,12 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Make sure each item has the type property
-      const typedData: SaleItem[] = data.map(item => ({
+      // Make sure each item has the correct type property cast to the expected literal type
+      const typedData = data.map(item => ({
         ...item,
-        type: item.type || (item.product_id ? 'product' : 'service')
-      }));
+        // Ensure type is either 'product' or 'service', defaulting based on which ID is present
+        type: item.type === 'product' || item.product_id ? 'product' : 'service'
+      })) as SaleItem[];
       
       setSaleDetails(typedData);
       setShowSaleDetails(true);
