@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,7 +100,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   // Calculate total with discounts and surcharges
-  const totalAmount = subtotal - discountAmount + surchargeAmount;
+  const totalAmount = Math.max(0, subtotal - discountAmount) + surchargeAmount;
 
   const handleAddItem = (item: Product | Service, type: 'product' | 'service') => {
     // Check if item already exists in the cart
@@ -168,7 +167,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         saleType = "service";
       }
 
-      // Create the sale record
+      // Create the sale record with correct total calculation
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({

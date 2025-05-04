@@ -59,8 +59,10 @@ export default function DiscountSurchargeForm({
     }
   };
 
-  // Calculate total with current inputs
-  const total = subtotal - (parseFloat(discountValue) || 0) + (parseFloat(surchargeValue) || 0);
+  // Calculate total with current inputs - ensure discount doesn't make total negative
+  const discountAmt = parseFloat(discountValue) || 0;
+  const surchargeAmt = parseFloat(surchargeValue) || 0;
+  const total = Math.max(0, subtotal - discountAmt) + surchargeAmt;
   
   // Check if discount is valid
   const isDiscountValid = (parseFloat(discountValue) || 0) <= subtotal;

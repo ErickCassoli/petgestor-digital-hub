@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,7 +146,8 @@ export default function Sales() {
     
     setFilteredSales(filtered);
     
-    const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
+    // Ensure totals are calculated correctly and can't be negative
+    const total = filtered.reduce((sum, sale) => sum + Math.max(0, Number(sale.total)), 0);
     setTotalSales(total);
     
     // Calculate service and product totals from sale_items
