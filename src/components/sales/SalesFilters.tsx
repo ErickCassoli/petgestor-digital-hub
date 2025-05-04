@@ -1,8 +1,16 @@
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowUpDown, Calendar, Check, ChevronDown, FileSpreadsheet, Loader2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Calendar, Download, Filter, Loader2, Search } from "lucide-react";
 
 interface SalesFiltersProps {
   searchTerm: string;
@@ -31,91 +39,79 @@ export function SalesFilters({
   getPeriodLabel,
   getTypeLabel
 }: SalesFiltersProps) {
-  const periodOptions = [
-    { label: "Hoje", value: "today" },
-    { label: "Esta semana", value: "week" },
-    { label: "Este mês", value: "month" },
-    { label: "Último mês", value: "lastMonth" }
-  ];
-
-  const typeOptions = [
-    { label: "Todos", value: "all" },
-    { label: "Serviços", value: "service" },
-    { label: "Produtos", value: "product" }
-  ];
-
   return (
-    <div className="flex flex-wrap gap-2">
-      <div className="relative w-full sm:w-auto max-w-xs">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar cliente..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-8 w-full"
-          />
-        </div>
+    <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+      <div className="relative w-full sm:w-auto">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+        <Input
+          placeholder="Buscar venda..."
+          className="pl-8 w-full"
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
       </div>
-      
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex justify-between">
+          <Button variant="outline" className="flex-1 sm:flex-none justify-between">
             <Calendar className="h-4 w-4 mr-2" />
-            {getPeriodLabel()}
-            <ChevronDown className="h-4 w-4 ml-2" />
+            <span>{getPeriodLabel()}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {periodOptions.map((option) => (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => onPeriodChange(option.value)}
-              className="flex items-center justify-between"
-            >
-              {option.label}
-              {selectedPeriod === option.value && (
-                <Check className="h-4 w-4 ml-2" />
-              )}
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Filtrar por período</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem onSelect={() => onPeriodChange("today")}>
+              Hoje
             </DropdownMenuItem>
-          ))}
+            <DropdownMenuItem onSelect={() => onPeriodChange("week")}>
+              Esta semana
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onPeriodChange("month")}>
+              Este mês
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onPeriodChange("lastMonth")}>
+              Último mês
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex justify-between">
-            <ArrowUpDown className="h-4 w-4 mr-2" />
-            {getTypeLabel()}
-            <ChevronDown className="h-4 w-4 ml-2" />
+          <Button variant="outline" className="flex-1 sm:flex-none justify-between">
+            <Filter className="h-4 w-4 mr-2" />
+            <span>{getTypeLabel()}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {typeOptions.map((option) => (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => onTypeChange(option.value)}
-              className="flex items-center justify-between"
-            >
-              {option.label}
-              {selectedType === option.value && (
-                <Check className="h-4 w-4 ml-2" />
-              )}
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Filtrar por tipo</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem onSelect={() => onTypeChange("all")}>
+              Todos
             </DropdownMenuItem>
-          ))}
+            <DropdownMenuItem onSelect={() => onTypeChange("service")}>
+              Serviços
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onTypeChange("product")}>
+              Produtos
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onTypeChange("mixed")}>
+              Mistos
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      
       <Button
         variant="outline"
-        className="flex items-center"
         onClick={onExport}
         disabled={exportLoading || !hasData}
+        className="flex-1 sm:flex-none"
       >
         {exportLoading ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
         ) : (
-          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          <Download className="h-4 w-4 mr-2" />
         )}
         Exportar
       </Button>

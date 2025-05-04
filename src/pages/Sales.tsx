@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,10 +78,10 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Map the data to include the type property based on product_id or service_id
+      // Make sure each item has the type property
       const typedData: SaleItem[] = data.map(item => ({
         ...item,
-        type: item.product_id ? 'product' : 'service'
+        type: item.type || (item.product_id ? 'product' : 'service')
       }));
       
       setSaleDetails(typedData);
@@ -137,7 +138,9 @@ export default function Sales() {
         (sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
          sale.id.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      return dateMatch && searchMatch;
+      const typeMatch = selectedType === "all" || sale.type === selectedType;
+      
+      return dateMatch && searchMatch && typeMatch;
     });
     
     setFilteredSales(filtered);
@@ -145,7 +148,7 @@ export default function Sales() {
     const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
     setTotalSales(total);
     
-    // Determine type based on if the item has a product_id or service_id
+    // Calculate service and product totals from sale_items
     const calculateItemTotals = async () => {
       if (!user || !filtered.length) {
         setTotalServices(0);
@@ -164,11 +167,11 @@ export default function Sales() {
         if (error) throw error;
         
         const services = saleItems
-          .filter(item => item.service_id !== null)
+          .filter(item => item.type === 'service' || item.service_id !== null)
           .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
         
         const products = saleItems
-          .filter(item => item.product_id !== null)
+          .filter(item => item.type === 'product' || item.product_id !== null)
           .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
         
         setTotalServices(services);
@@ -228,17 +231,18 @@ export default function Sales() {
     setExportLoading(true);
     
     try {
-      let csvContent = "Data,Cliente,Subtotal,Desconto,Acréscimo,Valor Total\n";
+      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total\n";
       
       filteredSales.forEach(sale => {
         const date = format(new Date(sale.sale_date), 'dd/MM/yyyy');
         const client = sale.clients?.name || "Cliente não informado";
+        const type = sale.type === 'product' ? 'Produto' : sale.type === 'service' ? 'Serviço' : 'Misto';
         const subtotal = Number(sale.subtotal || 0).toFixed(2).replace('.', ',');
         const discount = Number(sale.discount_amount || 0).toFixed(2).replace('.', ',');
         const surcharge = Number(sale.surcharge_amount || 0).toFixed(2).replace('.', ',');
         const value = Number(sale.total).toFixed(2).replace('.', ',');
         
-        csvContent += `${date},"${client}",${subtotal},${discount},${surcharge},${value}\n`;
+        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${value}\n`;
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -283,7 +287,8 @@ export default function Sales() {
     const typeOptions = [
       { label: "Todos", value: "all" },
       { label: "Serviços", value: "service" },
-      { label: "Produtos", value: "product" }
+      { label: "Produtos", value: "product" },
+      { label: "Mistos", value: "mixed" }
     ];
     const option = typeOptions.find(opt => opt.value === selectedType);
     return option ? option.label : "Tipo";

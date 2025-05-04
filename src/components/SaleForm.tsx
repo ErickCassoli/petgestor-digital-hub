@@ -179,7 +179,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
           sale_date: new Date().toISOString(),
-          type: saleType // Add the type field
+          type: saleType
         })
         .select()
         .single();
@@ -193,7 +193,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         quantity: item.quantity,
         product_id: item.type === 'product' ? item.itemId : null,
         service_id: item.type === 'service' ? item.itemId : null,
-        type: item.type // Add the type field
+        type: item.type
       }));
 
       const { error: itemsError } = await supabase
