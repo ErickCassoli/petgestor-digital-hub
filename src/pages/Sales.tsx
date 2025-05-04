@@ -77,7 +77,7 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Ensure each item has a type field as expected by the SaleItem interface
+      // Map the data to include the type property based on product_id or service_id
       const typedData: SaleItem[] = data.map(item => ({
         ...item,
         type: item.product_id ? 'product' : 'service'
@@ -145,7 +145,7 @@ export default function Sales() {
     const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
     setTotalSales(total);
     
-    // Calculate service and product totals from sale_items
+    // Determine type based on if the item has a product_id or service_id
     const calculateItemTotals = async () => {
       if (!user || !filtered.length) {
         setTotalServices(0);
@@ -164,11 +164,11 @@ export default function Sales() {
         if (error) throw error;
         
         const services = saleItems
-          .filter(item => item.service_id !== null || (item.type === 'service'))
+          .filter(item => item.service_id !== null)
           .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
         
         const products = saleItems
-          .filter(item => item.product_id !== null || (item.type === 'product'))
+          .filter(item => item.product_id !== null)
           .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
         
         setTotalServices(services);

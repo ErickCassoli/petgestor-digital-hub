@@ -193,7 +193,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         quantity: item.quantity,
         product_id: item.type === 'product' ? item.itemId : null,
         service_id: item.type === 'service' ? item.itemId : null,
-        type: item.type
+        type: item.type // Add the type field
       }));
 
       const { error: itemsError } = await supabase
