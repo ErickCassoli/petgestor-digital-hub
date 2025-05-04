@@ -80,8 +80,8 @@ export default function Sales() {
       // Make sure each item has the correct type property cast to the expected literal type
       const typedData = data.map(item => ({
         ...item,
-        // Ensure type is either 'product' or 'service', defaulting based on which ID is present
-        type: item.type === 'product' || item.product_id ? 'product' : 'service'
+        // Ensure type is properly cast to the literal type
+        type: (item.type === 'product' || item.product_id) && !item.service_id ? 'product' : 'service'
       })) as SaleItem[];
       
       setSaleDetails(typedData);

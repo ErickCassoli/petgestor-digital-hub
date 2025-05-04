@@ -188,14 +188,14 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
 
       if (saleError) throw saleError;
 
-      // Create sale items
+      // Create sale items - Ensure each item has the correct type literal
       const saleItems = selectedItems.map(item => ({
         sale_id: saleData.id,
         price: item.price,
         quantity: item.quantity,
         product_id: item.type === 'product' ? item.itemId : null,
         service_id: item.type === 'service' ? item.itemId : null,
-        type: item.type
+        type: item.type as 'product' | 'service' // Ensure correct type is passed
       }));
 
       const { error: itemsError } = await supabase
