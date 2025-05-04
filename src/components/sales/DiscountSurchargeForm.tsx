@@ -59,13 +59,16 @@ export default function DiscountSurchargeForm({
     }
   };
 
-  // Calculate total with current inputs - ensure discount doesn't make total negative
+  // Calculate discount and surcharge amounts
   const discountAmt = parseFloat(discountValue) || 0;
   const surchargeAmt = parseFloat(surchargeValue) || 0;
-  const total = Math.max(0, subtotal - discountAmt) + surchargeAmt;
+  
+  // Calculate total properly: subtotal - discount + surcharge
+  // Note: We don't use Math.max here because we want to show the actual calculation
+  const total = subtotal - discountAmt + surchargeAmt;
   
   // Check if discount is valid
-  const isDiscountValid = (parseFloat(discountValue) || 0) <= subtotal;
+  const isDiscountValid = discountAmt <= subtotal;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -103,11 +106,11 @@ export default function DiscountSurchargeForm({
         </div>
         <div className="flex justify-between text-sm text-red-600">
           <span>Desconto:</span>
-          <span className="font-mono">-{formatCurrency(parseFloat(discountValue) || 0)}</span>
+          <span className="font-mono">-{formatCurrency(discountAmt)}</span>
         </div>
         <div className="flex justify-between text-sm text-green-600">
           <span>Acréscimo:</span>
-          <span className="font-mono">+{formatCurrency(parseFloat(surchargeValue) || 0)}</span>
+          <span className="font-mono">+{formatCurrency(surchargeAmt)}</span>
         </div>
         <div className="flex justify-between font-medium border-t pt-2 mt-2">
           <span>Total:</span>

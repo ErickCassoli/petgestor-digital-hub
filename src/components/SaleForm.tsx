@@ -99,8 +99,8 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   // Calculate subtotal
   const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Calculate total with discounts and surcharges
-  const totalAmount = Math.max(0, subtotal - discountAmount) + surchargeAmount;
+  // Calculate total with discounts and surcharges - proper calculation
+  const totalAmount = subtotal - discountAmount + surchargeAmount;
 
   const handleAddItem = (item: Product | Service, type: 'product' | 'service') => {
     // Check if item already exists in the cart
@@ -167,13 +167,16 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         saleType = "service";
       }
 
+      // Calculate the final total amount correctly
+      const finalTotal = subtotal - discountAmount + surchargeAmount;
+
       // Create the sale record with correct total calculation
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
-          total: totalAmount,
+          total: finalTotal,
           subtotal: subtotal,
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
