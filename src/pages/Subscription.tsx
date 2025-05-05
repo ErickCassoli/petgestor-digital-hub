@@ -6,11 +6,28 @@ import { CheckCircle, AlertCircle, CreditCard, ShieldCheck, Clock, Calendar, Bad
 import { useToast } from "@/components/ui/use-toast";
 import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
 import { SubscriptionStatus } from "@/components/subscription/SubscriptionStatus";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+function useStripePrice() {
+  const [price, setPrice] = useState<{unit_amount: number; currency: string;}|null>(null);
+  useEffect(() => {
+    supabase.functions
+      .invoke("get-subscription-price")
+      .then(({ data, error }) => {
+        if (error) throw error;
+        setPrice(data as any);
+      })
+      .catch(console.error);
+  }, []);
+  return price;
+}
+
 
 const Subscription = () => {
   const { user, isInTrialPeriod, isSubscriptionActive } = useAuth();
   const { toast } = useToast();
+  const price = useStripePrice();
 
   // Check for payment status in URL on component mount
   useEffect(() => {
@@ -69,10 +86,20 @@ const Subscription = () => {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="mb-6">
-                <span className="text-3xl font-bold text-gray-900">R$ 29,90</span>
-                <span className="text-gray-500">/mês</span>
+                {price ? (
+                  <>
+                    <span className="text-3xl font-bold text-gray-900">
+                      {new Intl.NumberFormat("pt-BR", {
+                        style:    "currency",
+                        currency: price.currency.toUpperCase(),
+                      }).format(price.unit_amount / 100)}
+                    </span>
+                    <span className="text-gray-500">/mês</span>
+                  </>
+                ) : (
+                  <span className="text-gray-500 animate-pulse">...</span>
+                )}
               </div>
-
               <ul className="space-y-3 mb-6">
                 <li className="flex">
                   <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />

@@ -5,11 +5,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Lock, AlertTriangle, ChevronRight } from "lucide-react";
 import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
 import { useToast } from "@/components/ui/use-toast";
-import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+
+function useStripePrice() {
+  const [price, setPrice] = useState<{unit_amount: number; currency: string;}|null>(null);
+  useEffect(() => {
+    supabase.functions
+      .invoke("get-subscription-price")
+      .then(({ data, error }) => {
+        if (error) throw error;
+        setPrice(data as any);
+      })
+      .catch(console.error);
+  }, []);
+  return price;
+}
+
 
 const ExpiredSubscription = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const price = useStripePrice();
 
   // Check for payment status in URL on component mount
   useEffect(() => {
@@ -27,7 +44,7 @@ const ExpiredSubscription = () => {
         toast({
           title: "Assinatura realizada com sucesso!",
           description: "Sua assinatura foi processada com sucesso. Você agora tem acesso completo ao PetGestor.",
-          variant: "success"
+          variant: "default"
         });
         // In a real app, you would refresh subscription data here or redirect
       } else if (canceled === "true") {
@@ -70,7 +87,21 @@ const ExpiredSubscription = () => {
           
           <div className="bg-gray-50 p-4 rounded-lg mb-6">
             <h3 className="font-medium text-gray-900 mb-2">Plano completo</h3>
-            <p className="text-2xl font-bold text-petblue-600 mb-2">R$ 29,90<span className="text-base font-normal text-gray-500">/mês</span></p>
+            <div className="mb-6">
+                {price ? (
+                  <>
+                    <span className="text-3xl font-bold text-gray-900">
+                      {new Intl.NumberFormat("pt-BR", {
+                        style:    "currency",
+                        currency: price.currency.toUpperCase(),
+                      }).format(price.unit_amount / 100)}
+                    </span>
+                    <span className="text-gray-500">/mês</span>
+                  </>
+                ) : (
+                  <span className="text-gray-500 animate-pulse">...</span>
+                )}
+              </div>
             <ul className="text-sm text-gray-600 space-y-2 mb-4">
               <li className="flex items-start">
                 <ChevronRight className="h-4 w-4 text-petblue-500 mt-0.5 mr-1 flex-shrink-0" />
