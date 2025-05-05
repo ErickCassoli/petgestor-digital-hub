@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -200,7 +201,7 @@ export default function Sales() {
     };
     
     calculateItemTotals();
-  }, [sales, selectedPeriod, selectedType, searchTerm]);
+  }, [sales, selectedPeriod, selectedType, searchTerm, user]);
 
   const handleDeleteSale = async (saleId: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.")) {
@@ -321,30 +322,34 @@ export default function Sales() {
 
   // Check for payment status in URL on component mount
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const success = url.searchParams.get("success");
-    const canceled = url.searchParams.get("canceled");
-    const saleId = url.searchParams.get("sale_id");
+    const checkPaymentStatus = () => {
+      const url = new URL(window.location.href);
+      const success = url.searchParams.get("success");
+      const canceled = url.searchParams.get("canceled");
+      const saleId = url.searchParams.get("sale_id");
+      
+      // Clear the URL parameters
+      if (success || canceled) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      if (success === "true" && saleId) {
+        toast({
+          title: "Pagamento realizado com sucesso!",
+          description: "O pagamento da venda foi processado com sucesso.",
+        });
+        // Refresh sales data
+        fetchSales();
+      } else if (canceled === "true") {
+        toast({
+          variant: "destructive",
+          title: "Pagamento cancelado",
+          description: "O processo de pagamento foi cancelado.",
+        });
+      }
+    };
     
-    // Clear the URL parameters
-    if (success || canceled) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    
-    if (success === "true" && saleId) {
-      toast({
-        title: "Pagamento realizado com sucesso!",
-        description: "O pagamento da venda foi processado com sucesso.",
-      });
-      // Refresh sales data
-      fetchSales();
-    } else if (canceled === "true") {
-      toast({
-        variant: "destructive",
-        title: "Pagamento cancelado",
-        description: "O processo de pagamento foi cancelado.",
-      });
-    }
+    checkPaymentStatus();
   }, []);
 
   return (
