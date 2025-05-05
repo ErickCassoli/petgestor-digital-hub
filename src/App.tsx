@@ -39,22 +39,25 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    {/* BrowserRouter por cima de tudo que usa navegação */}
+    <BrowserRouter>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <Routes>
-            {/* Public routes */}
+            {/* Home (se for realmente o Index.tsx) */}
             <Route path="/" element={<LandingPage />} />
+            {/* ou, se quiser manter o LandingPage, importe-o aqui */}
+            {/* <Route path="/" element={<LandingPage />} /> */}
+            {/* Publicas */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/expired" element={<ExpiredSubscription />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/UpdatePassword" element={<UpdatePassword />} />
             <Route path="/confirmed-email" element={<ConfirmedEmail />} />
-            
-            {/* Protected routes */}
+            {/* Protegidas */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/clientes" element={<Clients />} />
@@ -65,16 +68,14 @@ const App = () => (
               <Route path="/assinatura" element={<Subscription />} />
               <Route path="/servicos" element={<Services />} />
             </Route>
-            
-            {/* Redirect /admin to /dashboard for convenience */}
+            {/* Conveniência */}
             <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* 404 Not Found route */}
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
