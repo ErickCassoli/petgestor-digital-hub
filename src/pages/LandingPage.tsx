@@ -15,8 +15,12 @@ import {
   Instagram
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
+import TermsOfServiceModal from "@/components/TermsOfServiceModal";
+import CookiesPolicyModal from "@/components/CookiesPolicyModal";
+import { supabase } from "@/integrations/supabase/client";
 
 const features = [
   {
@@ -78,9 +82,23 @@ const steps = [
     description: "Cadastre clientes, agende serviços e gerencie seu petshop com facilidade.",
   },
 ];
+function useStripePrice() {
+  const [price, setPrice] = useState<{ unit_amount: number; currency: string } | null>(null);
 
+  useEffect(() => {
+    supabase.functions.invoke("get-subscription-price")
+      .then(({ data, error }) => {
+        if (error) throw error;
+        setPrice(data as any);
+      })
+      .catch(console.error);
+  }, []);
+
+  return price;
+}
 const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const price = useStripePrice();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -283,6 +301,7 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing Section */}
+      {/* Pricing Section */}
       <section id="pricing" className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
@@ -299,8 +318,21 @@ const LandingPage = () => {
               <div className="bg-petblue-50 px-6 py-8 text-center">
                 <h3 className="text-2xl font-bold text-gray-900">Plano Completo</h3>
                 <div className="mt-4 flex items-baseline justify-center">
-                  <span className="text-4xl md:text-5xl font-bold text-petblue-600">R$29,90</span>
-                  <span className="ml-1 text-xl text-gray-600">/mês</span>
+                  {price ? (
+                    <>
+                      <span className="text-4xl md:text-5xl font-bold text-petblue-600">
+                        {new Intl.NumberFormat("pt-BR", {
+                          style:    "currency",
+                          currency: price.currency.toUpperCase(),
+                        }).format(price.unit_amount / 100)}
+                      </span>
+                      <span className="ml-1 text-xl text-gray-600">/mês</span>
+                    </>
+                  ) : (
+                    <span className="text-4xl md:text-5xl font-bold text-gray-400 animate-pulse">
+                      ...
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="p-6">
@@ -419,9 +451,9 @@ const LandingPage = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Legal</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="footer-link">Termos de Serviço</a></li>
-                <li><a href="#" className="footer-link">Política de Privacidade</a></li>
-                <li><a href="#" className="footer-link">Cookies</a></li>
+              <li><TermsOfServiceModal /></li>
+              <li><PrivacyPolicyModal /></li>
+              <li><CookiesPolicyModal /></li>
               </ul>
             </div>
           </div>

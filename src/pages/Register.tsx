@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import TermsOfServiceModal from "@/components/TermsOfServiceModal";
+import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -192,13 +194,9 @@ const Register = () => {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-500 text-center">
               Ao criar uma conta, você concorda com nossos{" "}
-              <Link to="#" className="text-petblue-600 hover:text-petblue-800">
-                Termos de Serviço
-              </Link>{" "}
-              e{" "}
-              <Link to="#" className="text-petblue-600 hover:text-petblue-800">
-                Política de Privacidade
-              </Link>
+              <TermsOfServiceModal />{" "}
+              e{" "}<PrivacyPolicyModal />
+              
               .
             </p>
           </div>
