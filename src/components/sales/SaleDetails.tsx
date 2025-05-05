@@ -4,15 +4,18 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Loader2, X } from "lucide-react";
 import { type SaleItem } from "@/types/sales";
 import { Badge } from "@/components/ui/badge";
+import { StripeCheckout } from "./StripeCheckout";
+import { Sale } from "@/types/sales";
 
 interface SaleDetailsProps {
   saleId: string | null;
   items: SaleItem[];
   isOpen: boolean;
   onClose: () => void;
+  sale?: Sale | null;
 }
 
-export function SaleDetails({ saleId, items, isOpen, onClose }: SaleDetailsProps) {
+export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetailsProps) {
   // Count items by type
   const productCount = items.filter(item => item.type === 'product').length;
   const serviceCount = items.filter(item => item.type === 'service').length;
@@ -28,6 +31,12 @@ export function SaleDetails({ saleId, items, isOpen, onClose }: SaleDetailsProps
     }
     return "Itens";
   };
+
+  // Calculate total
+  const totalAmount = items.reduce(
+    (sum, item) => sum + (Number(item.price) * item.quantity), 
+    0
+  );
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -70,10 +79,17 @@ export function SaleDetails({ saleId, items, isOpen, onClose }: SaleDetailsProps
                 <div className="p-3 bg-muted/50 font-medium flex justify-between">
                   <span>Total:</span>
                   <span>
-                    {items.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 </div>
               </div>
+              
+              {sale && (
+                <div className="space-y-2">
+                  <StripeCheckout sale={sale} items={items} />
+                </div>
+              )}
+              
               <Button 
                 variant="outline" 
                 className="w-full" 

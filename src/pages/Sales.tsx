@@ -32,6 +32,7 @@ export default function Sales() {
   const [saleDetails, setSaleDetails] = useState<SaleItem[]>([]);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [currentSale, setCurrentSale] = useState<Sale | null>(null);
 
   const fetchSales = async () => {
     if (!user) return;
@@ -66,6 +67,20 @@ export default function Sales() {
     if (!saleId) return;
     
     try {
+      // Get the sale object
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .select(`
+          *,
+          clients (id, name)
+        `)
+        .eq('id', saleId)
+        .single();
+        
+      if (saleError) throw saleError;
+      setCurrentSale(saleData as Sale);
+      
+      // Get the sale items
       const { data, error } = await supabase
         .from('sale_items')
         .select(`
@@ -304,6 +319,34 @@ export default function Sales() {
     );
   }
 
+  // Check for payment status in URL on component mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const success = url.searchParams.get("success");
+    const canceled = url.searchParams.get("canceled");
+    const saleId = url.searchParams.get("sale_id");
+    
+    // Clear the URL parameters
+    if (success || canceled) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (success === "true" && saleId) {
+      toast({
+        title: "Pagamento realizado com sucesso!",
+        description: "O pagamento da venda foi processado com sucesso.",
+      });
+      // Refresh sales data
+      fetchSales();
+    } else if (canceled === "true") {
+      toast({
+        variant: "destructive",
+        title: "Pagamento cancelado",
+        description: "O processo de pagamento foi cancelado.",
+      });
+    }
+  }, []);
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
@@ -393,6 +436,7 @@ export default function Sales() {
         items={saleDetails}
         isOpen={showSaleDetails}
         onClose={() => setShowSaleDetails(false)}
+        sale={currentSale}
       />
     </div>
   );

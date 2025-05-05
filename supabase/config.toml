@@ -29,3 +29,6 @@ enabled = true
 [functions]
 [functions.generate-report]
 verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
