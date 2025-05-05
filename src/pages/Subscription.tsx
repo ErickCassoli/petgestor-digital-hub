@@ -4,18 +4,42 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, AlertCircle, CreditCard, ShieldCheck, Clock, Calendar, Badge, Star } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
+import { useEffect } from "react";
 
 const Subscription = () => {
   const { user, profile, isInTrialPeriod } = useAuth();
   const { toast } = useToast();
 
-  const handleSubscribe = () => {
-    // This would be replaced with actual Stripe integration
-    toast({
-      title: "Processando assinatura",
-      description: "Esta funcionalidade estará disponível em breve.",
-    });
-  };
+  // Check for payment status in URL on component mount
+  useEffect(() => {
+    const checkPaymentStatus = () => {
+      const url = new URL(window.location.href);
+      const success = url.searchParams.get("success");
+      const canceled = url.searchParams.get("canceled");
+      
+      // Clear the URL parameters
+      if (success || canceled) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      if (success === "true") {
+        toast({
+          title: "Assinatura realizada com sucesso!",
+          description: "Sua assinatura foi processada com sucesso.",
+        });
+        // In a real app, you would refresh subscription data here
+      } else if (canceled === "true") {
+        toast({
+          variant: "destructive",
+          title: "Assinatura cancelada",
+          description: "O processo de assinatura foi cancelado.",
+        });
+      }
+    };
+    
+    checkPaymentStatus();
+  }, [toast]);
 
   return (
     <div>
@@ -160,13 +184,7 @@ const Subscription = () => {
               </ul>
             </CardContent>
             <CardFooter className="flex flex-col">
-              <Button 
-                className="w-full bg-petblue-600 hover:bg-petblue-700 mb-3"
-                onClick={handleSubscribe}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Assinar agora
-              </Button>
+              <StripeSubscriptionCheckout />
               <p className="text-xs text-gray-500 text-center">
                 Cancele a qualquer momento, sem taxas adicionais
               </p>

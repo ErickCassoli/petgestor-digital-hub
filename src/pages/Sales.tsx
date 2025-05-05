@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -319,38 +318,6 @@ export default function Sales() {
       </div>
     );
   }
-
-  // Check for payment status in URL on component mount
-  useEffect(() => {
-    const checkPaymentStatus = () => {
-      const url = new URL(window.location.href);
-      const success = url.searchParams.get("success");
-      const canceled = url.searchParams.get("canceled");
-      const saleId = url.searchParams.get("sale_id");
-      
-      // Clear the URL parameters
-      if (success || canceled) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-      
-      if (success === "true" && saleId) {
-        toast({
-          title: "Pagamento realizado com sucesso!",
-          description: "O pagamento da venda foi processado com sucesso.",
-        });
-        // Refresh sales data
-        fetchSales();
-      } else if (canceled === "true") {
-        toast({
-          variant: "destructive",
-          title: "Pagamento cancelado",
-          description: "O processo de pagamento foi cancelado.",
-        });
-      }
-    };
-    
-    checkPaymentStatus();
-  }, []);
 
   return (
     <div>

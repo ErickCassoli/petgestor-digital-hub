@@ -3,9 +3,43 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Lock, AlertTriangle, ChevronRight } from "lucide-react";
+import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
+import { useToast } from "@/components/ui/use-toast";
+import { useEffect } from "react";
 
 const ExpiredSubscription = () => {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  // Check for payment status in URL on component mount
+  useEffect(() => {
+    const checkPaymentStatus = () => {
+      const url = new URL(window.location.href);
+      const success = url.searchParams.get("success");
+      const canceled = url.searchParams.get("canceled");
+      
+      // Clear the URL parameters
+      if (success || canceled) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      if (success === "true") {
+        toast({
+          title: "Assinatura realizada com sucesso!",
+          description: "Sua assinatura foi processada com sucesso.",
+        });
+        // In a real app, you would refresh subscription data here
+      } else if (canceled === "true") {
+        toast({
+          variant: "destructive",
+          title: "Assinatura cancelada",
+          description: "O processo de assinatura foi cancelado.",
+        });
+      }
+    };
+    
+    checkPaymentStatus();
+  }, [toast]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -53,11 +87,7 @@ const ExpiredSubscription = () => {
           </div>
           
           <div className="space-y-3">
-            <Link to="/assinatura">
-              <Button className="w-full bg-petblue-600 hover:bg-petblue-700">
-                Assinar agora
-              </Button>
-            </Link>
+            <StripeSubscriptionCheckout />
             
             <Button variant="outline" className="w-full" onClick={signOut}>
               Sair da conta

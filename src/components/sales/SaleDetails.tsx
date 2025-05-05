@@ -4,7 +4,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Loader2, X } from "lucide-react";
 import { type SaleItem } from "@/types/sales";
 import { Badge } from "@/components/ui/badge";
-import { StripeCheckout } from "./StripeCheckout";
 import { Sale } from "@/types/sales";
 
 interface SaleDetailsProps {
@@ -83,12 +82,6 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                   </span>
                 </div>
               </div>
-              
-              {sale && (
-                <div className="space-y-2">
-                  <StripeCheckout sale={sale} items={items} />
-                </div>
-              )}
               
               <Button 
                 variant="outline" 
