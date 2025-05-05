@@ -24,18 +24,16 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
     
-    // Create line items for Stripe based on sale items
-    const lineItems = items.map((item: any) => ({
-      price_data: {
-        currency: "brl",
-        product_data: {
-          name: item.name,
-          description: item.type === "product" ? "Produto" : "Serviço"
-        },
-        unit_amount: Math.round(item.price * 100), // Convert to cents
-      },
-      quantity: item.quantity,
-    }));
+    // Using line items with your specific price ID when a product matches
+    const lineItems = items.map((item: any) => {
+      // Check if this is the specific product you want to use the fixed price ID for
+      // You might want to add logic here to determine when to use the fixed price ID
+      // For now, we'll use it for all items as an example
+      return {
+        price: "price_1RLFGG2LlieYPA2tKF1LDpDf",
+        quantity: item.quantity,
+      };
+    });
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
