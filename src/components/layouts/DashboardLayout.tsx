@@ -135,7 +135,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </Link>
         </div>
 
-        {isInTrialPeriod && (
+        {isInTrialPeriod && !isSubscriptionActive && (
           <div className="bg-amber-50 p-3 border-b border-amber-200">
             <p className="text-sm text-amber-800 font-medium">
               Período de avaliação: {profile?.trial_end_date ? 
@@ -202,10 +202,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Perfil</span>
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sair</span>
