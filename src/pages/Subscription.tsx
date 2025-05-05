@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CheckCircle, AlertCircle, CreditCard, ShieldCheck, Clock, Calendar, Badge, Star } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
+import { SubscriptionStatus } from "@/components/subscription/SubscriptionStatus";
 import { useEffect } from "react";
 
 const Subscription = () => {
-  const { user, profile, isInTrialPeriod } = useAuth();
+  const { user, isInTrialPeriod, isSubscriptionActive } = useAuth();
   const { toast } = useToast();
 
   // Check for payment status in URL on component mount
@@ -28,7 +29,6 @@ const Subscription = () => {
           title: "Assinatura realizada com sucesso!",
           description: "Sua assinatura foi processada com sucesso.",
         });
-        // In a real app, you would refresh subscription data here
       } else if (canceled === "true") {
         toast({
           variant: "destructive",
@@ -54,90 +54,7 @@ const Subscription = () => {
 
       <div className="grid md:grid-cols-3 gap-8 mb-8">
         <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Status da Assinatura</CardTitle>
-              <CardDescription>
-                Informações sobre o seu plano atual
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center mb-6">
-                {isInTrialPeriod ? (
-                  <>
-                    <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center mr-4">
-                      <Clock className="h-6 w-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">Período de Avaliação</h3>
-                      <p className="text-gray-500">
-                        {profile?.trial_end_date ? 
-                          `Restam ${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias` : 
-                          'Restam 7 dias'}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mr-4">
-                      <AlertCircle className="h-6 w-6 text-red-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">Assinatura Não Ativa</h3>
-                      <p className="text-gray-500">
-                        Você não possui uma assinatura ativa
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {isInTrialPeriod && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-medium text-amber-800">Período de avaliação ativo</h4>
-                      <p className="text-sm text-amber-700 mt-1">
-                        Você está no período de avaliação gratuita. Após o término, será necessário assinar um plano para continuar utilizando o PetGestor.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Tipo de plano</span>
-                  <span className="font-medium text-gray-900">
-                    {isInTrialPeriod ? "Avaliação" : "Nenhum"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Data de início</span>
-                  <span className="font-medium text-gray-900">
-                    {isInTrialPeriod ? new Date().toLocaleDateString('pt-BR') : "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Data de término</span>
-                  <span className="font-medium text-gray-900">
-                    {isInTrialPeriod ? 
-                      (profile?.trial_end_date ? new Date(profile.trial_end_date).toLocaleDateString('pt-BR') : '-') : 
-                      "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3">
-                  <span className="text-gray-600">Próxima cobrança</span>
-                  <span className="font-medium text-gray-900">
-                    {isInTrialPeriod ? 
-                      (profile?.trial_end_date ? new Date(profile.trial_end_date).toLocaleDateString('pt-BR') : '-') : 
-                      "-"}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SubscriptionStatus />
         </div>
 
         <div>
@@ -184,9 +101,17 @@ const Subscription = () => {
               </ul>
             </CardContent>
             <CardFooter className="flex flex-col">
-              <StripeSubscriptionCheckout />
-              <p className="text-xs text-gray-500 text-center">
-                Cancele a qualquer momento, sem taxas adicionais
+              {!isSubscriptionActive && (
+                <StripeSubscriptionCheckout />
+              )}
+              {isSubscriptionActive && (
+                <div className="bg-green-50 rounded-md p-3 text-center w-full">
+                  <CheckCircle className="h-5 w-5 text-green-500 mx-auto mb-1" />
+                  <p className="text-green-700 font-medium">Você já possui este plano</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 text-center mt-2">
+                {!isSubscriptionActive ? "Cancele a qualquer momento, sem taxas adicionais" : ""}
               </p>
             </CardFooter>
           </Card>

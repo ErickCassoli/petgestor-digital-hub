@@ -18,10 +18,29 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { returnUrl } = await req.json();
+    const { returnUrl, email } = await req.json();
 
     if (!returnUrl) {
       throw new Error("Missing required parameters");
+    }
+    
+    // Find if customer exists already or create a new one
+    let customerId;
+    if (email) {
+      const customers = await stripe.customers.list({
+        email: email,
+        limit: 1,
+      });
+      
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+      } else {
+        // Create a new customer
+        const customer = await stripe.customers.create({
+          email: email,
+        });
+        customerId = customer.id;
+      }
     }
     
     // Create Stripe checkout session for subscription
@@ -36,6 +55,8 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${returnUrl}?success=true`,
       cancel_url: `${returnUrl}?canceled=true`,
+      customer: customerId,
+      customer_email: customerId ? undefined : email, // Only use if customer doesn't exist yet
     });
 
     return new Response(

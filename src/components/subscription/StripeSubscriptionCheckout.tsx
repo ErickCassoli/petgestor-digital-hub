@@ -26,7 +26,8 @@ export function StripeSubscriptionCheckout({ disabled = false }: StripeSubscript
       // Call the Supabase edge function to create a checkout session
       const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
         body: {
-          returnUrl
+          returnUrl,
+          email: user.email
         }
       });
       

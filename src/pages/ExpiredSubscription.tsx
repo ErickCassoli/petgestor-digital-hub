@@ -26,9 +26,10 @@ const ExpiredSubscription = () => {
       if (success === "true") {
         toast({
           title: "Assinatura realizada com sucesso!",
-          description: "Sua assinatura foi processada com sucesso.",
+          description: "Sua assinatura foi processada com sucesso. Você agora tem acesso completo ao PetGestor.",
+          variant: "success"
         });
-        // In a real app, you would refresh subscription data here
+        // In a real app, you would refresh subscription data here or redirect
       } else if (canceled === "true") {
         toast({
           variant: "destructive",
