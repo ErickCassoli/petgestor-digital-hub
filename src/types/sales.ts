@@ -17,6 +17,14 @@ export interface Sale {
     id: string;
     name: string;
   } | null;
+  
+  // Legacy fields (kept for backward compatibility)
+  appointment_id?: string | null;
+  payment_method?: string | null;
+  discount_amount?: number | null;
+  surcharge_amount?: number | null;
+  subtotal?: number | null;
+  total?: number;
 }
 
 export interface SaleItem {
@@ -35,6 +43,9 @@ export interface SaleItem {
   services?: {
     name: string;
   } | null;
+  
+  // Legacy fields (kept for backward compatibility)
+  price?: number;
 }
 
 export interface SaleFormData {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,6 +216,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         .insert({
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
+          // Use client_name column
           client_name: selectedClient !== 'no_client' ? 
             clients.find(c => c.id === selectedClient)?.name : null,
           total_products: productsSubtotal,
@@ -228,7 +228,9 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           final_total: finalTotal,
           notes: notes || null,
           sale_date: new Date().toISOString(),
-          type: saleType
+          type: saleType,
+          // Keep legacy fields for compatibility
+          total: finalTotal
         })
         .select()
         .single();
@@ -238,6 +240,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       // Create sale items with the updated structure
       const saleItems = selectedItems.map(item => ({
         sale_id: saleData.id,
+        price: item.price, // Keep legacy price field for compatibility
         unit_price: item.price,
         total_price: item.price * item.quantity,
         quantity: item.quantity,

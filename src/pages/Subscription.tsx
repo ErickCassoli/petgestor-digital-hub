@@ -2,6 +2,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { CheckCircle, AlertCircle, CreditCard, ShieldCheck, Clock, Calendar, Badge, Star } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
