@@ -53,19 +53,27 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Transform the data to ensure all properties exist
+      // Transform the data to ensure all properties exist and convert type to our union type
       // This handles both new format and legacy data
-      const salesData = data.map(sale => ({
-        ...sale,
-        total_products: sale.total_products ?? 0,
-        discount_products: sale.discount_products ?? 0,
-        surcharge_products: sale.surcharge_products ?? 0,
-        total_services: sale.total_services ?? 0,
-        discount_services: sale.discount_services ?? 0,
-        surcharge_services: sale.surcharge_services ?? 0,
-        final_total: sale.final_total ?? sale.total ?? 0,
-        type: sale.type || 'mixed'
-      }));
+      const salesData = data.map((sale) => {
+        // Ensure the 'type' field is one of our union types
+        let saleType: "mixed" | "product" | "service" = "mixed";
+        if (sale.type === "product" || sale.type === "service") {
+          saleType = sale.type as "product" | "service";
+        }
+        
+        return {
+          ...sale,
+          total_products: sale.total_products ?? 0,
+          discount_products: sale.discount_products ?? 0,
+          surcharge_products: sale.surcharge_products ?? 0,
+          total_services: sale.total_services ?? 0,
+          discount_services: sale.discount_services ?? 0,
+          surcharge_services: sale.surcharge_services ?? 0,
+          final_total: sale.final_total ?? sale.total ?? 0,
+          type: saleType
+        } as Sale;
+      });
       
       setSales(salesData);
     } catch (error) {
@@ -96,6 +104,12 @@ export default function Sales() {
         
       if (saleError) throw saleError;
       
+      // Ensure the 'type' field is one of our union types
+      let saleType: "mixed" | "product" | "service" = "mixed";
+      if (saleData.type === "product" || saleData.type === "service") {
+        saleType = saleData.type as "product" | "service";
+      }
+      
       // Transform the data to ensure all properties exist
       const typedSaleData = {
         ...saleData,
@@ -106,8 +120,8 @@ export default function Sales() {
         discount_services: saleData.discount_services ?? 0,
         surcharge_services: saleData.surcharge_services ?? 0,
         final_total: saleData.final_total ?? saleData.total ?? 0,
-        type: saleData.type || 'mixed'
-      };
+        type: saleType
+      } as Sale;
       
       setCurrentSale(typedSaleData);
       
@@ -123,18 +137,20 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Make sure each item has the correct properties
-      const typedData = data.map(item => {
-        const isProduct = (item.type === 'product' || item.product_id) && !item.service_id;
-        const itemType = isProduct ? 'product' : 'service';
+      // Make sure each item has the correct properties and type
+      const typedData = data.map((item) => {
+        // Ensure the 'type' field is one of our union types
+        const itemType = item.type === "product" || (item.product_id && !item.service_id) 
+          ? "product" as const 
+          : "service" as const;
         
         return {
           ...item,
           type: itemType,
           unit_price: item.unit_price ?? item.price ?? 0,
           total_price: item.total_price ?? (item.unit_price ?? item.price ?? 0) * item.quantity,
-          item_name: item.item_name ?? (isProduct ? item.products?.name : item.services?.name) ?? ''
-        };
+          item_name: item.item_name ?? (itemType === "product" ? item.products?.name : item.services?.name) ?? ''
+        } as SaleItem;
       });
       
       setSaleDetails(typedData);
