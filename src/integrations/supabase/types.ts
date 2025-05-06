@@ -226,7 +226,7 @@ export type Database = {
           quantity?: number
           sale_id: string
           service_id?: string | null
-          type?: string
+          type: string
           updated_at?: string | null
         }
         Update: {
