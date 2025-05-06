@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,7 +52,20 @@ export default function Sales() {
       
       if (error) throw error;
       
-      setSales(data as Sale[]);
+      // Cast the data to match our updated Sale type
+      const salesData = data.map(sale => ({
+        ...sale,
+        total_products: sale.total_products ?? 0,
+        discount_products: sale.discount_products ?? 0,
+        surcharge_products: sale.surcharge_products ?? 0,
+        total_services: sale.total_services ?? 0,
+        discount_services: sale.discount_services ?? 0,
+        surcharge_services: sale.surcharge_services ?? 0,
+        final_total: sale.final_total ?? sale.total,
+        type: sale.type || 'mixed'
+      })) as Sale[];
+      
+      setSales(salesData);
     } catch (error) {
       console.error('Error fetching sales:', error);
       toast({
@@ -81,7 +93,21 @@ export default function Sales() {
         .single();
         
       if (saleError) throw saleError;
-      setCurrentSale(saleData as Sale);
+      
+      // Cast the sale data to match our updated Sale type
+      const typedSaleData = {
+        ...saleData,
+        total_products: saleData.total_products ?? 0,
+        discount_products: saleData.discount_products ?? 0,
+        surcharge_products: saleData.surcharge_products ?? 0,
+        total_services: saleData.total_services ?? 0,
+        discount_services: saleData.discount_services ?? 0,
+        surcharge_services: saleData.surcharge_services ?? 0,
+        final_total: saleData.final_total ?? saleData.total,
+        type: saleData.type || 'mixed'
+      } as Sale;
+      
+      setCurrentSale(typedSaleData);
       
       // Get the sale items
       const { data, error } = await supabase
@@ -96,11 +122,18 @@ export default function Sales() {
       if (error) throw error;
       
       // Make sure each item has the correct type property cast to the expected literal type
-      const typedData = data.map(item => ({
-        ...item,
-        // Ensure type is properly cast to the literal type
-        type: (item.type === 'product' || item.product_id) && !item.service_id ? 'product' : 'service'
-      })) as SaleItem[];
+      const typedData = data.map(item => {
+        const isProduct = (item.type === 'product' || item.product_id) && !item.service_id;
+        const itemType = isProduct ? 'product' : 'service';
+        
+        return {
+          ...item,
+          type: itemType,
+          unit_price: item.unit_price ?? item.price,
+          total_price: item.total_price ?? (item.unit_price ?? item.price) * item.quantity,
+          item_name: item.item_name ?? (isProduct ? item.products?.name : item.services?.name)
+        };
+      }) as SaleItem[];
       
       setSaleDetails(typedData);
       setShowSaleDetails(true);

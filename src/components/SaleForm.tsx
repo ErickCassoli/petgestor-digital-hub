@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, Plus, Minus, X, Trash2, ShoppingBag, Scissors, Save } from "lucide-react";
+import { Search, Plus, Minus, X, Trash2, ShoppingBag, Scissors, Save, Loader2 } from "lucide-react";
 import DiscountSurchargeForm from "./sales/DiscountSurchargeForm";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SaleFormData } from "@/types/sales";
@@ -135,7 +135,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     // If we add an item of a different type than the active tab, switch to mixed view
     if ((type === 'product' && activeTab === 'services' && servicesSubtotal === 0) || 
         (type === 'service' && activeTab === 'products' && productsSubtotal === 0)) {
-      setActiveTab(type);
+      setActiveTab(type === 'product' ? 'products' : 'services');
     }
   };
 

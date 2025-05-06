@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CheckCircle, AlertCircle, CreditCard, ShieldCheck, Clock, Calendar, Badge, Star } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
-import { SubscriptionStatus } from "@/components/subscription/SubscriptionStatus";
+import SubscriptionStatus from "@/components/subscription/SubscriptionStatus";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
