@@ -4,6 +4,7 @@ export interface Sale {
   sale_date: string;
   client_id: string | null;
   client_name?: string | null;
+  // New fields for the updated structure
   total_products: number;
   discount_products: number;
   surcharge_products: number;
@@ -25,6 +26,9 @@ export interface Sale {
   surcharge_amount?: number | null;
   subtotal?: number | null;
   total?: number;
+  updated_at?: string;
+  created_at?: string;
+  user_id?: string;
 }
 
 export interface SaleItem {
@@ -46,6 +50,8 @@ export interface SaleItem {
   
   // Legacy fields (kept for backward compatibility)
   price?: number;
+  updated_at?: string;
+  created_at?: string;
 }
 
 export interface SaleFormData {

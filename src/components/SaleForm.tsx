@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,13 +211,12 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         saleType = "service";
       }
 
-      // Create the sale record with the new structure
+      // Create the sale record with both new structure and legacy fields for compatibility
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
-          // Use client_name column
           client_name: selectedClient !== 'no_client' ? 
             clients.find(c => c.id === selectedClient)?.name : null,
           total_products: productsSubtotal,
@@ -229,8 +229,11 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           notes: notes || null,
           sale_date: new Date().toISOString(),
           type: saleType,
-          // Keep legacy fields for compatibility
-          total: finalTotal
+          // Legacy fields for compatibility
+          total: finalTotal,
+          discount_amount: discountProducts + discountServices,
+          surcharge_amount: surchargeProducts + surchargeServices,
+          subtotal: productsSubtotal + servicesSubtotal
         })
         .select()
         .single();
@@ -240,14 +243,15 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       // Create sale items with the updated structure
       const saleItems = selectedItems.map(item => ({
         sale_id: saleData.id,
-        price: item.price, // Keep legacy price field for compatibility
         unit_price: item.price,
         total_price: item.price * item.quantity,
         quantity: item.quantity,
         product_id: item.type === 'product' ? item.itemId : null,
         service_id: item.type === 'service' ? item.itemId : null,
         type: item.type as 'product' | 'service',
-        item_name: item.name
+        item_name: item.name,
+        // Legacy field for compatibility
+        price: item.price
       }));
 
       const { error: itemsError } = await supabase

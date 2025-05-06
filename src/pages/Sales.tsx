@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +53,8 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Cast the data to match our updated Sale type
+      // Transform the data to ensure all properties exist
+      // This handles both new format and legacy data
       const salesData = data.map(sale => ({
         ...sale,
         total_products: sale.total_products ?? 0,
@@ -61,9 +63,9 @@ export default function Sales() {
         total_services: sale.total_services ?? 0,
         discount_services: sale.discount_services ?? 0,
         surcharge_services: sale.surcharge_services ?? 0,
-        final_total: sale.final_total ?? sale.total,
+        final_total: sale.final_total ?? sale.total ?? 0,
         type: sale.type || 'mixed'
-      })) as Sale[];
+      }));
       
       setSales(salesData);
     } catch (error) {
@@ -94,7 +96,7 @@ export default function Sales() {
         
       if (saleError) throw saleError;
       
-      // Cast the sale data to match our updated Sale type
+      // Transform the data to ensure all properties exist
       const typedSaleData = {
         ...saleData,
         total_products: saleData.total_products ?? 0,
@@ -103,9 +105,9 @@ export default function Sales() {
         total_services: saleData.total_services ?? 0,
         discount_services: saleData.discount_services ?? 0,
         surcharge_services: saleData.surcharge_services ?? 0,
-        final_total: saleData.final_total ?? saleData.total,
+        final_total: saleData.final_total ?? saleData.total ?? 0,
         type: saleData.type || 'mixed'
-      } as Sale;
+      };
       
       setCurrentSale(typedSaleData);
       
@@ -121,7 +123,7 @@ export default function Sales() {
       
       if (error) throw error;
       
-      // Make sure each item has the correct type property cast to the expected literal type
+      // Make sure each item has the correct properties
       const typedData = data.map(item => {
         const isProduct = (item.type === 'product' || item.product_id) && !item.service_id;
         const itemType = isProduct ? 'product' : 'service';
@@ -129,11 +131,11 @@ export default function Sales() {
         return {
           ...item,
           type: itemType,
-          unit_price: item.unit_price ?? item.price,
-          total_price: item.total_price ?? (item.unit_price ?? item.price) * item.quantity,
-          item_name: item.item_name ?? (isProduct ? item.products?.name : item.services?.name)
+          unit_price: item.unit_price ?? item.price ?? 0,
+          total_price: item.total_price ?? (item.unit_price ?? item.price ?? 0) * item.quantity,
+          item_name: item.item_name ?? (isProduct ? item.products?.name : item.services?.name) ?? ''
         };
-      }) as SaleItem[];
+      });
       
       setSaleDetails(typedData);
       setShowSaleDetails(true);
