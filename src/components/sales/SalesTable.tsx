@@ -1,14 +1,8 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { ArrowUpDown, FileText, Loader2, ShoppingBag, ShoppingCart } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowUpDown, Loader2, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { type Sale } from "@/types/sales";
 
@@ -33,19 +27,14 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'product':
-        return { label: 'Produtos', color: 'bg-blue-100 text-blue-800' };
+        return { label: 'Produto', color: 'bg-blue-100 text-blue-800' };
       case 'service':
-        return { label: 'Serviços', color: 'bg-green-100 text-green-800' };
+        return { label: 'Serviço', color: 'bg-green-100 text-green-800' };
       case 'mixed':
         return { label: 'Misto', color: 'bg-purple-100 text-purple-800' };
       default:
         return { label: 'Desconhecido', color: 'bg-gray-100 text-gray-800' };
     }
-  };
-
-  const formatCurrency = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return 'R$ 0,00';
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   return (
@@ -56,8 +45,9 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
             <TableHead>Data</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Tipo</TableHead>
-            <TableHead className="text-right">Produtos</TableHead>
-            <TableHead className="text-right">Serviços</TableHead>
+            <TableHead>Subtotal</TableHead>
+            <TableHead>Desconto</TableHead>
+            <TableHead>Acréscimo</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="text-center">Ações</TableHead>
           </TableRow>
@@ -69,34 +59,17 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
             return (
               <TableRow key={sale.id}>
                 <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                <TableCell>{sale.clients?.name || sale.client_name || "Cliente não informado"}</TableCell>
+                <TableCell>{sale.clients?.name || "Cliente não informado"}</TableCell>
                 <TableCell>
-                  <Badge className={`${typeInfo.color}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                     {typeInfo.label}
-                  </Badge>
+                  </span>
                 </TableCell>
-                <TableCell className="text-right">
-                  {sale.total_products > 0 ? (
-                    <div className="flex items-center justify-end gap-1">
-                      <ShoppingBag className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{formatCurrency(sale.total_products - (sale.discount_products || 0) + (sale.surcharge_products || 0))}</span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  {sale.total_services > 0 ? (
-                    <div className="flex items-center justify-end gap-1">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{formatCurrency(sale.total_services - (sale.discount_services || 0) + (sale.surcharge_services || 0))}</span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
+                <TableCell>{Number(sale.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                <TableCell>{Number(sale.discount_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                <TableCell>{Number(sale.surcharge_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatCurrency(sale.final_total)}
+                  {Number(sale.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </TableCell>
                 <TableCell className="text-center">
                   <DropdownMenu>

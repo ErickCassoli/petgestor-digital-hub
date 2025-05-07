@@ -2,17 +2,15 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, Plus, Minus, X, Trash2, ShoppingBag, Scissors, Save, Loader2 } from "lucide-react";
+import { Search, Plus, Minus, X, Trash2, ShoppingBag, FileText, Save } from "lucide-react";
 import DiscountSurchargeForm from "./sales/DiscountSurchargeForm";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { SaleFormData } from "@/types/sales";
 
 interface Client {
   id: string;
@@ -34,6 +32,15 @@ interface Service {
   duration: number;
 }
 
+interface SaleItem {
+  id?: string;
+  type: 'product' | 'service';
+  itemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
 interface SaleFormProps {
   onComplete: () => void;
   onCancel: () => void;
@@ -46,15 +53,12 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedItems, setSelectedItems] = useState<SaleFormData['items']>([]);
+  const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>('no_client');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [discountProducts, setDiscountProducts] = useState(0);
-  const [surchargeProducts, setSurchargeProducts] = useState(0);
-  const [discountServices, setDiscountServices] = useState(0);
-  const [surchargeServices, setSurchargeServices] = useState(0);
-  const [notes, setNotes] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [surchargeAmount, setSurchargeAmount] = useState(0);
 
   useEffect(() => {
     fetchClients();
@@ -92,19 +96,11 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     setServices(data || []);
   };
 
-  // Calculate subtotals
-  const productsSubtotal = selectedItems
-    .filter(item => item.type === 'product')
-    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  const servicesSubtotal = selectedItems
-    .filter(item => item.type === 'service')
-    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Calculate subtotal
+  const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Calculate total with discounts and surcharges
-  const finalTotal = 
-    (productsSubtotal - discountProducts + surchargeProducts) + 
-    (servicesSubtotal - discountServices + surchargeServices);
+  // Calculate total with discounts and surcharges - proper calculation
+  const totalAmount = subtotal - discountAmount + surchargeAmount;
 
   const handleAddItem = (item: Product | Service, type: 'product' | 'service') => {
     // Check if item already exists in the cart
@@ -130,12 +126,6 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         }
       ]);
     }
-    
-    // If we add an item of a different type than the active tab, switch to mixed view
-    if ((type === 'product' && activeTab === 'services' && servicesSubtotal === 0) || 
-        (type === 'service' && activeTab === 'products' && productsSubtotal === 0)) {
-      setActiveTab(type === 'product' ? 'products' : 'services');
-    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -150,49 +140,16 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     setSelectedItems(updatedItems);
   };
 
-  const validateSale = () => {
-    if (selectedItems.length === 0) {
-      toast({ 
-        title: "Adicione pelo menos um item para concluir a venda", 
-        variant: "destructive" 
-      });
-      return false;
-    }
-
-    if (discountProducts > productsSubtotal) {
-      toast({ 
-        title: "O desconto de produtos não pode ser maior que o valor total dos produtos", 
-        variant: "destructive" 
-      });
-      return false;
-    }
-
-    if (discountServices > servicesSubtotal) {
-      toast({ 
-        title: "O desconto de serviços não pode ser maior que o valor total dos serviços", 
-        variant: "destructive" 
-      });
-      return false;
-    }
-
-    // Check product stock
-    for (const item of selectedItems.filter(i => i.type === 'product')) {
-      const product = products.find(p => p.id === item.itemId);
-      if (product && product.stock < item.quantity) {
-        toast({ 
-          title: `Estoque insuficiente para o produto "${product.name}"`,
-          description: `Disponível: ${product.stock}, Solicitado: ${item.quantity}`,
-          variant: "destructive" 
-        });
-        return false;
-      }
-    }
-
-    return true;
-  };
-
   const handleSaveSale = async () => {
-    if (!validateSale()) return;
+    if (selectedItems.length === 0) {
+      toast({ title: "Adicione pelo menos um item para concluir a venda", variant: "destructive" });
+      return;
+    }
+
+    if (discountAmount > subtotal) {
+      toast({ title: "O desconto não pode ser maior que o valor total", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -210,45 +167,35 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         saleType = "service";
       }
 
-      // Create the sale record with both new structure and legacy fields for compatibility
+      // Calculate the final total amount correctly
+      const finalTotal = subtotal - discountAmount + surchargeAmount;
+
+      // Create the sale record with correct total calculation
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
-          total_products: productsSubtotal,
-          discount_products: discountProducts,
-          surcharge_products: surchargeProducts,
-          total_services: servicesSubtotal,
-          discount_services: discountServices,
-          surcharge_services: surchargeServices,
-          final_total: finalTotal,
-          notes: notes || null,
-          sale_date: new Date().toISOString(),
-          type: saleType,
-          // Legacy fields for compatibility
           total: finalTotal,
-          discount_amount: discountProducts + discountServices,
-          surcharge_amount: surchargeProducts + surchargeServices,
-          subtotal: productsSubtotal + servicesSubtotal
+          subtotal: subtotal,
+          discount_amount: discountAmount,
+          surcharge_amount: surchargeAmount,
+          sale_date: new Date().toISOString(),
+          type: saleType
         })
         .select()
         .single();
 
       if (saleError) throw saleError;
 
-      // Create sale items with the updated structure
+      // Create sale items - Ensure each item has the correct type literal
       const saleItems = selectedItems.map(item => ({
         sale_id: saleData.id,
+        price: item.price,
+        quantity: item.quantity,
         product_id: item.type === 'product' ? item.itemId : null,
         service_id: item.type === 'service' ? item.itemId : null,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity,
-        type: item.type,
-        item_name: item.name,
-        // Legacy field for compatibility
-        price: item.price
+        type: item.type as 'product' | 'service' // Ensure correct type is passed
       }));
 
       const { error: itemsError } = await supabase
@@ -265,20 +212,14 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
             const newStock = Math.max(0, product.stock - item.quantity);
             await supabase
               .from('products')
-              .update({ 
-                stock: newStock,
-                updated_at: new Date().toISOString()
-              })
+              .update({ stock: newStock })
               .eq('id', item.itemId)
               .eq('user_id', user?.id);
           }
         }
       }
 
-      toast({ 
-        title: "Venda registrada com sucesso!",
-        variant: "default"
-      });
+      toast({ title: "Venda registrada com sucesso!" });
       onComplete();
     } catch (error) {
       console.error("Error saving sale:", error);
@@ -301,15 +242,11 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     service.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Count items by type
-  const productCount = selectedItems.filter(item => item.type === 'product').length;
-  const serviceCount = selectedItems.filter(item => item.type === 'service').length;
-
   return (
     <>
       <DialogHeader>
         <DialogTitle>Nova Venda</DialogTitle>
-        <DialogDescription>Registre uma nova venda de produtos e/ou serviços</DialogDescription>
+        <DialogDescription>Adicione produtos ou serviços para registrar uma nova venda</DialogDescription>
       </DialogHeader>
       
       <div className="grid gap-6 py-4">
@@ -357,7 +294,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                   value="services" 
                   className="flex-1"
                 >
-                  <Scissors className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2" />
                   Serviços
                 </TabsTrigger>
               </TabsList>
@@ -376,21 +313,15 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                       <div key={product.id} className="flex justify-between items-center p-2 border rounded hover:bg-muted/50">
                         <div>
                           <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <span>
-                              Estoque: <span className={product.stock <= 0 ? "text-destructive font-medium" : ""}>
-                                {product.stock}
-                              </span>
-                            </span>
-                            <span>|</span>
-                            <span>{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                          <div className="text-sm text-muted-foreground">
+                            Estoque: {product.stock} | R$ {product.price.toFixed(2)}
                           </div>
                         </div>
                         <Button 
                           size="sm" 
                           variant="ghost" 
                           onClick={() => handleAddItem(product, 'product')}
-                          disabled={product.stock <= 0}
+                          disabled={product.stock < 1}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -414,10 +345,8 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                       <div key={service.id} className="flex justify-between items-center p-2 border rounded hover:bg-muted/50">
                         <div>
                           <div className="font-medium">{service.name}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <span>{service.duration} min</span>
-                            <span>|</span>
-                            <span>{service.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                          <div className="text-sm text-muted-foreground">
+                            {service.duration} min | R$ {service.price.toFixed(2)}
                           </div>
                         </div>
                         <Button 
@@ -438,23 +367,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           <div>
             <Label>Itens da venda</Label>
             <div className="border rounded-md mt-1">
-              <div className="p-3 bg-muted rounded-t-md font-medium flex justify-between items-center">
-                <span>Itens selecionados</span>
-                <div className="flex gap-2">
-                  {productCount > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 flex items-center gap-1">
-                      <ShoppingBag className="h-3 w-3" />
-                      {productCount}
-                    </span>
-                  )}
-                  {serviceCount > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 flex items-center gap-1">
-                      <Scissors className="h-3 w-3" />
-                      {serviceCount}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <div className="p-3 bg-muted rounded-t-md font-medium">Resumo da venda</div>
               
               {selectedItems.length === 0 ? (
                 <div className="p-4 text-center text-muted-foreground">
@@ -467,14 +380,12 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
                       <div className="flex-1">
                         <div className="font-medium flex items-center">
                           {item.name}
-                          <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-                            item.type === 'product' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                          }`}>
+                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-muted">
                             {item.type === 'product' ? 'Produto' : 'Serviço'}
                           </span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          R$ {item.price.toFixed(2)}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -510,60 +421,26 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
               )}
               
               <DiscountSurchargeForm
-                totalProducts={productsSubtotal}
-                totalServices={servicesSubtotal}
-                discountProducts={discountProducts}
-                surchargeProducts={surchargeProducts}
-                discountServices={discountServices}
-                surchargeServices={surchargeServices}
-                onDiscountProductsChange={setDiscountProducts}
-                onSurchargeProductsChange={setSurchargeProducts}
-                onDiscountServicesChange={setDiscountServices}
-                onSurchargeServicesChange={setSurchargeServices}
+                subtotal={subtotal}
+                discountAmount={discountAmount}
+                surchargeAmount={surchargeAmount}
+                onDiscountChange={setDiscountAmount}
+                onSurchargeChange={setSurchargeAmount}
                 className="p-4 border-t"
-              />
-            </div>
-
-            <div className="mt-4">
-              <Label htmlFor="notes">Observações (opcional)</Label>
-              <Textarea 
-                id="notes"
-                placeholder="Observações sobre a venda..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="resize-none mt-1"
-                rows={3}
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onCancel}>
           <X className="h-4 w-4 mr-2" />
           Cancelar
         </Button>
-        <Button 
-          onClick={handleSaveSale} 
-          disabled={
-            selectedItems.length === 0 || 
-            loading || 
-            discountProducts > productsSubtotal ||
-            discountServices > servicesSubtotal
-          }
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Finalizar venda
-            </>
-          )}
+        <Button onClick={handleSaveSale} disabled={selectedItems.length === 0 || loading || discountAmount > subtotal}>
+          <Save className="h-4 w-4 mr-2" />
+          {loading ? "Salvando..." : "Finalizar venda"}
         </Button>
       </div>
     </>
