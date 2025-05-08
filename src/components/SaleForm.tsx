@@ -106,25 +106,58 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     ? surcharge.total 
     : (surcharge.products + surcharge.services);
 
-  // Calculate final total
-  const totalAmount = subtotal - discountAmount + surchargeAmount;
-  
-  // Determine total products and services after discounts and surcharges
-  const totalProducts = discount.total > 0 
-    ? subtotalProducts - (subtotalProducts / subtotal * discount.total)
-    : subtotalProducts - discount.products;
-  
-  const finalTotalProducts = surcharge.total > 0 
-    ? totalProducts + (subtotalProducts / subtotal * surcharge.total)
-    : totalProducts + surcharge.products;
-    
-  const totalServices = discount.total > 0 
-    ? subtotalServices - (subtotalServices / subtotal * discount.total)
-    : subtotalServices - discount.services;
-    
-  const finalTotalServices = surcharge.total > 0 
-    ? totalServices + (subtotalServices / subtotal * surcharge.total)
-    : totalServices + surcharge.services;
+  // Calculate final total (never negative)
+  const totalAmount = Math.max(0, subtotal - discountAmount + surchargeAmount);
+
+  // Calculate products total after discount/surcharge
+  const adjustedProductsTotal = () => {
+    if (discount.total > 0 && subtotal > 0) {
+      // Apply proportional discount
+      const productsPortion = subtotalProducts / subtotal;
+      const discountForProducts = discount.total * productsPortion;
+      return Math.max(0, subtotalProducts - discountForProducts);
+    } else {
+      return Math.max(0, subtotalProducts - discount.products);
+    }
+  };
+
+  // Calculate services total after discount/surcharge
+  const adjustedServicesTotal = () => {
+    if (discount.total > 0 && subtotal > 0) {
+      // Apply proportional discount
+      const servicesPortion = subtotalServices / subtotal;
+      const discountForServices = discount.total * servicesPortion;
+      return Math.max(0, subtotalServices - discountForServices);
+    } else {
+      return Math.max(0, subtotalServices - discount.services);
+    }
+  };
+
+  // Add surcharge to products
+  const finalProductsTotal = () => {
+    const adjustedProducts = adjustedProductsTotal();
+    if (surcharge.total > 0 && subtotal > 0) {
+      // Apply proportional surcharge
+      const productsPortion = subtotalProducts / subtotal;
+      const surchargeForProducts = surcharge.total * productsPortion;
+      return adjustedProducts + surchargeForProducts;
+    } else {
+      return adjustedProducts + surcharge.products;
+    }
+  };
+
+  // Add surcharge to services
+  const finalServicesTotal = () => {
+    const adjustedServices = adjustedServicesTotal();
+    if (surcharge.total > 0 && subtotal > 0) {
+      // Apply proportional surcharge
+      const servicesPortion = subtotalServices / subtotal;
+      const surchargeForServices = surcharge.total * servicesPortion;
+      return adjustedServices + surchargeForServices;
+    } else {
+      return adjustedServices + surcharge.services;
+    }
+  };
 
   const handleAddItem = (item: SaleFormItem) => {
     // Check if item already exists in the cart
@@ -188,13 +221,9 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         clientName = client?.name || null;
       }
 
-      // Ensure values are not negative
-      const discountProductsValue = Math.max(0, discount.products);
-      const discountServicesValue = Math.max(0, discount.services);
-      const surchargeProductsValue = Math.max(0, surcharge.products);
-      const surchargeServicesValue = Math.max(0, surcharge.services);
-      
-      const finalTotalValue = Math.max(0, totalAmount);
+      // Calculate final values for products and services
+      const finalProductsValue = hasProducts ? finalProductsTotal() : 0;
+      const finalServicesValue = hasServices ? finalServicesTotal() : 0;
 
       // Create the sale record
       const { data: saleData, error: saleError } = await supabase
@@ -203,17 +232,17 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
           client_name: clientName,
-          total: finalTotalValue,
+          total: totalAmount,
           subtotal: subtotal,
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
-          total_products: hasProducts ? finalTotalProducts : 0,
-          discount_products: hasProducts ? discountProductsValue : 0,
-          surcharge_products: hasProducts ? surchargeProductsValue : 0,
-          total_services: hasServices ? finalTotalServices : 0,
-          discount_services: hasServices ? discountServicesValue : 0,
-          surcharge_services: hasServices ? surchargeServicesValue : 0,
-          final_total: finalTotalValue,
+          total_products: finalProductsValue,
+          discount_products: hasProducts ? (discount.total > 0 ? (discount.total * (subtotalProducts / subtotal)) : discount.products) : 0,
+          surcharge_products: hasProducts ? (surcharge.total > 0 ? (surcharge.total * (subtotalProducts / subtotal)) : surcharge.products) : 0,
+          total_services: finalServicesValue,
+          discount_services: hasServices ? (discount.total > 0 ? (discount.total * (subtotalServices / subtotal)) : discount.services) : 0,
+          surcharge_services: hasServices ? (surcharge.total > 0 ? (surcharge.total * (subtotalServices / subtotal)) : surcharge.services) : 0,
+          final_total: totalAmount,
           sale_date: new Date().toISOString(),
           type: saleType
         })

@@ -291,7 +291,7 @@ export default function SaleDiscountForm({
         
         <div className="flex justify-between font-medium border-t pt-2 mt-2">
           <span>Total:</span>
-          <span className="font-mono">{formatCurrency(finalTotal)}</span>
+          <span className="font-mono">{formatCurrency(Math.max(0, finalTotal))}</span>
         </div>
       </div>
     </div>
