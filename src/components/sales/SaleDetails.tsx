@@ -2,9 +2,8 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, X } from "lucide-react";
-import { type SaleItem } from "@/types/sales";
 import { Badge } from "@/components/ui/badge";
-import { Sale } from "@/types/sales";
+import { Sale, SaleItem } from "@/types/sales";
 
 interface SaleDetailsProps {
   saleId: string | null;
@@ -31,19 +30,35 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
     return "Itens";
   };
 
-  // Calculate total
-  const totalAmount = items.reduce(
-    (sum, item) => sum + (Number(item.price) * item.quantity), 
-    0
-  );
+  // Format currency
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  // Calculate totals
+  const productsTotal = items
+    .filter(item => item.type === 'product')
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+  const servicesTotal = items
+    .filter(item => item.type === 'service')
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+  const subtotal = productsTotal + servicesTotal;
+
+  // Get discount and surcharge values from sale object or calculate from items
+  const discountTotal = sale?.discount_amount || 0;
+  const surchargeTotal = sale?.surcharge_amount || 0;
+  const total = sale?.total || subtotal - discountTotal + surchargeTotal;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Detalhes da Venda</SheetTitle>
           <SheetDescription>
             Venda #{saleId && saleId.substring(0, 8)} • {getTypeLabel()}
+            {sale?.client_name && ` • Cliente: ${sale.client_name}`}
           </SheetDescription>
         </SheetHeader>
         <div className="py-4">
@@ -55,7 +70,7 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                   {items.map((item) => (
                     <div key={item.id} className="p-3">
                       <div className="font-medium flex items-center gap-2">
-                        {item.products?.name || item.services?.name || "Item"}
+                        {item.item_name || item.products?.name || item.services?.name || "Item"}
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           item.type === 'product' 
                             ? 'bg-blue-100 text-blue-800' 
@@ -75,10 +90,43 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                     </div>
                   ))}
                 </div>
+
+                {productCount > 0 && serviceCount > 0 && (
+                  <>
+                    <div className="p-3 bg-muted/30 flex justify-between text-sm">
+                      <span>Subtotal Produtos:</span>
+                      <span>{formatCurrency(productsTotal)}</span>
+                    </div>
+                    <div className="p-3 bg-muted/30 flex justify-between text-sm">
+                      <span>Subtotal Serviços:</span>
+                      <span>{formatCurrency(servicesTotal)}</span>
+                    </div>
+                  </>
+                )}
+                
+                <div className="p-3 bg-muted/30 flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                
+                {discountTotal > 0 && (
+                  <div className="p-3 bg-muted/30 flex justify-between text-sm text-red-600">
+                    <span>Desconto:</span>
+                    <span>-{formatCurrency(discountTotal)}</span>
+                  </div>
+                )}
+                
+                {surchargeTotal > 0 && (
+                  <div className="p-3 bg-muted/30 flex justify-between text-sm text-green-600">
+                    <span>Acréscimo:</span>
+                    <span>+{formatCurrency(surchargeTotal)}</span>
+                  </div>
+                )}
+                
                 <div className="p-3 bg-muted/50 font-medium flex justify-between">
                   <span>Total:</span>
                   <span>
-                    {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {formatCurrency(total)}
                   </span>
                 </div>
               </div>

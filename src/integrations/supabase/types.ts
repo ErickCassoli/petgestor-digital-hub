@@ -210,34 +210,43 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          item_name: string | null
           price: number
           product_id: string | null
           quantity: number
           sale_id: string
           service_id: string | null
+          total_price: number | null
           type: string
+          unit_price: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
+          item_name?: string | null
           price: number
           product_id?: string | null
           quantity?: number
           sale_id: string
           service_id?: string | null
-          type?: string
+          total_price?: number | null
+          type: string
+          unit_price?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
+          item_name?: string | null
           price?: number
           product_id?: string | null
           quantity?: number
           sale_id?: string
           service_id?: string | null
+          total_price?: number | null
           type?: string
+          unit_price?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -268,14 +277,23 @@ export type Database = {
         Row: {
           appointment_id: string | null
           client_id: string | null
+          client_name: string | null
           created_at: string | null
           discount_amount: number | null
+          discount_products: number | null
+          discount_services: number | null
+          final_total: number | null
           id: string
+          notes: string | null
           payment_method: string | null
           sale_date: string | null
           subtotal: number | null
           surcharge_amount: number | null
+          surcharge_products: number | null
+          surcharge_services: number | null
           total: number
+          total_products: number | null
+          total_services: number | null
           type: string
           updated_at: string | null
           user_id: string
@@ -283,14 +301,23 @@ export type Database = {
         Insert: {
           appointment_id?: string | null
           client_id?: string | null
+          client_name?: string | null
           created_at?: string | null
           discount_amount?: number | null
+          discount_products?: number | null
+          discount_services?: number | null
+          final_total?: number | null
           id?: string
+          notes?: string | null
           payment_method?: string | null
           sale_date?: string | null
           subtotal?: number | null
           surcharge_amount?: number | null
+          surcharge_products?: number | null
+          surcharge_services?: number | null
           total: number
+          total_products?: number | null
+          total_services?: number | null
           type: string
           updated_at?: string | null
           user_id: string
@@ -298,14 +325,23 @@ export type Database = {
         Update: {
           appointment_id?: string | null
           client_id?: string | null
+          client_name?: string | null
           created_at?: string | null
           discount_amount?: number | null
+          discount_products?: number | null
+          discount_services?: number | null
+          final_total?: number | null
           id?: string
+          notes?: string | null
           payment_method?: string | null
           sale_date?: string | null
           subtotal?: number | null
           surcharge_amount?: number | null
+          surcharge_products?: number | null
+          surcharge_services?: number | null
           total?: number
+          total_products?: number | null
+          total_services?: number | null
           type?: string
           updated_at?: string | null
           user_id?: string

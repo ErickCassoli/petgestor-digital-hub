@@ -2,9 +2,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowUpDown, Loader2, ShoppingCart } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { type Sale } from "@/types/sales";
+import { ArrowUpDown, ShoppingCart } from "lucide-react";
+import { Sale } from "@/types/sales";
 
 interface SalesTableProps {
   sales: Sale[];
@@ -59,15 +58,15 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
             return (
               <TableRow key={sale.id}>
                 <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                <TableCell>{sale.clients?.name || "Cliente não informado"}</TableCell>
+                <TableCell>{sale.client_name || sale.clients?.name || "Cliente não informado"}</TableCell>
                 <TableCell>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                     {typeInfo.label}
                   </span>
                 </TableCell>
-                <TableCell>{Number(sale.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                <TableCell>{Number(sale.discount_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                <TableCell>{Number(sale.surcharge_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                <TableCell>{Number(sale.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                <TableCell>{Number(sale.discount_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                <TableCell>{Number(sale.surcharge_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                 <TableCell className="text-right font-medium">
                   {Number(sale.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </TableCell>

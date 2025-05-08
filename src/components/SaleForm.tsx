@@ -1,16 +1,17 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, Plus, Minus, X, Trash2, ShoppingBag, FileText, Save } from "lucide-react";
-import DiscountSurchargeForm from "./sales/DiscountSurchargeForm";
+import { X, Save } from "lucide-react";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { SaleFormItem } from "@/types/sales";
+import ItemSelector from "./sales/ItemSelector";
+import SaleItemsList from "./sales/SaleItemsList";
+import SaleDiscountForm from "./sales/SaleDiscountForm";
 
 interface Client {
   id: string;
@@ -32,15 +33,6 @@ interface Service {
   duration: number;
 }
 
-interface SaleItem {
-  id?: string;
-  type: 'product' | 'service';
-  itemId: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
 interface SaleFormProps {
   onComplete: () => void;
   onCancel: () => void;
@@ -49,16 +41,14 @@ interface SaleFormProps {
 export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SaleFormItem[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>('no_client');
-  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [surchargeAmount, setSurchargeAmount] = useState(0);
+  const [discount, setDiscount] = useState({ total: 0, products: 0, services: 0 });
+  const [surcharge, setSurcharge] = useState({ total: 0, products: 0, services: 0 });
 
   useEffect(() => {
     fetchClients();
@@ -96,16 +86,33 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     setServices(data || []);
   };
 
-  // Calculate subtotal
-  const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Calculate subtotals
+  const subtotalProducts = selectedItems
+    .filter(item => item.type === "product")
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Calculate total with discounts and surcharges - proper calculation
+  const subtotalServices = selectedItems
+    .filter(item => item.type === "service")
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const subtotal = subtotalProducts + subtotalServices;
+
+  // Calculate discount and surcharge based on active tab
+  const discountAmount = discount.total > 0 
+    ? discount.total 
+    : (discount.products + discount.services);
+
+  const surchargeAmount = surcharge.total > 0 
+    ? surcharge.total 
+    : (surcharge.products + surcharge.services);
+
+  // Calculate final total
   const totalAmount = subtotal - discountAmount + surchargeAmount;
 
-  const handleAddItem = (item: Product | Service, type: 'product' | 'service') => {
+  const handleAddItem = (item: SaleFormItem) => {
     // Check if item already exists in the cart
     const existingItemIndex = selectedItems.findIndex(
-      i => i.itemId === item.id && i.type === type
+      i => i.itemId === item.itemId && i.type === item.type
     );
 
     if (existingItemIndex >= 0) {
@@ -115,16 +122,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       setSelectedItems(updatedItems);
     } else {
       // Add new item with quantity 1
-      setSelectedItems([
-        ...selectedItems,
-        {
-          type,
-          itemId: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: 1
-        }
-      ]);
+      setSelectedItems([...selectedItems, item]);
     }
   };
 
@@ -154,10 +152,9 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     setLoading(true);
     try {
       // Determine sale type based on items
-      const hasProducts = selectedItems.some(item => item.type === 'product');
-      const hasServices = selectedItems.some(item => item.type === 'service');
+      const hasProducts = selectedItems.some(item => item.type === "product");
+      const hasServices = selectedItems.some(item => item.type === "service");
       
-      // Set the type based on what's in the sale
       let saleType: "product" | "service" | "mixed";
       if (hasProducts && hasServices) {
         saleType = "mixed";
@@ -167,19 +164,31 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         saleType = "service";
       }
 
-      // Calculate the final total amount correctly
-      const finalTotal = subtotal - discountAmount + surchargeAmount;
+      // Get client name if a client is selected
+      let clientName = null;
+      if (selectedClient !== 'no_client') {
+        const client = clients.find(c => c.id === selectedClient);
+        clientName = client?.name || null;
+      }
 
-      // Create the sale record with correct total calculation
+      // Create the sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
-          total: finalTotal,
+          client_name: clientName,
+          total: totalAmount,
           subtotal: subtotal,
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
+          total_products: subtotalProducts,
+          discount_products: discount.products,
+          surcharge_products: surcharge.products,
+          total_services: subtotalServices,
+          discount_services: discount.services,
+          surcharge_services: surcharge.services,
+          final_total: totalAmount,
           sale_date: new Date().toISOString(),
           type: saleType
         })
@@ -188,14 +197,17 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
 
       if (saleError) throw saleError;
 
-      // Create sale items - Ensure each item has the correct type literal
+      // Create sale items
       const saleItems = selectedItems.map(item => ({
         sale_id: saleData.id,
         price: item.price,
         quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity,
         product_id: item.type === 'product' ? item.itemId : null,
         service_id: item.type === 'service' ? item.itemId : null,
-        type: item.type as 'product' | 'service' // Ensure correct type is passed
+        type: item.type,
+        item_name: item.name
       }));
 
       const { error: itemsError } = await supabase
@@ -233,15 +245,6 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     }
   };
 
-  // Filter items based on search term
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredServices = services.filter(service => 
-    service.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <>
       <DialogHeader>
@@ -268,167 +271,26 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <div className="mb-4">
-              <Label>Adicionar itens</Label>
-              <div className="flex gap-2 mt-1">
-                <Input 
-                  placeholder="Buscar..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1"
-                />
-              </div>
-            </div>
+          <ItemSelector 
+            products={products} 
+            services={services}
+            onAddItem={handleAddItem}
+          />
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'services')}>
-              <TabsList className="w-full mb-4">
-                <TabsTrigger 
-                  value="products" 
-                  className="flex-1"
-                >
-                  <ShoppingBag className="h-4 w-4 mr-2" />
-                  Produtos
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="services" 
-                  className="flex-1"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Serviços
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="products" className="max-h-[300px] overflow-y-auto">
-                {filteredProducts.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">
-                    {searchTerm 
-                      ? "Nenhum produto encontrado com esse termo."
-                      : "Nenhum produto cadastrado."
-                    }
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredProducts.map(product => (
-                      <div key={product.id} className="flex justify-between items-center p-2 border rounded hover:bg-muted/50">
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Estoque: {product.stock} | R$ {product.price.toFixed(2)}
-                          </div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => handleAddItem(product, 'product')}
-                          disabled={product.stock < 1}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="services" className="max-h-[300px] overflow-y-auto">
-                {filteredServices.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">
-                    {searchTerm 
-                      ? "Nenhum serviço encontrado com esse termo."
-                      : "Nenhum serviço cadastrado."
-                    }
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredServices.map(service => (
-                      <div key={service.id} className="flex justify-between items-center p-2 border rounded hover:bg-muted/50">
-                        <div>
-                          <div className="font-medium">{service.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {service.duration} min | R$ {service.price.toFixed(2)}
-                          </div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => handleAddItem(service, 'service')}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          <div>
-            <Label>Itens da venda</Label>
-            <div className="border rounded-md mt-1">
-              <div className="p-3 bg-muted rounded-t-md font-medium">Resumo da venda</div>
-              
-              {selectedItems.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  Adicione itens à venda
-                </div>
-              ) : (
-                <div className="max-h-[300px] overflow-y-auto">
-                  {selectedItems.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border-t">
-                      <div className="flex-1">
-                        <div className="font-medium flex items-center">
-                          {item.name}
-                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-muted">
-                            {item.type === 'product' ? 'Produto' : 'Serviço'}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          R$ {item.price.toFixed(2)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="icon" 
-                          variant="outline" 
-                          className="h-7 w-7"
-                          onClick={() => handleUpdateQuantity(index, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <Button 
-                          size="icon" 
-                          variant="outline" 
-                          className="h-7 w-7"
-                          onClick={() => handleUpdateQuantity(index, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-7 w-7 text-destructive"
-                          onClick={() => handleRemoveItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <DiscountSurchargeForm
-                subtotal={subtotal}
-                discountAmount={discountAmount}
-                surchargeAmount={surchargeAmount}
-                onDiscountChange={setDiscountAmount}
-                onSurchargeChange={setSurchargeAmount}
-                className="p-4 border-t"
+          <div className="space-y-6">
+            <SaleItemsList 
+              items={selectedItems}
+              onRemoveItem={handleRemoveItem}
+              onUpdateQuantity={handleUpdateQuantity}
+            />
+            
+            {selectedItems.length > 0 && (
+              <SaleDiscountForm
+                items={selectedItems}
+                onDiscountChange={setDiscount}
+                onSurchargeChange={setSurcharge}
               />
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -438,7 +300,10 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           <X className="h-4 w-4 mr-2" />
           Cancelar
         </Button>
-        <Button onClick={handleSaveSale} disabled={selectedItems.length === 0 || loading || discountAmount > subtotal}>
+        <Button 
+          onClick={handleSaveSale} 
+          disabled={selectedItems.length === 0 || loading || discountAmount > subtotal}
+        >
           <Save className="h-4 w-4 mr-2" />
           {loading ? "Salvando..." : "Finalizar venda"}
         </Button>

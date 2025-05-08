@@ -1,119 +1,34 @@
+
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
-import { Calendar, Loader2, Plus, ShoppingCart } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Calendar, Loader2, Plus } from "lucide-react";
 import { format, startOfMonth, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { type Sale, type SaleItem } from "@/types/sales";
 import { SalesStats } from "@/components/sales/SalesStats";
 import { SalesFilters } from "@/components/sales/SalesFilters";
 import { SalesTable } from "@/components/sales/SalesTable";
 import { SaleDetails } from "@/components/sales/SaleDetails";
 import SaleForm from "@/components/SaleForm";
+import { useSales } from "@/hooks/useSales";
+import { Sale, SaleItem } from "@/types/sales";
 
 export default function Sales() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [sales, setSales] = useState<Sale[]>([]);
+  const { sales, loading, fetchSales, fetchSaleDetails, deleteSale } = useSales();
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [selectedType, setSelectedType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
   const [showNewSaleForm, setShowNewSaleForm] = useState(false);
   const [totalSales, setTotalSales] = useState(0);
   const [totalServices, setTotalServices] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [selectedSale, setSelectedSale] = useState<string | null>(null);
+  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [saleDetails, setSaleDetails] = useState<SaleItem[]>([]);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [currentSale, setCurrentSale] = useState<Sale | null>(null);
-
-  const fetchSales = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('sales')
-        .select(`
-          *,
-          clients (id, name)
-        `)
-        .eq('user_id', user.id)
-        .order('sale_date', { ascending: false });
-      
-      if (error) throw error;
-      
-      setSales(data as Sale[]);
-    } catch (error) {
-      console.error('Error fetching sales:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar vendas",
-        description: "Ocorreu um erro ao buscar as vendas."
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSaleDetails = async (saleId: string) => {
-    if (!saleId) return;
-    
-    try {
-      // Get the sale object
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .select(`
-          *,
-          clients (id, name)
-        `)
-        .eq('id', saleId)
-        .single();
-        
-      if (saleError) throw saleError;
-      setCurrentSale(saleData as Sale);
-      
-      // Get the sale items
-      const { data, error } = await supabase
-        .from('sale_items')
-        .select(`
-          *,
-          products (name),
-          services (name)
-        `)
-        .eq('sale_id', saleId);
-      
-      if (error) throw error;
-      
-      // Make sure each item has the correct type property cast to the expected literal type
-      const typedData = data.map(item => ({
-        ...item,
-        // Ensure type is properly cast to the literal type
-        type: (item.type === 'product' || item.product_id) && !item.service_id ? 'product' : 'service'
-      })) as SaleItem[];
-      
-      setSaleDetails(typedData);
-      setShowSaleDetails(true);
-    } catch (error) {
-      console.error('Error fetching sale details:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar detalhes",
-        description: "Ocorreu um erro ao buscar os detalhes da venda."
-      });
-    }
-  };
-
-  useEffect(() => {
-    fetchSales();
-  }, [user]);
 
   useEffect(() => {
     if (!sales.length) {
@@ -150,7 +65,8 @@ export default function Sales() {
       const dateMatch = startDate ? saleDate >= startDate : true;
       
       const searchMatch = !searchTerm.trim() || 
-        (sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (sale.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
          sale.id.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const typeMatch = selectedType === "all" || sale.type === selectedType;
@@ -160,105 +76,55 @@ export default function Sales() {
     
     setFilteredSales(filtered);
     
-    // Calculate totals correctly - don't use Math.max as we want to show actual totals
-    const total = filtered.reduce((sum, sale) => sum + Number(sale.total), 0);
-    setTotalSales(total);
+    // Calculate totals from filtered sales
+    let totalAmount = 0;
+    let productsAmount = 0;
+    let servicesAmount = 0;
     
-    // Calculate service and product totals from sale_items
-    const calculateItemTotals = async () => {
-      if (!user || !filtered.length) {
-        setTotalServices(0);
-        setTotalProducts(0);
-        return;
-      }
-      
-      try {
-        const saleIds = filtered.map(sale => sale.id);
-        
-        const { data: saleItems, error } = await supabase
-          .from('sale_items')
-          .select('*')
-          .in('sale_id', saleIds);
-        
-        if (error) throw error;
-        
-        const services = saleItems
-          .filter(item => item.type === 'service' || item.service_id !== null)
-          .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-        
-        const products = saleItems
-          .filter(item => item.type === 'product' || item.product_id !== null)
-          .reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-        
-        setTotalServices(services);
-        setTotalProducts(products);
-      } catch (error) {
-        console.error('Error calculating totals:', error);
-        setTotalServices(0);
-        setTotalProducts(0);
-      }
-    };
+    filtered.forEach(sale => {
+      totalAmount += Number(sale.total);
+      productsAmount += Number(sale.total_products) || 0;
+      servicesAmount += Number(sale.total_services) || 0;
+    });
     
-    calculateItemTotals();
-  }, [sales, selectedPeriod, selectedType, searchTerm, user]);
+    setTotalSales(totalAmount);
+    setTotalProducts(productsAmount);
+    setTotalServices(servicesAmount);
+  }, [sales, selectedPeriod, selectedType, searchTerm]);
 
-  const handleDeleteSale = async (saleId: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.")) {
-      return;
-    }
+  const handleViewSaleDetails = async (saleId: string) => {
+    setSelectedSaleId(saleId);
+    const result = await fetchSaleDetails(saleId);
     
-    setLoading(true);
-    try {
-      const { error: itemsError } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', saleId);
-      
-      if (itemsError) throw itemsError;
-      
-      const { error: saleError } = await supabase
-        .from('sales')
-        .delete()
-        .eq('id', saleId)
-        .eq('user_id', user.id);
-      
-      if (saleError) throw saleError;
-      
-      toast({ title: "Venda excluída com sucesso!" });
-      fetchSales();
-    } catch (error) {
-      console.error('Error deleting sale:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao excluir venda",
-        description: "Ocorreu um erro ao excluir a venda."
-      });
-    } finally {
-      setLoading(false);
+    if (result) {
+      setSaleDetails(result.items);
+      setCurrentSale(result.sale);
+      setShowSaleDetails(true);
     }
   };
 
   const exportToCSV = () => {
     if (filteredSales.length === 0) {
-      toast({ title: "Não há dados para exportar" });
       return;
     }
     
     setExportLoading(true);
     
     try {
-      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total\n";
+      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total,Produtos,Serviços\n";
       
       filteredSales.forEach(sale => {
         const date = format(new Date(sale.sale_date), 'dd/MM/yyyy');
-        const client = sale.clients?.name || "Cliente não informado";
+        const client = sale.client_name || sale.clients?.name || "Cliente não informado";
         const type = sale.type === 'product' ? 'Produto' : sale.type === 'service' ? 'Serviço' : 'Misto';
-        const subtotal = Number(sale.subtotal || 0).toFixed(2).replace('.', ',');
-        const discount = Number(sale.discount_amount || 0).toFixed(2).replace('.', ',');
-        const surcharge = Number(sale.surcharge_amount || 0).toFixed(2).replace('.', ',');
+        const subtotal = Number(sale.subtotal).toFixed(2).replace('.', ',');
+        const discount = Number(sale.discount_amount).toFixed(2).replace('.', ',');
+        const surcharge = Number(sale.surcharge_amount).toFixed(2).replace('.', ',');
         const value = Number(sale.total).toFixed(2).replace('.', ',');
+        const products = Number(sale.total_products || 0).toFixed(2).replace('.', ',');
+        const services = Number(sale.total_services || 0).toFixed(2).replace('.', ',');
         
-        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${value}\n`;
+        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${value},${products},${services}\n`;
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -269,15 +135,8 @@ export default function Sales() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      toast({ title: "Relatório exportado com sucesso!" });
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao exportar dados",
-        description: "Ocorreu um erro ao exportar os dados."
-      });
     } finally {
       setExportLoading(false);
     }
@@ -368,11 +227,8 @@ export default function Sales() {
         <CardContent>
           <SalesTable
             sales={filteredSales}
-            onViewDetails={(id) => {
-              setSelectedSale(id);
-              fetchSaleDetails(id);
-            }}
-            onDeleteSale={handleDeleteSale}
+            onViewDetails={handleViewSaleDetails}
+            onDeleteSale={deleteSale}
             formatDate={formatDate}
           />
         </CardContent>
@@ -404,7 +260,7 @@ export default function Sales() {
       </Dialog>
 
       <SaleDetails
-        saleId={selectedSale}
+        saleId={selectedSaleId}
         items={saleDetails}
         isOpen={showSaleDetails}
         onClose={() => setShowSaleDetails(false)}

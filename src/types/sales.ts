@@ -4,10 +4,20 @@ export interface Sale {
   sale_date: string;
   client_id: string | null;
   total: number;
-  subtotal: number | null;
-  discount_amount: number | null;
-  surcharge_amount: number | null;
+  subtotal: number;
+  discount_amount: number;
+  surcharge_amount: number;
+  total_products: number;
+  discount_products: number;
+  surcharge_products: number;
+  total_services: number;
+  discount_services: number;
+  surcharge_services: number;
+  final_total: number;
   type: "mixed" | "product" | "service";
+  payment_method?: string;
+  notes?: string;
+  client_name?: string;
   clients?: {
     id: string;
     name: string;
@@ -21,11 +31,24 @@ export interface SaleItem {
   service_id: string | null;
   quantity: number;
   price: number;
+  unit_price: number;
+  total_price: number;
   type: "product" | "service";
+  item_name: string;
   products?: {
     name: string;
   } | null;
   services?: {
     name: string;
   } | null;
+}
+
+export interface SaleFormItem {
+  type: "product" | "service";
+  itemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  discount?: number;
+  surcharge?: number;
 }
