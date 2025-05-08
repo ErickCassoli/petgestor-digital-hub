@@ -108,6 +108,23 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
 
   // Calculate final total
   const totalAmount = subtotal - discountAmount + surchargeAmount;
+  
+  // Determine total products and services after discounts and surcharges
+  const totalProducts = discount.total > 0 
+    ? subtotalProducts - (subtotalProducts / subtotal * discount.total)
+    : subtotalProducts - discount.products;
+  
+  const finalTotalProducts = surcharge.total > 0 
+    ? totalProducts + (subtotalProducts / subtotal * surcharge.total)
+    : totalProducts + surcharge.products;
+    
+  const totalServices = discount.total > 0 
+    ? subtotalServices - (subtotalServices / subtotal * discount.total)
+    : subtotalServices - discount.services;
+    
+  const finalTotalServices = surcharge.total > 0 
+    ? totalServices + (subtotalServices / subtotal * surcharge.total)
+    : totalServices + surcharge.services;
 
   const handleAddItem = (item: SaleFormItem) => {
     // Check if item already exists in the cart
@@ -171,6 +188,14 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         clientName = client?.name || null;
       }
 
+      // Ensure values are not negative
+      const discountProductsValue = Math.max(0, discount.products);
+      const discountServicesValue = Math.max(0, discount.services);
+      const surchargeProductsValue = Math.max(0, surcharge.products);
+      const surchargeServicesValue = Math.max(0, surcharge.services);
+      
+      const finalTotalValue = Math.max(0, totalAmount);
+
       // Create the sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
@@ -178,24 +203,27 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           user_id: user?.id,
           client_id: selectedClient !== 'no_client' ? selectedClient : null,
           client_name: clientName,
-          total: totalAmount,
+          total: finalTotalValue,
           subtotal: subtotal,
           discount_amount: discountAmount,
           surcharge_amount: surchargeAmount,
-          total_products: subtotalProducts,
-          discount_products: discount.products,
-          surcharge_products: surcharge.products,
-          total_services: subtotalServices,
-          discount_services: discount.services,
-          surcharge_services: surcharge.services,
-          final_total: totalAmount,
+          total_products: hasProducts ? finalTotalProducts : 0,
+          discount_products: hasProducts ? discountProductsValue : 0,
+          surcharge_products: hasProducts ? surchargeProductsValue : 0,
+          total_services: hasServices ? finalTotalServices : 0,
+          discount_services: hasServices ? discountServicesValue : 0,
+          surcharge_services: hasServices ? surchargeServicesValue : 0,
+          final_total: finalTotalValue,
           sale_date: new Date().toISOString(),
           type: saleType
         })
         .select()
         .single();
 
-      if (saleError) throw saleError;
+      if (saleError) {
+        console.error("Error saving sale:", saleError);
+        throw saleError;
+      }
 
       // Create sale items
       const saleItems = selectedItems.map(item => ({

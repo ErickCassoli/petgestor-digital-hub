@@ -57,10 +57,10 @@ export default function SaleDiscountForm({
     
     onDiscountChange({
       total: activeTab === "total" ? discTotal : 0,
-      products: activeTab === "total" ? 0 : discProducts,
-      services: activeTab === "total" ? 0 : discServices,
+      products: activeTab === "separate" ? discProducts : 0,
+      services: activeTab === "separate" ? discServices : 0,
     });
-  }, [discountTotal, discountProducts, discountServices, activeTab, subtotalTotal, subtotalProducts, subtotalServices]);
+  }, [discountTotal, discountProducts, discountServices, activeTab, subtotalTotal, subtotalProducts, subtotalServices, onDiscountChange]);
 
   useEffect(() => {
     const surTotal = validateSurcharge(surchargeTotal);
@@ -69,10 +69,10 @@ export default function SaleDiscountForm({
     
     onSurchargeChange({
       total: activeTab === "total" ? surTotal : 0,
-      products: activeTab === "total" ? 0 : surProducts,
-      services: activeTab === "total" ? 0 : surServices,
+      products: activeTab === "separate" ? surProducts : 0,
+      services: activeTab === "separate" ? surServices : 0,
     });
-  }, [surchargeTotal, surchargeProducts, surchargeServices, activeTab]);
+  }, [surchargeTotal, surchargeProducts, surchargeServices, activeTab, onSurchargeChange]);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -225,7 +225,7 @@ export default function SaleDiscountForm({
         </Tabs>
       ) : (
         <div>
-          {activeTab === "total" ? renderTotalTabContent() : renderSeparateTabContent()}
+          {renderTotalTabContent()}
         </div>
       )}
 
