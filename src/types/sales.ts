@@ -1,24 +1,20 @@
 
 export interface Sale {
   id: string;
+  user_id: string;
+  client_id?: string | null;
+  client_name?: string | null;
   sale_date: string;
-  client_id: string | null;
-  total: number;
   subtotal: number;
-  discount_amount: number;
-  surcharge_amount: number;
-  total_products: number;
-  discount_products: number;
-  surcharge_products: number;
-  total_services: number;
-  discount_services: number;
-  surcharge_services: number;
-  final_total: number;
-  type: "mixed" | "product" | "service";
+  discount: number;
+  surcharge: number;
+  total: number;
+  type: "product" | "service" | "mixed";
   payment_method?: string;
   notes?: string;
-  client_name?: string;
-  clients?: {
+  created_at?: string;
+  updated_at?: string;
+  client?: {
     id: string;
     name: string;
   } | null;
@@ -27,28 +23,42 @@ export interface Sale {
 export interface SaleItem {
   id: string;
   sale_id: string;
-  product_id: string | null;
-  service_id: string | null;
-  quantity: number;
-  price: number;
-  unit_price: number;
-  total_price: number;
   type: "product" | "service";
-  item_name: string;
-  products?: {
+  product_id?: string | null;
+  service_id?: string | null;
+  name: string;
+  price: number;
+  quantity: number;
+  total: number;
+  created_at?: string;
+  updated_at?: string;
+  product?: {
     name: string;
   } | null;
-  services?: {
+  service?: {
     name: string;
   } | null;
 }
 
-export interface SaleFormItem {
+export interface CartItem {
+  id: string;
   type: "product" | "service";
-  itemId: string;
   name: string;
   price: number;
   quantity: number;
-  discount?: number;
-  surcharge?: number;
+}
+
+export interface DiscountValues {
+  amount: number;
+  percent: number;
+  type: "amount" | "percent";
+}
+
+export interface SaleFormData {
+  clientId: string | null;
+  items: CartItem[];
+  discount: DiscountValues;
+  surcharge: number;
+  paymentMethod: string;
+  notes: string;
 }

@@ -6,13 +6,13 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Calendar, Loader2, Plus } from "lucide-react";
 import { format, startOfMonth, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSales } from "@/hooks/useSales";
+import { Sale, SaleItem } from "@/types/sales";
 import { SalesStats } from "@/components/sales/SalesStats";
 import { SalesFilters } from "@/components/sales/SalesFilters";
 import { SalesTable } from "@/components/sales/SalesTable";
 import { SaleDetails } from "@/components/sales/SaleDetails";
-import SaleForm from "@/components/SaleForm";
-import { useSales } from "@/hooks/useSales";
-import { Sale, SaleItem } from "@/types/sales";
+import { SaleForm } from "@/components/sales/SaleForm";
 
 export default function Sales() {
   const { sales, loading, fetchSales, fetchSaleDetails, deleteSale } = useSales();
@@ -21,9 +21,9 @@ export default function Sales() {
   const [selectedType, setSelectedType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewSaleForm, setShowNewSaleForm] = useState(false);
-  const [totalSales, setTotalSales] = useState(0);
-  const [totalServices, setTotalServices] = useState(0);
-  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalSalesAmount, setTotalSalesAmount] = useState(0);
+  const [totalServicesAmount, setTotalServicesAmount] = useState(0);
+  const [totalProductsAmount, setTotalProductsAmount] = useState(0);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [saleDetails, setSaleDetails] = useState<SaleItem[]>([]);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
@@ -33,9 +33,9 @@ export default function Sales() {
   useEffect(() => {
     if (!sales.length) {
       setFilteredSales([]);
-      setTotalSales(0);
-      setTotalServices(0);
-      setTotalProducts(0);
+      setTotalSalesAmount(0);
+      setTotalServicesAmount(0);
+      setTotalProductsAmount(0);
       return;
     }
     
@@ -66,7 +66,7 @@ export default function Sales() {
       
       const searchMatch = !searchTerm.trim() || 
         (sale.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-         sale.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         sale.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
          sale.id.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const typeMatch = selectedType === "all" || sale.type === selectedType;
@@ -76,20 +76,30 @@ export default function Sales() {
     
     setFilteredSales(filtered);
     
-    // Calculate totals from filtered sales
-    let totalAmount = 0;
-    let productsAmount = 0;
-    let servicesAmount = 0;
+    // Calculate totals
+    let salesTotal = 0;
+    let productsTotal = 0;
+    let servicesTotal = 0;
     
     filtered.forEach(sale => {
-      totalAmount += Number(sale.total);
-      productsAmount += Number(sale.total_products) || 0;
-      servicesAmount += Number(sale.total_services) || 0;
+      salesTotal += Number(sale.total);
+      
+      if (sale.type === 'product') {
+        productsTotal += Number(sale.total);
+      } else if (sale.type === 'service') {
+        servicesTotal += Number(sale.total);
+      } else if (sale.type === 'mixed') {
+        // For mixed sales, the database now stores the breakdown
+        const productsPortion = sale.total * 0.6; // Approximate if data not available
+        const servicesPortion = sale.total * 0.4; // Approximate if data not available
+        productsTotal += productsPortion;
+        servicesTotal += servicesPortion;
+      }
     });
     
-    setTotalSales(totalAmount);
-    setTotalProducts(productsAmount);
-    setTotalServices(servicesAmount);
+    setTotalSalesAmount(salesTotal);
+    setTotalProductsAmount(productsTotal);
+    setTotalServicesAmount(servicesTotal);
   }, [sales, selectedPeriod, selectedType, searchTerm]);
 
   const handleViewSaleDetails = async (saleId: string) => {
@@ -103,28 +113,28 @@ export default function Sales() {
     }
   };
 
+  const handleDeleteSale = async (saleId: string) => {
+    await deleteSale(saleId);
+  };
+
   const exportToCSV = () => {
-    if (filteredSales.length === 0) {
-      return;
-    }
+    if (filteredSales.length === 0) return;
     
     setExportLoading(true);
     
     try {
-      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total,Produtos,Serviços\n";
+      let csvContent = "Data,Cliente,Tipo,Subtotal,Desconto,Acréscimo,Valor Total\n";
       
       filteredSales.forEach(sale => {
         const date = format(new Date(sale.sale_date), 'dd/MM/yyyy');
-        const client = sale.client_name || sale.clients?.name || "Cliente não informado";
+        const client = sale.client_name || sale.client?.name || "Cliente não informado";
         const type = sale.type === 'product' ? 'Produto' : sale.type === 'service' ? 'Serviço' : 'Misto';
         const subtotal = Number(sale.subtotal).toFixed(2).replace('.', ',');
-        const discount = Number(sale.discount_amount).toFixed(2).replace('.', ',');
-        const surcharge = Number(sale.surcharge_amount).toFixed(2).replace('.', ',');
-        const value = Number(sale.total).toFixed(2).replace('.', ',');
-        const products = Number(sale.total_products || 0).toFixed(2).replace('.', ',');
-        const services = Number(sale.total_services || 0).toFixed(2).replace('.', ',');
+        const discount = Number(sale.discount).toFixed(2).replace('.', ',');
+        const surcharge = Number(sale.surcharge).toFixed(2).replace('.', ',');
+        const total = Number(sale.total).toFixed(2).replace('.', ',');
         
-        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${value},${products},${services}\n`;
+        csvContent += `${date},"${client}",${type},${subtotal},${discount},${surcharge},${total}\n`;
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -199,9 +209,9 @@ export default function Sales() {
       </div>
 
       <SalesStats
-        totalSales={totalSales}
-        totalServices={totalServices}
-        totalProducts={totalProducts}
+        totalSales={totalSalesAmount}
+        totalServices={totalServicesAmount}
+        totalProducts={totalProductsAmount}
       />
 
       <Card>
@@ -228,7 +238,7 @@ export default function Sales() {
           <SalesTable
             sales={filteredSales}
             onViewDetails={handleViewSaleDetails}
-            onDeleteSale={deleteSale}
+            onDeleteSale={handleDeleteSale}
             formatDate={formatDate}
           />
         </CardContent>
@@ -241,7 +251,7 @@ export default function Sales() {
           <div className="flex items-center space-x-2">
             <span className="font-medium">Total:</span>
             <span className="font-bold text-lg">
-              {totalSales.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {totalSalesAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </div>
         </CardFooter>

@@ -1,26 +1,29 @@
 
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Plus, Minus, Trash2 } from "lucide-react";
-import { SaleFormItem } from "@/types/sales";
+import { CartItem } from "@/types/sales";
 
 interface SaleItemsListProps {
-  items: SaleFormItem[];
+  items: CartItem[];
   onRemoveItem: (index: number) => void;
   onUpdateQuantity: (index: number, quantity: number) => void;
 }
 
-export default function SaleItemsList({
+export function SaleItemsList({
   items,
   onRemoveItem,
   onUpdateQuantity,
 }: SaleItemsListProps) {
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   return (
     <div>
       <Label>Itens da venda</Label>
       <div className="border rounded-md mt-1">
-        <div className="p-3 bg-muted rounded-t-md font-medium">Resumo da venda</div>
+        <div className="p-3 bg-muted rounded-t-md font-medium">Itens adicionados</div>
 
         {items.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">Adicione itens à venda</div>
@@ -36,7 +39,7 @@ export default function SaleItemsList({
                     </span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    R$ {item.price.toFixed(2)}
+                    {formatCurrency(item.price)} × {item.quantity} = {formatCurrency(item.price * item.quantity)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

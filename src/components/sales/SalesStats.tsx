@@ -9,6 +9,10 @@ interface SalesStatsProps {
 }
 
 export function SalesStats({ totalSales, totalServices, totalProducts }: SalesStatsProps) {
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-3 mb-8">
       <Card className="bg-gradient-to-br from-blue-50 to-white">
@@ -19,7 +23,7 @@ export function SalesStats({ totalSales, totalServices, totalProducts }: SalesSt
           <div className="flex items-center">
             <DollarSign className="h-5 w-5 text-blue-600 mr-2" />
             <span className="text-2xl font-bold text-gray-900">
-              {totalSales.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {formatCurrency(totalSales)}
             </span>
           </div>
         </CardContent>
@@ -33,7 +37,7 @@ export function SalesStats({ totalSales, totalServices, totalProducts }: SalesSt
           <div className="flex items-center">
             <FileText className="h-5 w-5 text-green-600 mr-2" />
             <span className="text-2xl font-bold text-gray-900">
-              {totalServices.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {formatCurrency(totalServices)}
             </span>
           </div>
         </CardContent>
@@ -47,7 +51,7 @@ export function SalesStats({ totalSales, totalServices, totalProducts }: SalesSt
           <div className="flex items-center">
             <ShoppingCart className="h-5 w-5 text-amber-600 mr-2" />
             <span className="text-2xl font-bold text-gray-900">
-              {totalProducts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {formatCurrency(totalProducts)}
             </span>
           </div>
         </CardContent>

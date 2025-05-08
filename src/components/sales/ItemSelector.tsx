@@ -1,11 +1,11 @@
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, ShoppingBag, FileText } from "lucide-react";
-import { SaleFormItem } from "@/types/sales";
+import { CartItem } from "@/types/sales";
 
 interface Product {
   id: string;
@@ -18,17 +18,16 @@ interface Service {
   id: string;
   name: string;
   price: number;
-  description?: string;
   duration: number;
 }
 
 interface ItemSelectorProps {
   products: Product[];
   services: Service[];
-  onAddItem: (item: SaleFormItem) => void;
+  onAddItem: (item: CartItem) => void;
 }
 
-export default function ItemSelector({ products, services, onAddItem }: ItemSelectorProps) {
+export function ItemSelector({ products, services, onAddItem }: ItemSelectorProps) {
   const [activeTab, setActiveTab] = useState<"products" | "services">("products");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -40,19 +39,31 @@ export default function ItemSelector({ products, services, onAddItem }: ItemSele
     service.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddItem = (item: Product | Service, type: "product" | "service") => {
+  const handleAddProduct = (product: Product) => {
+    if (product.stock <= 0) return;
+
     onAddItem({
-      type,
-      itemId: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
+      id: product.id,
+      type: "product",
+      name: product.name,
+      price: product.price,
+      quantity: 1
+    });
+  };
+
+  const handleAddService = (service: Service) => {
+    onAddItem({
+      id: service.id,
+      type: "service",
+      name: service.name,
+      price: service.price,
+      quantity: 1
     });
   };
 
   return (
-    <div>
-      <div className="mb-4">
+    <div className="space-y-4">
+      <div>
         <Label>Adicionar itens</Label>
         <div className="flex gap-2 mt-1">
           <Input
@@ -60,11 +71,16 @@ export default function ItemSelector({ products, services, onAddItem }: ItemSele
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1"
+            startIcon={<Search className="h-4 w-4 text-muted-foreground" />}
           />
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "products" | "services")}>
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(v) => setActiveTab(v as "products" | "services")}
+        className="mt-2"
+      >
         <TabsList className="w-full mb-4">
           <TabsTrigger value="products" className="flex-1">
             <ShoppingBag className="h-4 w-4 mr-2" />
@@ -76,31 +92,34 @@ export default function ItemSelector({ products, services, onAddItem }: ItemSele
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="products" className="max-h-[300px] overflow-y-auto">
+        <TabsContent value="products" className="border rounded-md p-1">
           {filteredProducts.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               {searchTerm
-                ? "Nenhum produto encontrado com esse termo."
+                ? "Nenhum produto encontrado."
                 : "Nenhum produto cadastrado."}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1 max-h-[300px] overflow-y-auto">
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="flex justify-between items-center p-2 border rounded hover:bg-muted/50"
+                  className={cn(
+                    "flex justify-between items-center p-2 rounded hover:bg-muted/50",
+                    product.stock <= 0 && "opacity-50"
+                  )}
                 >
                   <div>
                     <div className="font-medium">{product.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      Estoque: {product.stock} | R$ {product.price.toFixed(2)}
+                      Estoque: {product.stock} | {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleAddItem(product, "product")}
-                    disabled={product.stock < 1}
+                    onClick={() => handleAddProduct(product)}
+                    disabled={product.stock <= 0}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -110,30 +129,30 @@ export default function ItemSelector({ products, services, onAddItem }: ItemSele
           )}
         </TabsContent>
 
-        <TabsContent value="services" className="max-h-[300px] overflow-y-auto">
+        <TabsContent value="services" className="border rounded-md p-1">
           {filteredServices.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               {searchTerm
-                ? "Nenhum serviço encontrado com esse termo."
+                ? "Nenhum serviço encontrado."
                 : "Nenhum serviço cadastrado."}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1 max-h-[300px] overflow-y-auto">
               {filteredServices.map((service) => (
                 <div
                   key={service.id}
-                  className="flex justify-between items-center p-2 border rounded hover:bg-muted/50"
+                  className="flex justify-between items-center p-2 rounded hover:bg-muted/50"
                 >
                   <div>
                     <div className="font-medium">{service.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {service.duration} min | R$ {service.price.toFixed(2)}
+                      {service.duration} min | {service.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleAddItem(service, "service")}
+                    onClick={() => handleAddService(service)}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -146,3 +165,6 @@ export default function ItemSelector({ products, services, onAddItem }: ItemSele
     </div>
   );
 }
+
+// Import the cn utility
+import { cn } from "@/lib/utils";

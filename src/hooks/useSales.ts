@@ -20,7 +20,7 @@ export function useSales() {
         .from('sales')
         .select(`
           *,
-          clients (id, name)
+          client:client_id (id, name)
         `)
         .eq('user_id', user.id)
         .order('sale_date', { ascending: false });
@@ -28,10 +28,7 @@ export function useSales() {
       if (error) throw error;
       
       // Type assertion to ensure proper typing
-      const typedData = data.map(sale => ({
-        ...sale,
-        type: sale.type as "product" | "service" | "mixed"
-      })) as Sale[];
+      const typedData = data as Sale[];
       
       setSales(typedData);
     } catch (error) {
@@ -55,7 +52,7 @@ export function useSales() {
         .from('sales')
         .select(`
           *,
-          clients (id, name)
+          client:client_id (id, name)
         `)
         .eq('id', saleId)
         .single();
@@ -63,28 +60,22 @@ export function useSales() {
       if (saleError) throw saleError;
       
       // Type assertion
-      const sale = {
-        ...saleData,
-        type: saleData.type as "product" | "service" | "mixed"
-      } as Sale;
+      const sale = saleData as Sale;
       
       // Get the sale items
       const { data: itemsData, error: itemsError } = await supabase
         .from('sale_items')
         .select(`
           *,
-          products (name),
-          services (name)
+          product:product_id (name),
+          service:service_id (name)
         `)
         .eq('sale_id', saleId);
       
       if (itemsError) throw itemsError;
       
       // Type assertion to ensure correct typing
-      const items = itemsData.map(item => ({
-        ...item,
-        type: item.type as "product" | "service"
-      })) as SaleItem[];
+      const items = itemsData as SaleItem[];
       
       return { sale, items };
     } catch (error) {
@@ -105,22 +96,14 @@ export function useSales() {
     
     setLoading(true);
     try {
-      // Delete sale items first
-      const { error: itemsError } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', saleId);
-      
-      if (itemsError) throw itemsError;
-      
-      // Then delete the sale
-      const { error: saleError } = await supabase
+      // Delete the sale (sale items are automatically deleted due to CASCADE)
+      const { error } = await supabase
         .from('sales')
         .delete()
         .eq('id', saleId)
         .eq('user_id', user?.id);
       
-      if (saleError) throw saleError;
+      if (error) throw error;
       
       toast({ title: "Venda excluída com sucesso!" });
       await fetchSales();
@@ -138,6 +121,122 @@ export function useSales() {
     }
   };
 
+  // Function to create a new sale
+  const createSale = async (
+    items: CartItem[], 
+    subtotal: number,
+    discount: number,
+    surcharge: number,
+    total: number,
+    clientId: string | null,
+    clientName: string | null,
+    paymentMethod: string | null,
+    notes: string | null
+  ) => {
+    if (!user) return null;
+    
+    if (items.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar venda",
+        description: "Adicione pelo menos um item à venda."
+      });
+      return null;
+    }
+    
+    try {
+      // Determine sale type based on items
+      const hasProducts = items.some(item => item.type === "product");
+      const hasServices = items.some(item => item.type === "service");
+      
+      let saleType: "product" | "service" | "mixed";
+      if (hasProducts && hasServices) {
+        saleType = "mixed";
+      } else if (hasProducts) {
+        saleType = "product";
+      } else {
+        saleType = "service";
+      }
+      
+      // Calculate totals for products and services
+      const productTotal = items
+        .filter(item => item.type === "product")
+        .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      const serviceTotal = items
+        .filter(item => item.type === "service")
+        .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Create the sale
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .insert({
+          user_id: user.id,
+          client_id: clientId,
+          client_name: clientName,
+          subtotal,
+          discount,
+          surcharge,
+          total,
+          type: saleType,
+          payment_method: paymentMethod || 'cash',
+          notes,
+          sale_date: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (saleError) throw saleError;
+      
+      // Create sale items
+      const saleItems = items.map(item => ({
+        sale_id: saleData.id,
+        type: item.type,
+        product_id: item.type === 'product' ? item.id : null,
+        service_id: item.type === 'service' ? item.id : null,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        total: item.price * item.quantity
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('sale_items')
+        .insert(saleItems);
+      
+      if (itemsError) throw itemsError;
+      
+      // Update product stocks
+      for (const item of items) {
+        if (item.type === 'product') {
+          const { error: stockError } = await supabase.rpc('update_product_stock', {
+            p_product_id: item.id,
+            p_quantity: item.quantity * -1 // Negative to decrease stock
+          });
+          
+          if (stockError) {
+            console.error('Error updating stock:', stockError);
+            // Continue even if stock update fails
+          }
+        }
+      }
+      
+      toast({
+        title: "Venda registrada com sucesso!"
+      });
+      
+      return saleData;
+    } catch (error) {
+      console.error('Error creating sale:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar venda",
+        description: "Ocorreu um erro ao registrar a venda."
+      });
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchSales();
@@ -149,6 +248,7 @@ export function useSales() {
     loading,
     fetchSales,
     fetchSaleDetails,
-    deleteSale
+    deleteSale,
+    createSale
   };
 }

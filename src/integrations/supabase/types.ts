@@ -210,43 +210,40 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          item_name: string | null
+          name: string
           price: number
           product_id: string | null
           quantity: number
           sale_id: string
           service_id: string | null
-          total_price: number | null
+          total: number
           type: string
-          unit_price: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
-          item_name?: string | null
+          name: string
           price: number
           product_id?: string | null
-          quantity?: number
+          quantity: number
           sale_id: string
           service_id?: string | null
-          total_price?: number | null
+          total: number
           type: string
-          unit_price?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
-          item_name?: string | null
+          name?: string
           price?: number
           product_id?: string | null
           quantity?: number
           sale_id?: string
           service_id?: string | null
-          total_price?: number | null
+          total?: number
           type?: string
-          unit_price?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -275,85 +272,54 @@ export type Database = {
       }
       sales: {
         Row: {
-          appointment_id: string | null
           client_id: string | null
           client_name: string | null
           created_at: string | null
-          discount_amount: number | null
-          discount_products: number | null
-          discount_services: number | null
-          final_total: number | null
+          discount: number
           id: string
           notes: string | null
           payment_method: string | null
           sale_date: string | null
-          subtotal: number | null
-          surcharge_amount: number | null
-          surcharge_products: number | null
-          surcharge_services: number | null
+          subtotal: number
+          surcharge: number
           total: number
-          total_products: number | null
-          total_services: number | null
           type: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          appointment_id?: string | null
           client_id?: string | null
           client_name?: string | null
           created_at?: string | null
-          discount_amount?: number | null
-          discount_products?: number | null
-          discount_services?: number | null
-          final_total?: number | null
+          discount?: number
           id?: string
           notes?: string | null
           payment_method?: string | null
           sale_date?: string | null
-          subtotal?: number | null
-          surcharge_amount?: number | null
-          surcharge_products?: number | null
-          surcharge_services?: number | null
+          subtotal: number
+          surcharge?: number
           total: number
-          total_products?: number | null
-          total_services?: number | null
           type: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          appointment_id?: string | null
           client_id?: string | null
           client_name?: string | null
           created_at?: string | null
-          discount_amount?: number | null
-          discount_products?: number | null
-          discount_services?: number | null
-          final_total?: number | null
+          discount?: number
           id?: string
           notes?: string | null
           payment_method?: string | null
           sale_date?: string | null
-          subtotal?: number | null
-          surcharge_amount?: number | null
-          surcharge_products?: number | null
-          surcharge_services?: number | null
+          subtotal?: number
+          surcharge?: number
           total?: number
-          total_products?: number | null
-          total_services?: number | null
           type?: string
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "sales_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "sales_client_id_fkey"
             columns: ["client_id"]

@@ -36,6 +36,10 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
     }
   };
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -58,17 +62,17 @@ export function SalesTable({ sales, onViewDetails, onDeleteSale, formatDate }: S
             return (
               <TableRow key={sale.id}>
                 <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                <TableCell>{sale.client_name || sale.clients?.name || "Cliente não informado"}</TableCell>
+                <TableCell>{sale.client_name || sale.client?.name || "Cliente não informado"}</TableCell>
                 <TableCell>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                     {typeInfo.label}
                   </span>
                 </TableCell>
-                <TableCell>{Number(sale.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                <TableCell>{Number(sale.discount_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                <TableCell>{Number(sale.surcharge_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                <TableCell>{formatCurrency(Number(sale.subtotal))}</TableCell>
+                <TableCell>{formatCurrency(Number(sale.discount))}</TableCell>
+                <TableCell>{formatCurrency(Number(sale.surcharge))}</TableCell>
                 <TableCell className="text-right font-medium">
-                  {Number(sale.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {formatCurrency(Number(sale.total))}
                 </TableCell>
                 <TableCell className="text-center">
                   <DropdownMenu>

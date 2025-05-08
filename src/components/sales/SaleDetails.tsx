@@ -2,7 +2,6 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Sale, SaleItem } from "@/types/sales";
 
 interface SaleDetailsProps {
@@ -38,18 +37,31 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
   // Calculate totals
   const productsTotal = items
     .filter(item => item.type === 'product')
-    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    .reduce((sum, item) => sum + (item.total || (item.price * item.quantity)), 0);
     
   const servicesTotal = items
     .filter(item => item.type === 'service')
-    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    .reduce((sum, item) => sum + (item.total || (item.price * item.quantity)), 0);
     
-  const subtotal = productsTotal + servicesTotal;
+  const subtotal = sale?.subtotal || productsTotal + servicesTotal;
 
   // Get discount and surcharge values from sale object or calculate from items
-  const discountTotal = sale?.discount_amount || 0;
-  const surchargeTotal = sale?.surcharge_amount || 0;
-  const total = sale?.total || subtotal - discountTotal + surchargeTotal;
+  const discount = sale?.discount || 0;
+  const surcharge = sale?.surcharge || 0;
+  const total = sale?.total || (subtotal - discount + surcharge);
+  
+  // Payment method translation
+  const getPaymentMethodLabel = (method: string | undefined | null) => {
+    switch (method) {
+      case 'cash': return 'Dinheiro';
+      case 'credit_card': return 'Cartão de Crédito';
+      case 'debit_card': return 'Cartão de Débito';
+      case 'pix': return 'Pix';
+      case 'transfer': return 'Transferência';
+      case 'other': return 'Outro';
+      default: return 'Não informado';
+    }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -57,7 +69,7 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
         <SheetHeader>
           <SheetTitle>Detalhes da Venda</SheetTitle>
           <SheetDescription>
-            Venda #{saleId && saleId.substring(0, 8)} • {getTypeLabel()}
+            {saleId && `Venda #${saleId.substring(0, 8).toUpperCase()}`} • {getTypeLabel()}
             {sale?.client_name && ` • Cliente: ${sale.client_name}`}
           </SheetDescription>
         </SheetHeader>
@@ -70,7 +82,7 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                   {items.map((item) => (
                     <div key={item.id} className="p-3">
                       <div className="font-medium flex items-center gap-2">
-                        {item.item_name || item.products?.name || item.services?.name || "Item"}
+                        {item.name}
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           item.type === 'product' 
                             ? 'bg-blue-100 text-blue-800' 
@@ -81,10 +93,10 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>
-                          {item.quantity} x {Number(item.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          {item.quantity} x {formatCurrency(Number(item.price))}
                         </span>
                         <span>
-                          {(Number(item.price) * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          {formatCurrency(Number(item.total || item.price * item.quantity))}
                         </span>
                       </div>
                     </div>
@@ -109,17 +121,17 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
                 
-                {discountTotal > 0 && (
+                {discount > 0 && (
                   <div className="p-3 bg-muted/30 flex justify-between text-sm text-red-600">
                     <span>Desconto:</span>
-                    <span>-{formatCurrency(discountTotal)}</span>
+                    <span>-{formatCurrency(discount)}</span>
                   </div>
                 )}
                 
-                {surchargeTotal > 0 && (
+                {surcharge > 0 && (
                   <div className="p-3 bg-muted/30 flex justify-between text-sm text-green-600">
                     <span>Acréscimo:</span>
-                    <span>+{formatCurrency(surchargeTotal)}</span>
+                    <span>+{formatCurrency(surcharge)}</span>
                   </div>
                 )}
                 
@@ -130,6 +142,26 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
                   </span>
                 </div>
               </div>
+              
+              {sale && (
+                <div className="border rounded-md overflow-hidden mt-4">
+                  <div className="bg-muted p-2 font-medium">Dados da Venda</div>
+                  
+                  <div className="p-3 flex justify-between">
+                    <span className="text-muted-foreground">Forma de pagamento:</span>
+                    <span className="font-medium">{getPaymentMethodLabel(sale.payment_method)}</span>
+                  </div>
+                  
+                  {sale.notes && (
+                    <div className="p-3 border-t">
+                      <span className="text-muted-foreground block mb-1">Observações:</span>
+                      <div className="bg-muted/30 p-2 rounded text-sm">
+                        {sale.notes}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <Button 
                 variant="outline" 
