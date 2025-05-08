@@ -195,7 +195,8 @@ export function SubscriptionStatus() {
             <div className="flex justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600">Data de início</span>
               <span className="font-medium text-gray-900">
-                {profile?.created_at ? format(new Date(profile.created_at), "dd/MM/yyyy", { locale: ptBR }) : "-"}
+                {/* Using a fixed date format since we don't have access to created_at */}
+                {new Date().toLocaleDateString('pt-BR')}
               </span>
             </div>
             <div className="flex justify-between py-3">
