@@ -56,7 +56,7 @@ export default function SaleDiscountForm({
     const discServices = validateDiscount(discountServices, subtotalServices);
     
     onDiscountChange({
-      total: activeTab === "total" ? discTotal : discProducts + discServices,
+      total: activeTab === "total" ? discTotal : 0,
       products: activeTab === "total" ? 0 : discProducts,
       services: activeTab === "total" ? 0 : discServices,
     });
@@ -68,7 +68,7 @@ export default function SaleDiscountForm({
     const surServices = validateSurcharge(surchargeServices);
     
     onSurchargeChange({
-      total: activeTab === "total" ? surTotal : surProducts + surServices,
+      total: activeTab === "total" ? surTotal : 0,
       products: activeTab === "total" ? 0 : surProducts,
       services: activeTab === "total" ? 0 : surServices,
     });
@@ -96,23 +96,50 @@ export default function SaleDiscountForm({
   const hasServices = items.some(item => item.type === "service");
   const showSeparate = hasProducts && hasServices;
 
-  return (
-    <div className={cn("space-y-4", className)}>
-      {showSeparate && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="total">Desconto/Acréscimo Total</TabsTrigger>
-            <TabsTrigger value="separate">Desconto/Acréscimo Separado</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      )}
+  // Conteúdo dos tabs
+  const renderTotalTabContent = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <Label className="flex justify-between">
+          <span>Desconto Total (R$)</span>
+          {discTotalValue > subtotalTotal && (
+            <span className="text-red-500 text-xs">Maior que o subtotal</span>
+          )}
+        </Label>
+        <Input
+          type="number"
+          min={0}
+          step="0.01"
+          value={discountTotal}
+          onChange={(e) => setDiscountTotal(e.target.value)}
+          className={cn(
+            "font-mono",
+            discTotalValue > subtotalTotal && "border-red-500"
+          )}
+        />
+      </div>
+      <div>
+        <Label>Acréscimo Total (R$)</Label>
+        <Input
+          type="number"
+          min={0}
+          step="0.01"
+          value={surchargeTotal}
+          onChange={(e) => setSurchargeTotal(e.target.value)}
+          className="font-mono"
+        />
+      </div>
+    </div>
+  );
 
-      <TabsContent value="total" className={!showSeparate ? "block" : undefined}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  const renderSeparateTabContent = () => (
+    <>
+      {hasProducts && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <Label className="flex justify-between">
-              <span>Desconto Total (R$)</span>
-              {discTotalValue > subtotalTotal && (
+              <span>Desconto Produtos (R$)</span>
+              {discProductsValue > subtotalProducts && (
                 <span className="text-red-500 text-xs">Maior que o subtotal</span>
               )}
             </Label>
@@ -120,99 +147,87 @@ export default function SaleDiscountForm({
               type="number"
               min={0}
               step="0.01"
-              value={discountTotal}
-              onChange={(e) => setDiscountTotal(e.target.value)}
+              value={discountProducts}
+              onChange={(e) => setDiscountProducts(e.target.value)}
               className={cn(
                 "font-mono",
-                discTotalValue > subtotalTotal && "border-red-500"
+                discProductsValue > subtotalProducts && "border-red-500"
               )}
             />
           </div>
           <div>
-            <Label>Acréscimo Total (R$)</Label>
+            <Label>Acréscimo Produtos (R$)</Label>
             <Input
               type="number"
               min={0}
               step="0.01"
-              value={surchargeTotal}
-              onChange={(e) => setSurchargeTotal(e.target.value)}
+              value={surchargeProducts}
+              onChange={(e) => setSurchargeProducts(e.target.value)}
               className="font-mono"
             />
           </div>
         </div>
-      </TabsContent>
+      )}
 
-      <TabsContent value="separate" className={!showSeparate ? "block" : undefined}>
-        {hasProducts && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <Label className="flex justify-between">
-                <span>Desconto Produtos (R$)</span>
-                {discProductsValue > subtotalProducts && (
-                  <span className="text-red-500 text-xs">Maior que o subtotal</span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={discountProducts}
-                onChange={(e) => setDiscountProducts(e.target.value)}
-                className={cn(
-                  "font-mono",
-                  discProductsValue > subtotalProducts && "border-red-500"
-                )}
-              />
-            </div>
-            <div>
-              <Label>Acréscimo Produtos (R$)</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={surchargeProducts}
-                onChange={(e) => setSurchargeProducts(e.target.value)}
-                className="font-mono"
-              />
-            </div>
+      {hasServices && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="flex justify-between">
+              <span>Desconto Serviços (R$)</span>
+              {discServicesValue > subtotalServices && (
+                <span className="text-red-500 text-xs">Maior que o subtotal</span>
+              )}
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={discountServices}
+              onChange={(e) => setDiscountServices(e.target.value)}
+              className={cn(
+                "font-mono",
+                discServicesValue > subtotalServices && "border-red-500"
+              )}
+            />
           </div>
-        )}
+          <div>
+            <Label>Acréscimo Serviços (R$)</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={surchargeServices}
+              onChange={(e) => setSurchargeServices(e.target.value)}
+              className="font-mono"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
 
-        {hasServices && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="flex justify-between">
-                <span>Desconto Serviços (R$)</span>
-                {discServicesValue > subtotalServices && (
-                  <span className="text-red-500 text-xs">Maior que o subtotal</span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={discountServices}
-                onChange={(e) => setDiscountServices(e.target.value)}
-                className={cn(
-                  "font-mono",
-                  discServicesValue > subtotalServices && "border-red-500"
-                )}
-              />
-            </div>
-            <div>
-              <Label>Acréscimo Serviços (R$)</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={surchargeServices}
-                onChange={(e) => setSurchargeServices(e.target.value)}
-                className="font-mono"
-              />
-            </div>
-          </div>
-        )}
-      </TabsContent>
+  return (
+    <div className={cn("space-y-4", className)}>
+      {showSeparate ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="total">Desconto/Acréscimo Total</TabsTrigger>
+            <TabsTrigger value="separate">Desconto/Acréscimo Separado</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="total">
+            {renderTotalTabContent()}
+          </TabsContent>
+          
+          <TabsContent value="separate">
+            {renderSeparateTabContent()}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div>
+          {activeTab === "total" ? renderTotalTabContent() : renderSeparateTabContent()}
+        </div>
+      )}
 
       <div className="border rounded-md p-4 space-y-2 bg-muted/50">
         {hasProducts && (
