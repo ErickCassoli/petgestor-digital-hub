@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Sale, SaleItem } from "@/types/sales";
+import { Sale, SaleItem, CartItem } from "@/types/sales";
 import { useToast } from "@/components/ui/use-toast";
 
 export function useSales() {
@@ -158,15 +157,6 @@ export function useSales() {
         saleType = "service";
       }
       
-      // Calculate totals for products and services
-      const productTotal = items
-        .filter(item => item.type === "product")
-        .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
-      const serviceTotal = items
-        .filter(item => item.type === "service")
-        .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
       // Create the sale
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
@@ -206,12 +196,12 @@ export function useSales() {
       
       if (itemsError) throw itemsError;
       
-      // Update product stocks
+      // Update product stocks using RPC function
       for (const item of items) {
         if (item.type === 'product') {
           const { error: stockError } = await supabase.rpc('update_product_stock', {
             p_product_id: item.id,
-            p_quantity: item.quantity * -1 // Negative to decrease stock
+            p_quantity: -item.quantity // Negative to decrease stock
           });
           
           if (stockError) {

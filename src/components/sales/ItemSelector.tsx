@@ -66,13 +66,15 @@ export function ItemSelector({ products, services, onAddItem }: ItemSelectorProp
       <div>
         <Label>Adicionar itens</Label>
         <div className="flex gap-2 mt-1">
-          <Input
-            placeholder="Buscar..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1"
-            startIcon={<Search className="h-4 w-4 text-muted-foreground" />}
-          />
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 

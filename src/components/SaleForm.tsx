@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { X, Save } from "lucide-react";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { SaleFormItem } from "@/types/sales";
-import ItemSelector from "./sales/ItemSelector";
-import SaleItemsList from "./sales/SaleItemsList";
+import { CartItem } from "@/types/sales";
+import { ItemSelector } from "./sales/ItemSelector";
+import { SaleItemsList } from "./sales/SaleItemsList";
 import SaleDiscountForm from "./sales/SaleDiscountForm";
 
 interface Client {
@@ -44,7 +43,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedItems, setSelectedItems] = useState<SaleFormItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<CartItem[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>('no_client');
   const [loading, setLoading] = useState(false);
   const [discount, setDiscount] = useState({ total: 0, products: 0, services: 0 });
@@ -159,10 +158,10 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     }
   };
 
-  const handleAddItem = (item: SaleFormItem) => {
+  const handleAddItem = (item: CartItem) => {
     // Check if item already exists in the cart
     const existingItemIndex = selectedItems.findIndex(
-      i => i.itemId === item.itemId && i.type === item.type
+      i => i.id === item.id && i.type === item.type
     );
 
     if (existingItemIndex >= 0) {
@@ -194,7 +193,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       return;
     }
 
-    if (discountAmount > subtotal) {
+    if (discount.total > subtotal) {
       toast({ title: "O desconto não pode ser maior que o valor total", variant: "destructive" });
       return;
     }
@@ -234,17 +233,11 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           client_name: clientName,
           total: totalAmount,
           subtotal: subtotal,
-          discount_amount: discountAmount,
-          surcharge_amount: surchargeAmount,
-          total_products: finalProductsValue,
-          discount_products: hasProducts ? (discount.total > 0 ? (discount.total * (subtotalProducts / subtotal)) : discount.products) : 0,
-          surcharge_products: hasProducts ? (surcharge.total > 0 ? (surcharge.total * (subtotalProducts / subtotal)) : surcharge.products) : 0,
-          total_services: finalServicesValue,
-          discount_services: hasServices ? (discount.total > 0 ? (discount.total * (subtotalServices / subtotal)) : discount.services) : 0,
-          surcharge_services: hasServices ? (surcharge.total > 0 ? (surcharge.total * (subtotalServices / subtotal)) : surcharge.services) : 0,
-          final_total: totalAmount,
+          discount: discountAmount,
+          surcharge: surchargeAmount,
+          type: saleType,
           sale_date: new Date().toISOString(),
-          type: saleType
+          payment_method: 'cash'
         })
         .select()
         .single();
@@ -257,14 +250,13 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       // Create sale items
       const saleItems = selectedItems.map(item => ({
         sale_id: saleData.id,
+        name: item.name,
         price: item.price,
         quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity,
-        product_id: item.type === 'product' ? item.itemId : null,
-        service_id: item.type === 'service' ? item.itemId : null,
-        type: item.type,
-        item_name: item.name
+        total: item.price * item.quantity,
+        product_id: item.type === 'product' ? item.id : null,
+        service_id: item.type === 'service' ? item.id : null,
+        type: item.type
       }));
 
       const { error: itemsError } = await supabase
@@ -276,13 +268,13 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       // Update product stock if applicable
       for (const item of selectedItems) {
         if (item.type === 'product') {
-          const product = products.find(p => p.id === item.itemId);
+          const product = products.find(p => p.id === item.id);
           if (product) {
             const newStock = Math.max(0, product.stock - item.quantity);
             await supabase
               .from('products')
               .update({ stock: newStock })
-              .eq('id', item.itemId)
+              .eq('id', item.id)
               .eq('user_id', user?.id);
           }
         }

@@ -4,10 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { SaleFormItem } from "@/types/sales";
+import { CartItem } from "@/types/sales";
 
 interface SaleDiscountFormProps {
-  items: SaleFormItem[];
+  items: CartItem[];
   onDiscountChange: (values: { total: number; products: number; services: number }) => void;
   onSurchargeChange: (values: { total: number; products: number; services: number }) => void;
   className?: string;
