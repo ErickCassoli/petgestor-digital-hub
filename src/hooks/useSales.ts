@@ -202,14 +202,25 @@ export function useSales() {
       // Update product stocks using RPC function
       for (const item of items) {
         if (item.type === 'product') {
-          const { error: stockError } = await supabase.rpc('update_product_stock', {
-            p_product_id: item.id,
-            p_quantity: -item.quantity // Negative to decrease stock
-          });
-          
-          if (stockError) {
-            console.error('Error updating stock:', stockError);
-            // Continue even if stock update fails
+          // Instead of using RPC, update the product stock directly
+          const { data: product } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', item.id)
+            .single();
+            
+          if (product) {
+            const newStock = Math.max(0, product.stock - item.quantity);
+            const { error: stockError } = await supabase
+              .from('products')
+              .update({ stock: newStock })
+              .eq('id', item.id)
+              .eq('user_id', user.id);
+              
+            if (stockError) {
+              console.error('Error updating stock:', stockError);
+              // Continue even if stock update fails
+            }
           }
         }
       }
