@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,7 +120,7 @@ export function useSales() {
     }
   };
 
-  // Função modificada para gerenciar itens com descontos e acréscimos individuais
+  // Updated function to handle item-level discounts and surcharges
   const createSale = async (
     items: CartItem[], 
     subtotal: number,
@@ -179,7 +178,7 @@ export function useSales() {
       
       if (saleError) throw saleError;
       
-      // Create sale items - cada item agora tem seu próprio desconto/acréscimo
+      // Create sale items - each item now has its own discount/surcharge
       const saleItems = items.map(item => ({
         sale_id: saleData.id,
         type: item.type,
@@ -189,7 +188,7 @@ export function useSales() {
         price: item.price,
         quantity: item.quantity,
         total: item.total || (item.price * item.quantity),
-        // Agora cada item tem seu próprio desconto/acréscimo se fornecido
+        // Now each item has its own discount/surcharge if provided
         discount: item.discount || 0,
         surcharge: item.surcharge || 0
       }));

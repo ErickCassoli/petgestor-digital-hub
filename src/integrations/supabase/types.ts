@@ -209,6 +209,7 @@ export type Database = {
       sale_items: {
         Row: {
           created_at: string | null
+          discount: number
           id: string
           name: string
           price: number
@@ -216,12 +217,14 @@ export type Database = {
           quantity: number
           sale_id: string
           service_id: string | null
+          surcharge: number
           total: number
           type: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          discount?: number
           id?: string
           name: string
           price: number
@@ -229,12 +232,14 @@ export type Database = {
           quantity: number
           sale_id: string
           service_id?: string | null
+          surcharge?: number
           total: number
           type: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          discount?: number
           id?: string
           name?: string
           price?: number
@@ -242,6 +247,7 @@ export type Database = {
           quantity?: number
           sale_id?: string
           service_id?: string | null
+          surcharge?: number
           total?: number
           type?: string
           updated_at?: string | null
