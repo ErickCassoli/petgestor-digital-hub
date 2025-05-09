@@ -16,9 +16,11 @@ interface ReportMetrics {
   productsSalesCount?: number;
   appointmentsCount?: number;
   salesChart?: { date: string; value: number }[];
+  appointmentsChart?: { date: string; count: number }[];
   topProducts?: { id: string; name: string; quantity: number; revenue: number }[];
   topServices?: { id: string; name: string; quantity: number; revenue: number }[];
   topClients?: { id: string; name: string; visits: number; spent: number }[];
+  appointmentStatusData?: { name: string; value: number }[];
   totalClients?: number;
   totalVisits?: number;
   totalItems?: number;
@@ -85,6 +87,12 @@ serve(async (req: Request) => {
         break;
       case "products":
         reportData = await generateProductsReport(supabase, userId, startDate, endDate);
+        break;
+      case "clients":
+        reportData = await generateClientsReport(supabase, userId, startDate, endDate);
+        break;
+      case "appointments":
+        reportData = await generateAppointmentsReport(supabase, userId, startDate, endDate);
         break;
       default:
         return new Response(
@@ -163,14 +171,14 @@ async function generateRevenueReport(supabase, userId: string, startDate: string
   // Initialize metrics
   if (!salesData || salesData.length === 0) {
     return {
-      totalRevenue: 0,
+      totalRevenue: completedAppointments.revenue,
       servicesRevenue: 0,
       productsRevenue: 0,
-      appointmentsRevenue: 0,
+      appointmentsRevenue: completedAppointments.revenue,
       salesCount: 0,
       servicesSalesCount: 0,
       productsSalesCount: 0,
-      appointmentsCount: 0,
+      appointmentsCount: completedAppointments.count,
       salesChart: [],
     };
   }
@@ -178,11 +186,42 @@ async function generateRevenueReport(supabase, userId: string, startDate: string
   // Calculate total revenue from sales directly using the total field
   const totalRevenue = salesData.reduce((sum, sale) => sum + Number(sale.total || 0), 0) + completedAppointments.revenue;
 
-  const servicesSales = (salesData || []).filter((sale) => sale.type === "service");
-  const productsSales = (salesData || []).filter((sale) => sale.type === "product");
+  // Get sale items to accurately distinguish between services and products revenue
+  const { data: saleItems, error: saleItemsError } = await supabase
+    .from('sale_items')
+    .select('sale_id, type, total')
+    .in('sale_id', salesData.map(sale => sale.id));
 
-  const servicesRevenue = servicesSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
-  const productsRevenue = productsSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  if (saleItemsError) {
+    throw new Error(`Error fetching sale items: ${saleItemsError.message}`);
+  }
+
+  // Calculate by type using sale items for accuracy
+  let servicesRevenue = 0;
+  let productsRevenue = 0;
+
+  if (saleItems && saleItems.length > 0) {
+    for (const item of saleItems) {
+      if (item.type === 'service') {
+        servicesRevenue += Number(item.total || 0);
+      } else if (item.type === 'product') {
+        productsRevenue += Number(item.total || 0);
+      }
+    }
+  } else {
+    // Fallback to sales type if items are not available
+    const servicesSales = (salesData || []).filter((sale) => sale.type === "service");
+    const productsSales = (salesData || []).filter((sale) => sale.type === "product");
+    const mixedSales = (salesData || []).filter((sale) => sale.type === "mixed");
+
+    servicesRevenue = servicesSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+    productsRevenue = productsSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+
+    // Split mixed sales 50/50 if we don't have item-level data
+    const mixedRevenue = mixedSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+    servicesRevenue += mixedRevenue / 2;
+    productsRevenue += mixedRevenue / 2;
+  }
 
   // Group sales by date for chart
   const salesByDate = (salesData || []).reduce((acc, sale) => {
@@ -198,6 +237,22 @@ async function generateRevenueReport(supabase, userId: string, startDate: string
     return acc;
   }, {});
 
+  // Add appointment revenue to the chart data
+  if (appointmentsData && appointmentsData.length > 0) {
+    for (const appointment of appointmentsData) {
+      if (!appointment.date) continue;
+      
+      const dateStr = appointment.date.substring(0, 10);
+      
+      if (!salesByDate[dateStr]) {
+        salesByDate[dateStr] = 0;
+      }
+      
+      const price = appointment.service ? Number(appointment.service.price) : 0;
+      salesByDate[dateStr] += price;
+    }
+  }
+
   const salesChart = Object.keys(salesByDate).map((date) => ({
     date,
     value: salesByDate[date],
@@ -210,8 +265,8 @@ async function generateRevenueReport(supabase, userId: string, startDate: string
     appointmentsRevenue: completedAppointments.revenue,
     salesCount: (salesData || []).length,
     appointmentsCount: completedAppointments.count,
-    servicesSalesCount: servicesSales.length,
-    productsSalesCount: productsSales.length,
+    servicesSalesCount: saleItems ? saleItems.filter(item => item.type === 'service').length : 0,
+    productsSalesCount: saleItems ? saleItems.filter(item => item.type === 'product').length : 0,
     salesChart,
   };
 }
@@ -227,15 +282,31 @@ async function generateServicesReport(supabase, userId: string, startDate: strin
     .eq('sales.user_id', userId)
     .gte('sales.sale_date', startDate)
     .lte('sales.sale_date', endDate)
-    .eq('sales.type', 'service')
-    .not('service_id', 'is', null);
+    .eq('type', 'service');
 
   if (saleItemsError) {
     throw new Error(`Error fetching service sales: ${saleItemsError.message}`);
   }
 
+  // Fetch completed appointments to include in services data
+  const { data: appointmentsData, error: appointmentsError } = await supabase
+    .from('appointments')
+    .select(`
+      *,
+      service:service_id(id, name, price)
+    `)
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (appointmentsError) {
+    throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
+  }
+
   const servicesData = {};
   
+  // Process sale items
   (saleItems || []).forEach(item => {
     if (!item.service_id || !item.services) return;
     
@@ -252,14 +323,36 @@ async function generateServicesReport(supabase, userId: string, startDate: strin
     servicesData[item.service_id].revenue += Number(item.price) * item.quantity;
   });
 
+  // Add appointments data
+  (appointmentsData || []).forEach(appointment => {
+    if (!appointment.service_id || !appointment.service) return;
+    
+    if (!servicesData[appointment.service_id]) {
+      servicesData[appointment.service_id] = {
+        id: appointment.service_id,
+        name: appointment.service.name,
+        quantity: 0,
+        revenue: 0
+      };
+    }
+    
+    servicesData[appointment.service_id].quantity += 1;
+    servicesData[appointment.service_id].revenue += Number(appointment.service.price);
+  });
+
   const topServices = Object.values(servicesData)
     .sort((a: any, b: any) => b.revenue - a.revenue)
     .slice(0, 10);
 
+  const totalRevenue = (topServices as any[]).reduce((sum, service) => sum + service.revenue, 0);
+  const totalItems = (topServices as any[]).reduce((sum, service) => sum + service.quantity, 0);
+
   return {
     topServices: topServices as any[],
-    totalRevenue: (topServices as any[]).reduce((sum, service) => sum + service.revenue, 0),
-    totalItems: (topServices as any[]).reduce((sum, service) => sum + service.quantity, 0)
+    totalRevenue,
+    totalItems,
+    servicesRevenue: totalRevenue,
+    servicesSalesCount: totalItems
   };
 }
 
@@ -274,8 +367,7 @@ async function generateProductsReport(supabase, userId: string, startDate: strin
     .eq('sales.user_id', userId)
     .gte('sales.sale_date', startDate)
     .lte('sales.sale_date', endDate)
-    .eq('sales.type', 'product')
-    .not('product_id', 'is', null);
+    .eq('type', 'product');
 
   if (saleItemsError) {
     throw new Error(`Error fetching product sales: ${saleItemsError.message}`);
@@ -303,9 +395,192 @@ async function generateProductsReport(supabase, userId: string, startDate: strin
     .sort((a: any, b: any) => b.revenue - a.revenue)
     .slice(0, 10);
 
+  const totalRevenue = (topProducts as any[]).reduce((sum, product) => sum + product.revenue, 0);
+  const totalItems = (topProducts as any[]).reduce((sum, product) => sum + product.quantity, 0);
+
   return {
     topProducts: topProducts as any[],
-    totalRevenue: (topProducts as any[]).reduce((sum, product) => sum + product.revenue, 0),
-    totalItems: (topProducts as any[]).reduce((sum, product) => sum + product.quantity, 0)
+    totalRevenue,
+    totalItems,
+    productsRevenue: totalRevenue,
+    productsSalesCount: totalItems
+  };
+}
+
+async function generateClientsReport(supabase, userId: string, startDate: string, endDate: string): Promise<ReportMetrics> {
+  // Fetch sales with client information
+  const { data: salesData, error: salesError } = await supabase
+    .from('sales')
+    .select('*, client:client_id(*)')
+    .eq('user_id', userId)
+    .gte('sale_date', startDate)
+    .lte('sale_date', endDate)
+    .not('client_id', 'is', null);
+
+  if (salesError) {
+    throw new Error(`Error fetching sales: ${salesError.message}`);
+  }
+
+  // Fetch appointments with pet and client information
+  const { data: appointmentsData, error: appointmentsError } = await supabase
+    .from('appointments')
+    .select('*, pet:pet_id(*, client:client_id(*))')
+    .eq('user_id', userId)
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (appointmentsError) {
+    throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
+  }
+
+  const clientsData = {};
+
+  // Process sales data
+  (salesData || []).forEach(sale => {
+    if (!sale.client_id || !sale.client) return;
+    
+    if (!clientsData[sale.client_id]) {
+      clientsData[sale.client_id] = {
+        id: sale.client_id,
+        name: sale.client.name,
+        visits: 0,
+        spent: 0
+      };
+    }
+    
+    clientsData[sale.client_id].visits += 1;
+    clientsData[sale.client_id].spent += Number(sale.total || 0);
+  });
+
+  // Process appointments data
+  (appointmentsData || []).forEach(appointment => {
+    if (!appointment.pet || !appointment.pet.client_id || !appointment.pet.client) return;
+    
+    const clientId = appointment.pet.client_id;
+    const clientName = appointment.pet.client.name;
+    
+    if (!clientsData[clientId]) {
+      clientsData[clientId] = {
+        id: clientId,
+        name: clientName,
+        visits: 0,
+        spent: 0
+      };
+    }
+    
+    clientsData[clientId].visits += 1;
+    
+    // Add appointment price if it was completed
+    if (appointment.status === 'completed' && appointment.service) {
+      // Fetch service price
+      const { data: serviceData } = await supabase
+        .from('services')
+        .select('price')
+        .eq('id', appointment.service_id)
+        .single();
+        
+      if (serviceData) {
+        clientsData[clientId].spent += Number(serviceData.price || 0);
+      }
+    }
+  });
+
+  const topClients = Object.values(clientsData)
+    .sort((a: any, b: any) => b.spent - a.spent)
+    .slice(0, 10);
+
+  const totalClients = Object.keys(clientsData).length;
+  const totalVisits = Object.values(clientsData).reduce((sum: number, client: any) => sum + client.visits, 0);
+  const totalSpent = Object.values(clientsData).reduce((sum: number, client: any) => sum + client.spent, 0);
+
+  return {
+    topClients: topClients as any[],
+    totalClients,
+    totalVisits,
+    totalRevenue: totalSpent
+  };
+}
+
+async function generateAppointmentsReport(supabase, userId: string, startDate: string, endDate: string): Promise<ReportMetrics> {
+  // Fetch all appointments in the date range
+  const { data: appointmentsData, error: appointmentsError } = await supabase
+    .from('appointments')
+    .select(`
+      *,
+      pet:pet_id(*),
+      service:service_id(*)
+    `)
+    .eq('user_id', userId)
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (appointmentsError) {
+    throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
+  }
+
+  // Initialize metrics
+  if (!appointmentsData || appointmentsData.length === 0) {
+    return {
+      appointmentsCount: 0,
+      appointmentsRevenue: 0,
+      appointmentsChart: []
+    };
+  }
+
+  // Calculate revenue from completed appointments
+  const completedAppointments = appointmentsData.filter(app => app.status === 'completed');
+  const appointmentsRevenue = completedAppointments.reduce((sum, app) => {
+    const price = app.service ? Number(app.service.price) : 0;
+    return sum + price;
+  }, 0);
+
+  // Group appointments by date for chart
+  const appointmentsByDate = appointmentsData.reduce((acc, app) => {
+    if (!app.date) return acc;
+    
+    const dateStr = app.date.substring(0, 10);
+    
+    if (!acc[dateStr]) {
+      acc[dateStr] = 0;
+    }
+    
+    acc[dateStr] += 1;
+    return acc;
+  }, {});
+
+  const appointmentsChart = Object.keys(appointmentsByDate).map((date) => ({
+    date,
+    count: appointmentsByDate[date],
+  }));
+
+  // Count appointments by status for pie chart
+  const statusCounts = {};
+  appointmentsData.forEach(app => {
+    const status = app.status || 'pending';
+    if (!statusCounts[status]) {
+      statusCounts[status] = 0;
+    }
+    statusCounts[status] += 1;
+  });
+
+  // Translate status names to Portuguese
+  const statusTranslations = {
+    'pending': 'Pendente',
+    'confirmed': 'Confirmado',
+    'completed': 'Concluído',
+    'cancelled': 'Cancelado',
+    'no_show': 'Não Compareceu'
+  };
+
+  const appointmentStatusData = Object.entries(statusCounts).map(([status, count]) => ({
+    name: statusTranslations[status] || status,
+    value: count as number
+  }));
+
+  return {
+    appointmentsCount: appointmentsData.length,
+    appointmentsRevenue,
+    appointmentsChart,
+    appointmentStatusData
   };
 }

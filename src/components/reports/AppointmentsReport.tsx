@@ -1,18 +1,18 @@
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TrendingUp, FileText, ShoppingCart, PieChart, LineChart } from "lucide-react";
-import { ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Calendar, Clock } from "lucide-react";
+import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { ReportMetrics } from "@/types/reports";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-interface RevenueReportProps {
+interface AppointmentsReportProps {
   data: ReportMetrics | null;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
-const RevenueReport = ({ data }: RevenueReportProps) => {
+const AppointmentsReport = ({ data }: AppointmentsReportProps) => {
   if (!data) return null;
 
   const formatCurrency = (value: number | undefined) => {
@@ -31,78 +31,53 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
     }
   };
 
-  const chartTooltipFormatter = (value: any) => {
-    if (value === undefined || value === null) return ["R$ 0,00", "Faturamento"];
-    try {
-      return [formatCurrency(Number(value)), "Faturamento"];
-    } catch (error) {
-      console.error("Error formatting tooltip value:", error);
-      return ["R$ 0,00", "Faturamento"];
-    }
-  };
-
-  // Create data for revenue distribution pie chart
-  const revenueDistributionData = [
-    { 
-      name: 'Serviços', 
-      value: (data.servicesRevenue || 0) 
-    },
-    { 
-      name: 'Produtos', 
-      value: (data.productsRevenue || 0) 
-    },
-    { 
-      name: 'Agendamentos', 
-      value: (data.appointmentsRevenue || 0) 
-    },
-  ].filter(item => item.value > 0);
-
   return (
     <>
       <div className="grid gap-6 md:grid-cols-3 mb-8">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Faturamento Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total de Agendamentos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{formatCurrency(data.totalRevenue || 0)}</span>
+              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+              <span className="text-2xl font-bold text-gray-900">{data.appointmentsCount || 0}</span>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              {(data.salesCount || 0) + (data.appointmentsCount || 0)} transações no período
+              Agendamentos no período selecionado
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Serviços</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Faturamento com Agendamentos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <FileText className="h-5 w-5 text-blue-600 mr-2" />
+              <Clock className="h-5 w-5 text-green-600 mr-2" />
+              <span className="text-2xl font-bold text-gray-900">{formatCurrency(data.appointmentsRevenue)}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Receita de agendamentos concluídos
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Ticket Médio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <Calendar className="h-5 w-5 text-amber-600 mr-2" />
               <span className="text-2xl font-bold text-gray-900">
-                {formatCurrency((data.servicesRevenue || 0) + (data.appointmentsRevenue || 0))}
+                {formatCurrency(data.appointmentsCount && data.appointmentsRevenue ? 
+                  data.appointmentsRevenue / data.appointmentsCount : 0)}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              {Math.round((((data.servicesRevenue || 0) + (data.appointmentsRevenue || 0)) / (data.totalRevenue || 1)) * 100) || 0}% do total
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Produtos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <ShoppingCart className="h-5 w-5 text-amber-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{formatCurrency(data.productsRevenue || 0)}</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {Math.round(((data.productsRevenue || 0) / (data.totalRevenue || 1)) * 100) || 0}% do total
+              Valor médio por agendamento
             </p>
           </CardContent>
         </Card>
@@ -112,18 +87,18 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <LineChart className="h-5 w-5 mr-2" />
-              Faturamento por Período
+              <Calendar className="h-5 w-5 mr-2" />
+              Agendamentos por Dia
             </CardTitle>
             <CardDescription>
-              Evolução do faturamento ao longo do tempo
+              Distribuição de agendamentos ao longo do período
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 h-80">
-            {data.salesChart && data.salesChart.length > 0 ? (
+            {data.appointmentsChart && data.appointmentsChart.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <RechartsLineChart
-                  data={data.salesChart}
+                <RechartsBarChart
+                  data={data.appointmentsChart}
                   margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
@@ -134,25 +109,23 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
                     textAnchor="end"
                     height={60}
                   />
-                  <YAxis tickFormatter={(value) => value ? `R$ ${value}` : "R$ 0"} />
+                  <YAxis tickFormatter={(value) => value ? value.toString() : "0"} />
                   <Tooltip 
-                    formatter={(value) => chartTooltipFormatter(value)}
+                    formatter={(value) => [`${value} agendamentos`, "Quantidade"]}
                     labelFormatter={formatChartDate}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#3b82f6" 
-                    activeDot={{ r: 8 }} 
-                    name="Faturamento"
+                  <Bar 
+                    dataKey="count" 
+                    fill="#3b82f6" 
+                    name="Agendamentos"
                   />
-                </RechartsLineChart>
+                </RechartsBarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center text-gray-500">
-                  <LineChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                  <p>Sem dados de faturamento no período selecionado</p>
+                  <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                  <p>Sem dados de agendamentos no período selecionado</p>
                 </div>
               </div>
             )}
@@ -162,19 +135,19 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <PieChart className="h-5 w-5 mr-2" />
-              Distribuição de Receita
+              <Clock className="h-5 w-5 mr-2" />
+              Status de Agendamentos
             </CardTitle>
             <CardDescription>
-              Distribuição entre serviços, produtos e agendamentos
+              Distribuição por status
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 h-80">
-            {data.totalRevenue && data.totalRevenue > 0 ? (
+            {data.appointmentStatusData && data.appointmentStatusData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
+                <PieChart>
                   <Pie
-                    data={revenueDistributionData}
+                    data={data.appointmentStatusData}
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
@@ -182,18 +155,18 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
                     dataKey="value"
                     label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
                   >
-                    {revenueDistributionData.map((entry, index) => (
+                    {data.appointmentStatusData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value || 0))} />
-                </RechartsPieChart>
+                  <Tooltip formatter={(value) => [`${value} agendamentos`, "Quantidade"]} />
+                </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center text-gray-500">
-                  <PieChart className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                  <p>Sem dados de receita no período selecionado</p>
+                  <Clock className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                  <p>Sem dados de status de agendamentos no período selecionado</p>
                 </div>
               </div>
             )}
@@ -204,4 +177,4 @@ const RevenueReport = ({ data }: RevenueReportProps) => {
   );
 };
 
-export default RevenueReport;
+export default AppointmentsReport;

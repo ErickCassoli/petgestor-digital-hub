@@ -3,10 +3,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Card, 
-  CardContent, 
   CardHeader, 
-  CardTitle,
-  CardDescription
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -14,11 +12,10 @@ import {
   Download, 
   ChevronDown,
   Check,
-  FileText,
-  ShoppingCart,
   Loader2,
   FileSpreadsheet,
-  File
+  File,
+  Users
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +31,8 @@ import { ptBR } from "date-fns/locale";
 import RevenueReport from "@/components/reports/RevenueReport";
 import ServicesReport from "@/components/reports/ServicesReport";
 import ProductsReport from "@/components/reports/ProductsReport";
+import ClientsReport from "@/components/reports/ClientsReport";
+import AppointmentsReport from "@/components/reports/AppointmentsReport";
 import { ReportMetrics } from "@/types/reports";
 
 const periodOptions = [
@@ -85,6 +84,11 @@ const Reports = () => {
   const getPeriodLabel = () => {
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
     return option ? option.label : "Período";
+  };
+
+  const formatDateRange = () => {
+    const { startDate, endDate } = getDateRange();
+    return `${format(startDate, "dd 'de' MMMM", { locale: ptBR })} até ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
   };
 
   useEffect(() => {
@@ -199,14 +203,14 @@ const Reports = () => {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2 text-lg text-gray-600">Carregando...</span>
+        <span className="ml-2 text-lg text-gray-600">Carregando dados do relatório...</span>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Relatórios</h1>
           <p className="text-gray-600 mt-1">
@@ -267,11 +271,25 @@ const Reports = () => {
         </div>
       </div>
 
+      <Card className="mb-6">
+        <CardHeader className="py-3">
+          <CardTitle className="text-base font-medium">
+            Relatório de {activeTab === 'revenue' ? 'Faturamento' : 
+                        activeTab === 'services' ? 'Serviços' : 
+                        activeTab === 'products' ? 'Produtos' : 
+                        activeTab === 'clients' ? 'Clientes' : 
+                        'Agendamentos'} - {formatDateRange()}
+          </CardTitle>
+        </CardHeader>
+      </Card>
+
       <Tabs defaultValue="revenue" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="revenue">Faturamento</TabsTrigger>
           <TabsTrigger value="services">Serviços</TabsTrigger>
           <TabsTrigger value="products">Produtos</TabsTrigger>
+          <TabsTrigger value="clients">Clientes</TabsTrigger>
+          <TabsTrigger value="appointments">Agendamentos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="revenue">
@@ -284,6 +302,14 @@ const Reports = () => {
 
         <TabsContent value="products">
           <ProductsReport data={reportData} />
+        </TabsContent>
+
+        <TabsContent value="clients">
+          <ClientsReport data={reportData} />
+        </TabsContent>
+
+        <TabsContent value="appointments">
+          <AppointmentsReport data={reportData} />
         </TabsContent>
       </Tabs>
     </div>
