@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,7 +130,7 @@ export function useSales() {
     total: number,
     clientId: string | null,
     clientName: string | null,
-    paymentMethod: string | null,
+    paymentMethod: string,
     notes: string | null
   ) => {
     if (!user) return null;
@@ -169,7 +170,7 @@ export function useSales() {
           surcharge,
           total,
           type: saleType,
-          payment_method: paymentMethod || 'cash',
+          payment_method: paymentMethod,
           notes,
           sale_date: new Date().toISOString()
         })
