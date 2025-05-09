@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,7 +48,6 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>('no_client');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [generalDiscount, setGeneralDiscount] = useState<number>(0);
@@ -237,6 +235,7 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       const totalSurcharge = generalSurcharge + itemSurchargesTotal;
       
       // Call the createSale function from our hook
+      // Using 'cash' as default payment method
       const result = await createSale(
         cartItems,
         subtotal,
@@ -245,7 +244,7 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         total,
         clientId,
         clientName,
-        paymentMethod,
+        'cash', // Default payment method as cash
         notes || null
       );
       
@@ -272,40 +271,21 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       </DialogHeader>
       
       <div className="grid gap-6 py-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="client">Cliente (opcional)</Label>
-            <Select value={selectedClient} onValueChange={setSelectedClient}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no_client">Sem cliente</SelectItem>
-                {clients.map(client => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label htmlFor="payment_method">Forma de pagamento</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Forma de pagamento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">Dinheiro</SelectItem>
-                <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                <SelectItem value="debit_card">Cartão de Débito</SelectItem>
-                <SelectItem value="pix">Pix</SelectItem>
-                <SelectItem value="transfer">Transferência</SelectItem>
-                <SelectItem value="other">Outro</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label htmlFor="client">Cliente (opcional)</Label>
+          <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no_client">Sem cliente</SelectItem>
+              {clients.map(client => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

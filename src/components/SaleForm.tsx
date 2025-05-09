@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -237,7 +238,7 @@ export default function SaleForm({ onComplete, onCancel }: SaleFormProps) {
           surcharge: surchargeAmount,
           type: saleType,
           sale_date: new Date().toISOString(),
-          payment_method: 'cash'
+          payment_method: 'cash' // Default payment method
         })
         .select()
         .single();
