@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,12 @@ import { SalesFilters } from "@/components/sales/SalesFilters";
 import { SalesTable } from "@/components/sales/SalesTable";
 import { SaleDetails } from "@/components/sales/SaleDetails";
 import { SaleForm } from "@/components/sales/SaleForm";
+import { supabase } from "@/integrations/supabase/client";
+import { useCalculateSaleStats } from "@/hooks/useCalculateSaleStats";
 
 export default function Sales() {
   const { sales, loading, fetchSales, fetchSaleDetails, deleteSale } = useSales();
+  const { calculateSalesStats, processMixedSaleItems } = useCalculateSaleStats();
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [selectedType, setSelectedType] = useState("all");
@@ -43,6 +45,7 @@ export default function Sales() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Filter sales based on selected period
     switch (selectedPeriod) {
       case "today":
         startDate = today;
@@ -60,6 +63,7 @@ export default function Sales() {
         startDate = startOfMonth(today);
     }
     
+    // Apply filters
     const filtered = sales.filter(sale => {
       const saleDate = new Date(sale.sale_date);
       const dateMatch = startDate ? saleDate >= startDate : true;
@@ -76,30 +80,27 @@ export default function Sales() {
     
     setFilteredSales(filtered);
     
-    // Calculate totals
-    let salesTotal = 0;
-    let productsTotal = 0;
-    let servicesTotal = 0;
+    // Calculate basic stats for non-mixed sales
+    const stats = calculateSalesStats(filtered);
     
-    filtered.forEach(sale => {
-      salesTotal += Number(sale.total);
-      
-      if (sale.type === 'product') {
-        productsTotal += Number(sale.total);
-      } else if (sale.type === 'service') {
-        servicesTotal += Number(sale.total);
-      } else if (sale.type === 'mixed') {
-        // For mixed sales, the database now stores the breakdown
-        const productsPortion = sale.total * 0.6; // Approximate if data not available
-        const servicesPortion = sale.total * 0.4; // Approximate if data not available
-        productsTotal += productsPortion;
-        servicesTotal += servicesPortion;
-      }
-    });
+    // Find all mixed sales that need detailed processing
+    const mixedSales = filtered.filter(sale => sale.type === 'mixed');
     
-    setTotalSalesAmount(salesTotal);
-    setTotalProductsAmount(productsTotal);
-    setTotalServicesAmount(servicesTotal);
+    // Update the UI with basic stats
+    setTotalSalesAmount(stats.totalSales);
+    setTotalProductsAmount(stats.totalProducts);
+    setTotalServicesAmount(stats.totalServices);
+    
+    // If we have mixed sales, process them separately
+    if (mixedSales.length > 0) {
+      // This will update the stats object with correct mixed sale distributions
+      processMixedSaleItems(stats, mixedSales, supabase).then(updatedStats => {
+        // Update UI with the final stats including correctly processed mixed sales
+        setTotalSalesAmount(updatedStats.totalSales);
+        setTotalProductsAmount(updatedStats.totalProducts);
+        setTotalServicesAmount(updatedStats.totalServices);
+      });
+    }
   }, [sales, selectedPeriod, selectedType, searchTerm]);
 
   const handleViewSaleDetails = async (saleId: string) => {

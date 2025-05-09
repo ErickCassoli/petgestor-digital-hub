@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,7 @@ export function useSales() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch all sales for the current user
   const fetchSales = async () => {
     if (!user) return;
     
@@ -42,6 +44,7 @@ export function useSales() {
     }
   };
 
+  // Fetch details for a specific sale
   const fetchSaleDetails = async (saleId: string) => {
     if (!saleId) return null;
     
@@ -88,6 +91,7 @@ export function useSales() {
     }
   };
 
+  // Delete a sale
   const deleteSale = async (saleId: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.")) {
       return false;
@@ -120,7 +124,7 @@ export function useSales() {
     }
   };
 
-  // Updated function to handle item-level discounts and surcharges
+  // Create a new sale with item-level discounts and surcharges
   const createSale = async (
     items: CartItem[], 
     subtotal: number,
