@@ -10,12 +10,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { X, Save } from "lucide-react";
 import { CartItem } from "@/types/sales";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useSaleCalculations } from "@/hooks/useSaleCalculations";
 import { useSales } from "@/hooks/useSales";
 import { ItemSelector } from "./ItemSelector";
 import { SaleItemsList } from "./SaleItemsList";
-import { DiscountForm } from "./DiscountForm";
-import { SurchargeForm } from "./SurchargeForm";
 import { SaleSummary } from "./SaleSummary";
 
 interface Client {
@@ -55,19 +52,8 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-
-  // Use our custom hook for calculations
-  const {
-    subtotal,
-    productSubtotal,
-    serviceSubtotal,
-    discount,
-    calculatedDiscount,
-    surcharge,
-    total,
-    handleDiscountChange,
-    handleSurchargeChange
-  } = useSaleCalculations(cartItems);
+  const [generalDiscount, setGeneralDiscount] = useState<number>(0);
+  const [generalSurcharge, setGeneralSurcharge] = useState<number>(0);
 
   useEffect(() => {
     fetchClients();
@@ -143,10 +129,19 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       // Increment quantity if item already exists
       const updatedItems = [...cartItems];
       updatedItems[existingItemIndex].quantity += 1;
+      // Recalculate total
+      updatedItems[existingItemIndex].total = 
+        updatedItems[existingItemIndex].price * updatedItems[existingItemIndex].quantity;
       setCartItems(updatedItems);
     } else {
-      // Add new item
-      setCartItems([...cartItems, item]);
+      // Add new item with total calculated
+      const newItem = {
+        ...item,
+        total: item.price * item.quantity,
+        discount: 0,
+        surcharge: 0
+      };
+      setCartItems([...cartItems, newItem]);
     }
   };
 
@@ -173,8 +168,51 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     
     const updatedItems = [...cartItems];
     updatedItems[index].quantity = newQuantity;
+    // Recalculate total
+    updatedItems[index].total = updatedItems[index].price * newQuantity;
     setCartItems(updatedItems);
   };
+
+  const handleUpdateDiscount = (index: number, discount: number) => {
+    const updatedItems = [...cartItems];
+    updatedItems[index].discount = discount;
+    // Update total with discount
+    const baseTotal = updatedItems[index].price * updatedItems[index].quantity;
+    updatedItems[index].total = baseTotal - discount + (updatedItems[index].surcharge || 0);
+    setCartItems(updatedItems);
+  };
+
+  const handleUpdateSurcharge = (index: number, surcharge: number) => {
+    const updatedItems = [...cartItems];
+    updatedItems[index].surcharge = surcharge;
+    // Update total with surcharge
+    const baseTotal = updatedItems[index].price * updatedItems[index].quantity;
+    updatedItems[index].total = baseTotal - (updatedItems[index].discount || 0) + surcharge;
+    setCartItems(updatedItems);
+  };
+
+  // Cálculos
+  const subtotal = cartItems.reduce((sum, item) => 
+    sum + (item.price * item.quantity), 0);
+
+  const itemDiscountsTotal = cartItems.reduce((sum, item) => 
+    sum + (item.discount || 0), 0);
+  
+  const itemSurchargesTotal = cartItems.reduce((sum, item) => 
+    sum + (item.surcharge || 0), 0);
+
+  // Total com desconto/acréscimo geral + individuais
+  const total = subtotal - itemDiscountsTotal - generalDiscount + 
+    itemSurchargesTotal + generalSurcharge;
+
+  // Subtotais para produtos e serviços (para exibição)
+  const productSubtotal = cartItems
+    .filter(item => item.type === 'product')
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const serviceSubtotal = cartItems
+    .filter(item => item.type === 'service')
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleSaveSale = async () => {
     if (cartItems.length === 0) {
@@ -194,12 +232,16 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         clientName = client?.name || null;
       }
       
+      // Calcular desconto e acréscimo totais (gerais + por item)
+      const totalDiscount = generalDiscount + itemDiscountsTotal;
+      const totalSurcharge = generalSurcharge + itemSurchargesTotal;
+      
       // Call the createSale function from our hook
       const result = await createSale(
         cartItems,
         subtotal,
-        calculatedDiscount,
-        surcharge,
+        totalDiscount,
+        totalSurcharge,
         total,
         clientId,
         clientName,
@@ -291,33 +333,54 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
               items={cartItems}
               onRemoveItem={handleRemoveItem}
               onUpdateQuantity={handleUpdateQuantity}
+              onUpdateDiscount={handleUpdateDiscount}
+              onUpdateSurcharge={handleUpdateSurcharge}
             />
             
             {cartItems.length > 0 && (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DiscountForm
-                    subtotal={subtotal}
-                    discount={discount}
-                    onDiscountChange={handleDiscountChange}
-                  />
-                  
-                  <SurchargeForm
-                    surcharge={surcharge}
-                    onSurchargeChange={handleSurchargeChange}
-                  />
+              <div className="space-y-4">
+                <div className="border rounded-md p-4">
+                  <Label className="mb-2 block">Desconto/Acréscimo Geral</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Desconto geral (R$)</Label>
+                      <input
+                        type="number" 
+                        min="0" 
+                        step="0.01"
+                        value={generalDiscount}
+                        onChange={(e) => setGeneralDiscount(parseFloat(e.target.value) || 0)}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Acréscimo geral (R$)</Label>
+                      <input
+                        type="number" 
+                        min="0" 
+                        step="0.01"
+                        value={generalSurcharge}
+                        onChange={(e) => setGeneralSurcharge(parseFloat(e.target.value) || 0)}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
                 </div>
                 
                 <SaleSummary 
                   items={cartItems}
                   subtotal={subtotal}
-                  discount={calculatedDiscount}
-                  surcharge={surcharge}
+                  discount={(itemDiscountsTotal + generalDiscount)}
+                  surcharge={(itemSurchargesTotal + generalSurcharge)}
                   total={total}
                   productSubtotal={productSubtotal}
                   serviceSubtotal={serviceSubtotal}
+                  itemDiscounts={itemDiscountsTotal}
+                  itemSurcharges={itemSurchargesTotal}
+                  generalDiscount={generalDiscount}
+                  generalSurcharge={generalSurcharge}
                 />
-              </>
+              </div>
             )}
           </div>
         </div>

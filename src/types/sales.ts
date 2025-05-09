@@ -30,6 +30,8 @@ export interface SaleItem {
   price: number;
   quantity: number;
   total: number;
+  discount?: number;
+  surcharge?: number;
   created_at?: string;
   updated_at?: string;
   product?: {
@@ -46,6 +48,9 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  discount?: number;
+  surcharge?: number;
+  total?: number;
 }
 
 export interface DiscountValues {

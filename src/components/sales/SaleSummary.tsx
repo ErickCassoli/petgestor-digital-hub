@@ -9,6 +9,10 @@ interface SaleSummaryProps {
   total: number;
   productSubtotal?: number;
   serviceSubtotal?: number;
+  itemDiscounts?: number;
+  itemSurcharges?: number;
+  generalDiscount?: number;
+  generalSurcharge?: number;
 }
 
 export function SaleSummary({
@@ -18,7 +22,11 @@ export function SaleSummary({
   surcharge,
   total,
   productSubtotal,
-  serviceSubtotal
+  serviceSubtotal,
+  itemDiscounts = 0,
+  itemSurcharges = 0,
+  generalDiscount = 0,
+  generalSurcharge = 0
 }: SaleSummaryProps) {
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -53,18 +61,46 @@ export function SaleSummary({
         <span className="font-mono">{formatCurrency(subtotal)}</span>
       </div>
 
-      {discount > 0 && (
+      {itemDiscounts > 0 && (
         <div className="flex justify-between text-sm text-red-600">
-          <span>Desconto:</span>
-          <span className="font-mono">-{formatCurrency(discount)}</span>
+          <span>Descontos nos itens:</span>
+          <span className="font-mono">-{formatCurrency(itemDiscounts)}</span>
         </div>
       )}
       
-      {surcharge > 0 && (
-        <div className="flex justify-between text-sm text-green-600">
-          <span>Acréscimo:</span>
-          <span className="font-mono">+{formatCurrency(surcharge)}</span>
+      {generalDiscount > 0 && (
+        <div className="flex justify-between text-sm text-red-600">
+          <span>Desconto geral:</span>
+          <span className="font-mono">-{formatCurrency(generalDiscount)}</span>
         </div>
+      )}
+      
+      {itemSurcharges > 0 && (
+        <div className="flex justify-between text-sm text-green-600">
+          <span>Acréscimos nos itens:</span>
+          <span className="font-mono">+{formatCurrency(itemSurcharges)}</span>
+        </div>
+      )}
+      
+      {generalSurcharge > 0 && (
+        <div className="flex justify-between text-sm text-green-600">
+          <span>Acréscimo geral:</span>
+          <span className="font-mono">+{formatCurrency(generalSurcharge)}</span>
+        </div>
+      )}
+      
+      {/* Mostrar total de desconto e acréscimo se ambos estiverem presentes */}
+      {discount > 0 && surcharge > 0 && (
+        <>
+          <div className="flex justify-between text-sm text-red-600">
+            <span>Total de descontos:</span>
+            <span className="font-mono">-{formatCurrency(discount)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-green-600">
+            <span>Total de acréscimos:</span>
+            <span className="font-mono">+{formatCurrency(surcharge)}</span>
+          </div>
+        </>
       )}
       
       <div className="flex justify-between font-medium border-t pt-2 mt-2">
