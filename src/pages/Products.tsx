@@ -1,27 +1,26 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  Plus, 
-  Package, 
+import {
+  Search,
+  Plus,
+  Package,
   AlertTriangle,
   Edit,
   Trash2,
@@ -29,64 +28,75 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 interface Product {
   id: string;
   name: string;
-  category?: string;
-  description?: string | null;
+  category: string | null;
+  description: string | null;
   price: number;
   stock: number;
   min_stock: number | null;
+  type: number; // 1 = unidade, 2 = peso (kg)
 }
 
 const Products = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
   const [productFormData, setProductFormData] = useState({
     name: "",
     category: "",
     description: "",
     price: "",
     stock: "",
-    minStock: ""
+    minStock: "",
+    type: "1" // default para unidade
   });
 
-  // Fetch products from Supabase
+  // Busca produtos do Supabase
   useEffect(() => {
     const fetchProducts = async () => {
       if (!user) return;
-      
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('user_id', user.id);
-        
+          .from("products")
+          .select("*")
+          .eq("user_id", user.id);
+
         if (error) throw error;
-        
-        setProducts(data.map(product => ({
-          ...product,
-          category: product.description || 'Não categorizado' // Using description for category
-        })));
-      } catch (error) {
-        console.error('Error fetching products:', error);
+
+        setProducts(
+          data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            description: p.description,
+            price: p.price,
+            stock: p.stock,
+            min_stock: p.min_stock,
+            type: p.type
+          }))
+        );
+      } catch (err) {
+        console.error(err);
         toast({
           variant: "destructive",
           title: "Erro ao carregar produtos",
@@ -96,47 +106,47 @@ const Products = () => {
         setLoading(false);
       }
     };
-    
+
     fetchProducts();
   }, [user, toast]);
 
-  // Filter products based on search term
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Filtra por nome ou categoria
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.category ?? "")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
   );
 
-  // Calculate stock status
-  const getStockStatus = (stock: number, minStock: number | null) => {
-    const effectiveMinStock = minStock || 5; // Default to 5 if min_stock is null
-    
+  // Define status de estoque
+  const getStockStatus = (stock: number, min: number | null) => {
+    const threshold = min ?? 5;
     if (stock <= 0) {
-      return { status: "outOfStock", label: "Sem estoque", color: "bg-red-500" };
-    } else if (stock < effectiveMinStock) {
-      return { status: "lowStock", label: "Estoque baixo", color: "bg-amber-500" };
-    } else {
-      return { status: "inStock", label: "Em estoque", color: "bg-green-500" };
+      return { label: "Sem estoque", color: "bg-red-500" };
     }
+    if (stock < threshold) {
+      return { label: "Estoque baixo", color: "bg-amber-500" };
+    }
+    return { label: "Em estoque", color: "bg-green-500" };
   };
 
-  // Get products with low or out of stock
   const lowStockProducts = products.filter(
-    (product) => product.stock <= 0 || 
-    (product.stock < (product.min_stock || 5))
+    (p) => p.stock <= 0 || p.stock < (p.min_stock ?? 5)
   );
 
-  // Open product dialog for adding or editing
+  // Abre diálogo de adicionar/editar
   const openProductDialog = (product: Product | null = null) => {
     setSelectedProduct(product);
-    
+
     if (product) {
       setProductFormData({
         name: product.name,
-        category: product.category || '',
-        description: product.description || '',
+        category: product.category ?? "",
+        description: product.description ?? "",
         price: product.price.toString(),
         stock: product.stock.toString(),
-        minStock: product.min_stock?.toString() || '5'
+        minStock: product.min_stock?.toString() ?? "5",
+        type: product.type.toString()
       });
     } else {
       setProductFormData({
@@ -145,131 +155,139 @@ const Products = () => {
         description: "",
         price: "",
         stock: "0",
-        minStock: "5"
+        minStock: "5",
+        type: "1"
       });
     }
-    
+
     setIsProductDialogOpen(true);
   };
 
-  // Open delete confirmation dialog
+  // Abre diálogo de exclusão
   const openDeleteDialog = (product: Product) => {
     setSelectedProduct(product);
     setIsDeleteDialogOpen(true);
   };
 
-  // Handle product form submission
+  // Salvar ou atualizar produto
   const handleProductSubmit = async () => {
     if (!user) return;
-    
-    if (!productFormData.name || !productFormData.price) {
+
+    const {
+      name,
+      category,
+      description,
+      price: priceStr,
+      stock: stockStr,
+      minStock: minStockStr,
+      type: typeStr
+    } = productFormData;
+
+    if (!name || !priceStr) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, preencha o nome e preço do produto."
+        description: "Por favor, preencha nome e preço."
       });
       return;
     }
-    
-    const price = parseFloat(productFormData.price);
-    const stock = parseInt(productFormData.stock || '0');
-    const minStock = parseInt(productFormData.minStock || '5');
-    
+
+    const price = parseFloat(priceStr);
+    const stock = parseInt(stockStr);
+    const min_stock = parseInt(minStockStr);
+    const type = parseInt(typeStr);
+
     if (isNaN(price) || price < 0) {
       toast({
         variant: "destructive",
         title: "Preço inválido",
-        description: "Por favor, informe um preço válido."
+        description: "Informe um preço válido."
       });
       return;
     }
-    
     if (isNaN(stock) || stock < 0) {
       toast({
         variant: "destructive",
         title: "Estoque inválido",
-        description: "Por favor, informe um valor de estoque válido."
+        description: "Informe um estoque válido."
       });
       return;
     }
-    
-    if (isNaN(minStock) || minStock < 0) {
+    if (isNaN(min_stock) || min_stock < 0) {
       toast({
         variant: "destructive",
         title: "Estoque mínimo inválido",
-        description: "Por favor, informe um valor de estoque mínimo válido."
+        description: "Informe um estoque mínimo válido."
       });
       return;
     }
-    
+    if (![1, 2].includes(type)) {
+      toast({
+        variant: "destructive",
+        title: "Tipo inválido",
+        description: "Selecione Unidade ou Peso."
+      });
+      return;
+    }
+
     try {
       if (selectedProduct) {
-        // Edit existing product
+        // UPDATE
         const { error } = await supabase
-          .from('products')
+          .from("products")
           .update({
-            name: productFormData.name,
-            description: productFormData.description || null,
-            price: price,
-            stock: stock,
-            min_stock: minStock,
+            name,
+            category: category || null,
+            description: description || null,
+            price,
+            stock,
+            min_stock,
+            type,
             updated_at: new Date().toISOString()
           })
-          .eq('id', selectedProduct.id);
-        
+          .eq("id", selectedProduct.id);
+
         if (error) throw error;
-        
-        // Update local state
-        setProducts(products.map(product =>
-          product.id === selectedProduct.id
-            ? {
-                ...product,
-                name: productFormData.name,
-                category: productFormData.category,
-                description: productFormData.description || null,
-                price: price,
-                stock: stock,
-                min_stock: minStock
-              }
-            : product
-        ));
-        
-        toast({
-          title: "Produto atualizado",
-          description: `${productFormData.name} foi atualizado com sucesso.`
-        });
+
+        setProducts((old) =>
+          old.map((p) =>
+            p.id === selectedProduct.id
+              ? { ...p, name, category, description, price, stock, min_stock, type }
+              : p
+          )
+        );
+        toast({ title: "Produto atualizado", description: `${name} atualizado.` });
       } else {
-        // Add new product
+        // INSERT
         const { data, error } = await supabase
-          .from('products')
+          .from("products")
           .insert({
-            name: productFormData.name,
-            description: productFormData.description || null,
-            price: price,
-            stock: stock,
-            min_stock: minStock,
-            user_id: user.id
+            user_id: user.id,
+            name,
+            category: category || null,
+            description: description || null,
+            price,
+            stock,
+            min_stock,
+            type
           })
           .select();
-        
+
         if (error) throw error;
-        
-        // Update local state
-        if (data && data.length > 0) {
-          const newProduct = {
-            ...data[0],
-            category: productFormData.category || 'Não categorizado'
-          };
-          setProducts([...products, newProduct]);
+        if (data && data.length) {
+          setProducts((old) => [
+            ...old,
+            {
+              ...data[0],
+              category: data[0].category,
+              description: data[0].description
+            }
+          ]);
         }
-        
-        toast({
-          title: "Produto adicionado",
-          description: `${productFormData.name} foi adicionado com sucesso.`
-        });
+        toast({ title: "Produto adicionado", description: `${name} adicionado.` });
       }
-    } catch (error) {
-      console.error('Error saving product:', error);
+    } catch (err) {
+      console.error(err);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
@@ -280,27 +298,19 @@ const Products = () => {
     }
   };
 
-  // Handle product deletion
+  // Excluir produto
   const handleDeleteProduct = async () => {
     if (!selectedProduct) return;
-    
     try {
       const { error } = await supabase
-        .from('products')
+        .from("products")
         .delete()
-        .eq('id', selectedProduct.id);
-      
+        .eq("id", selectedProduct.id);
       if (error) throw error;
-      
-      // Update local state
-      setProducts(products.filter(product => product.id !== selectedProduct.id));
-      
-      toast({
-        title: "Produto removido",
-        description: `${selectedProduct.name} foi removido com sucesso.`
-      });
-    } catch (error) {
-      console.error('Error deleting product:', error);
+      setProducts((old) => old.filter((p) => p.id !== selectedProduct.id));
+      toast({ title: "Produto removido", description: `${selectedProduct.name} removido.` });
+    } catch (err) {
+      console.error(err);
       toast({
         variant: "destructive",
         title: "Erro ao remover",
@@ -311,7 +321,6 @@ const Products = () => {
     }
   };
 
-  // JSX for the loading state
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -323,6 +332,7 @@ const Products = () => {
 
   return (
     <div>
+      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Produtos e Estoque</h1>
@@ -330,17 +340,15 @@ const Products = () => {
             Gerencie os produtos e controle o estoque do seu petshop
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
-          <Button 
-            className="bg-petblue-600 hover:bg-petblue-700"
-            onClick={() => openProductDialog()}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Produto
-          </Button>
-        </div>
+        <Button
+          className="mt-4 sm:mt-0 bg-petblue-600 hover:bg-petblue-700"
+          onClick={() => openProductDialog()}
+        >
+          <Plus className="h-4 w-4 mr-2" /> Novo Produto
+        </Button>
       </div>
 
+      {/* Aviso de estoque baixo */}
       {lowStockProducts.length > 0 && (
         <Card className="mb-8 border-amber-200">
           <CardHeader className="bg-amber-50 pb-3">
@@ -355,25 +363,24 @@ const Products = () => {
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead>Estoque Atual</TableHead>
-                  <TableHead>Estoque Mínimo</TableHead>
+                  <TableHead className="text-center">Estoque</TableHead>
+                  <TableHead className="text-center">Estoque Mínimo</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lowStockProducts.map((product) => {
-                  const stockStatus = getStockStatus(product.stock, product.min_stock);
-                  
+                {lowStockProducts.map((p) => {
+                  const status = getStockStatus(p.stock, p.min_stock);
                   return (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{product.category}</TableCell>
-                      <TableCell className="text-center">{product.stock}</TableCell>
-                      <TableCell className="text-center">{product.min_stock || 5}</TableCell>
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.category}</TableCell>
+                      <TableCell className="text-center">
+                        {p.stock} {p.type === 2 ? "kg" : "und"}
+                      </TableCell>
+                      <TableCell className="text-center">{p.min_stock ?? 5}</TableCell>
                       <TableCell>
-                        <Badge className={stockStatus.color}>
-                          {stockStatus.label}
-                        </Badge>
+                        <Badge className={status.color}>{status.label}</Badge>
                       </TableCell>
                     </TableRow>
                   );
@@ -384,7 +391,8 @@ const Products = () => {
         </Card>
       )}
 
-      <Card className="mb-8">
+      {/* Busca */}
+      <Card className="mb-4">
         <CardHeader className="pb-3">
           <CardTitle>Buscar Produtos</CardTitle>
         </CardHeader>
@@ -401,6 +409,7 @@ const Products = () => {
         </CardContent>
       </Card>
 
+      {/* Lista de Produtos */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Produtos</CardTitle>
@@ -425,37 +434,37 @@ const Products = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => {
-                  const stockStatus = getStockStatus(product.stock, product.min_stock);
-                  
+                {filteredProducts.map((p) => {
+                  const status = getStockStatus(p.stock, p.min_stock);
                   return (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{product.category}</TableCell>
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.category}</TableCell>
                       <TableCell className="text-right">
-                        {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {p.price.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL"
+                        })}
                       </TableCell>
                       <TableCell className="text-center">
-                        {product.stock} und
+                        {p.stock} {p.type === 2 ? "kg" : "und"}
                       </TableCell>
                       <TableCell>
-                        <Badge className={stockStatus.color}>
-                          {stockStatus.label}
-                        </Badge>
+                        <Badge className={status.color}>{status.label}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => openProductDialog(product)}
+                            onClick={() => openProductDialog(p)}
                           >
                             <Edit className="h-4 w-4 text-gray-500" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => openDeleteDialog(product)}
+                            onClick={() => openDeleteDialog(p)}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
@@ -470,7 +479,7 @@ const Products = () => {
         </CardContent>
       </Card>
 
-      {/* Product Dialog */}
+      {/* Diálogo adicionar/editar */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -493,6 +502,7 @@ const Products = () => {
                 }
               />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="category">Categoria</Label>
               <Input
@@ -504,6 +514,7 @@ const Products = () => {
                 }
               />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="description">Descrição</Label>
               <Input
@@ -515,6 +526,7 @@ const Products = () => {
                 }
               />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="price">Preço *</Label>
               <Input
@@ -529,6 +541,7 @@ const Products = () => {
                 }
               />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="stock">Estoque</Label>
@@ -557,6 +570,36 @@ const Products = () => {
                 />
               </div>
             </div>
+
+            <div className="grid gap-2">
+              <Label>Tipo *</Label>
+              <div className="flex space-x-6">
+                <label className="flex items-center space-x-1">
+                  <input
+                    type="radio"
+                    name="type"
+                    value="1"
+                    checked={productFormData.type === "1"}
+                    onChange={(e) =>
+                      setProductFormData({ ...productFormData, type: e.target.value })
+                    }
+                  />
+                  <span>Unidade</span>
+                </label>
+                <label className="flex items-center space-x-1">
+                  <input
+                    type="radio"
+                    name="type"
+                    value="2"
+                    checked={productFormData.type === "2"}
+                    onChange={(e) =>
+                      setProductFormData({ ...productFormData, type: e.target.value })
+                    }
+                  />
+                  <span>Peso (kg)</span>
+                </label>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsProductDialogOpen(false)}>
@@ -567,18 +610,18 @@ const Products = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Diálogo de exclusão */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Excluir Produto</DialogTitle>
             <DialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto.
+              Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p className="text-gray-700">
-              Tem certeza que deseja excluir o produto{" "}
+              Tem certeza que deseja excluir{" "}
               <span className="font-semibold">{selectedProduct?.name}</span>?
             </p>
           </div>
@@ -586,10 +629,7 @@ const Products = () => {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteProduct}
-            >
+            <Button variant="destructive" onClick={handleDeleteProduct}>
               Excluir
             </Button>
           </DialogFooter>

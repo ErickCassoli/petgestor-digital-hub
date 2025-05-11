@@ -78,7 +78,6 @@ const Subscription = () => {
           <Card className="border-2 border-petblue-200">
             <CardHeader className="bg-petblue-50">
               <div className="flex justify-between items-center mb-2">
-                <Badge className="bg-petblue-600">Recomendado</Badge>
                 <Star className="h-5 w-5 text-petblue-400" fill="currentColor" />
               </div>
               <CardTitle>Plano Completo</CardTitle>

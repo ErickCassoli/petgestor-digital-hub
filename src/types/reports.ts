@@ -1,24 +1,67 @@
+// src/types/reports.ts
+
+export interface SaleChartEntry {
+  date: string;
+  value: number;
+}
+
+export interface AppointmentChartEntry {
+  date: string;
+  count: number;
+}
+
+export interface AppointmentStatusEntry {
+  name: string;
+  value: number;
+}
+
+export interface ServiceItem {
+  id: string;
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface ProductItem {
+  id: string;
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface ClientVisit {
+  id: string;
+  name: string;
+  visits: number;
+  spent: number;
+}
 
 export interface ReportMetrics {
-  totalRevenue?: number;
-  servicesRevenue?: number;
-  productsRevenue?: number;
-  appointmentsRevenue?: number;
-  salesCount?: number;
-  servicesSalesCount?: number;
-  productsSalesCount?: number;
-  appointmentsCount?: number;
-  salesChart?: { date: string; value: number }[];
-  appointmentsChart?: { date: string; count: number }[];
-  topProducts?: { id: string; name: string; quantity: number; revenue: number }[];
-  topServices?: { id: string; name: string; quantity: number; revenue: number }[];
-  topClients?: { id: string; name: string; visits: number; spent: number }[];
-  appointmentStatusData?: { name: string; value: number }[];
+  // === Faturamento ===
+  totalRevenue: number;
+  servicesRevenue: number;
+  productsRevenue: number;
+  appointmentsRevenue: number;
+  salesCount: number;
+  servicesSalesCount: number;
+  productsSalesCount: number;
+  appointmentsCount: number;
+  salesChart: SaleChartEntry[];
+
+  // === Serviços ===
+  topServices?: ServiceItem[];
+
+  // === Produtos ===
+  topProducts?: ProductItem[];
+
+  // === Clientes ===
+  topByVisits?: ClientVisit[];
+  topBySpending?: ClientVisit[];
   totalClients?: number;
   totalVisits?: number;
-  totalItems?: number;
-  exportedFile?: string;
-  fileName?: string;
-  fileType?: string;
-  exportFormat?: string;
+  totalSpent?: number;
+
+  // === Agendamentos ===
+  appointmentsChart?: AppointmentChartEntry[];
+  appointmentStatusData?: AppointmentStatusEntry[];
 }
