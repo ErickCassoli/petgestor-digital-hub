@@ -145,13 +145,7 @@ export function SaleDetails({ saleId, items, isOpen, onClose, sale }: SaleDetail
               
               {sale && (
                 <div className="border rounded-md overflow-hidden mt-4">
-                  <div className="bg-muted p-2 font-medium">Dados da Venda</div>
-                  
-                  <div className="p-3 flex justify-between">
-                    <span className="text-muted-foreground">Forma de pagamento:</span>
-                    <span className="font-medium">{getPaymentMethodLabel(sale.payment_method)}</span>
-                  </div>
-                  
+                  <div className="bg-muted p-2 font-medium">Dados da Venda</div>             
                   {sale.notes && (
                     <div className="p-3 border-t">
                       <span className="text-muted-foreground block mb-1">Observações:</span>

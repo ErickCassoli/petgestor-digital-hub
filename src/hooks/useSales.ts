@@ -126,129 +126,108 @@ export function useSales() {
 
   // Create a new sale with item-level discounts and surcharges
   const createSale = async (
-    items: CartItem[], 
-    subtotal: number,
-    discount: number,
-    surcharge: number,
-    total: number,
-    clientId: string | null,
-    clientName: string | null,
-    paymentMethod: string,
-    notes: string | null
-  ) => {
+      items: CartItem[],
+      subtotal: number,
+      discount: number,           // ← total dos descontos individuais
+      surcharge: number,          // ← total dos acréscimos individuais
+      total: number,
+      clientId: string | null,
+      clientName: string | null,
+      paymentMethod: string,      // ← inclui aqui
+      notes: string | null
+    ) => {
     if (!user) return null;
-    
     if (items.length === 0) {
       toast({
         variant: "destructive",
         title: "Erro ao criar venda",
-        description: "Adicione pelo menos um item à venda."
+        description: "Adicione pelo menos um item à venda.",
       });
       return null;
     }
-    
+
     try {
-      // Determine sale type based on items
-      const hasProducts = items.some(item => item.type === "product");
-      const hasServices = items.some(item => item.type === "service");
-      
-      let saleType: "product" | "service" | "mixed";
-      if (hasProducts && hasServices) {
-        saleType = "mixed";
-      } else if (hasProducts) {
-        saleType = "product";
-      } else {
-        saleType = "service";
-      }
-      
-      // Create the sale
+      // Tipo de venda
+      const hasProducts = items.some((i) => i.type === "product");
+      const hasServices = items.some((i) => i.type === "service");
+      const saleType: "product" | "service" | "mixed" =
+        hasProducts && hasServices
+          ? "mixed"
+          : hasProducts
+          ? "product"
+          : "service";
+
+      // 1) Inserir na tabela `sales` apenas colunas existentes
       const { data: saleData, error: saleError } = await supabase
-        .from('sales')
+        .from("sales")
         .insert({
           user_id: user.id,
           client_id: clientId,
           client_name: clientName,
           subtotal,
-          discount,
           surcharge,
+          discount,
           total,
           type: saleType,
-          payment_method: paymentMethod,
           notes,
-          sale_date: new Date().toISOString()
+          sale_date: new Date().toISOString(),
         })
-        .select()
+        .select("id")
         .single();
-      
       if (saleError) throw saleError;
-      
-      // Create sale items - each item now has its own discount/surcharge
-      const saleItems = items.map(item => ({
+
+      // 2) Inserir itens na sale_items
+      const saleItemsPayload = items.map((item) => ({
         sale_id: saleData.id,
         type: item.type,
-        product_id: item.type === 'product' ? item.id : null,
-        service_id: item.type === 'service' ? item.id : null,
+        product_id: item.type === "product" ? item.id : null,
+        service_id: item.type === "service" ? item.id : null,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        total: item.total || (item.price * item.quantity),
-        // Now each item has its own discount/surcharge if provided
+        total: item.total ?? item.price * item.quantity,
         discount: item.discount || 0,
-        surcharge: item.surcharge || 0
+        surcharge: item.surcharge || 0,
       }));
-      
       const { error: itemsError } = await supabase
-        .from('sale_items')
-        .insert(saleItems);
-      
+        .from("sale_items")
+        .insert(saleItemsPayload);
       if (itemsError) throw itemsError;
-      
-      // Update product stocks using RPC function
+
+      // 3) Atualizar estoques de produtos
       for (const item of items) {
-        if (item.type === 'product') {
-          // Instead of using RPC, update the product stock directly
-          const { data: product } = await supabase
-            .from('products')
-            .select('stock')
-            .eq('id', item.id)
+        if (item.type === "product") {
+          const { data: prod } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", item.id)
             .single();
-            
-          if (product) {
-            const newStock = Math.max(0, product.stock - item.quantity);
-            const { error: stockError } = await supabase
-              .from('products')
+          if (prod) {
+            const newStock = Math.max(0, prod.stock - item.quantity);
+            await supabase
+              .from("products")
               .update({ stock: newStock })
-              .eq('id', item.id)
-              .eq('user_id', user.id);
-              
-            if (stockError) {
-              console.error('Error updating stock:', stockError);
-              // Continue even if stock update fails
-            }
+              .eq("id", item.id)
+              .eq("user_id", user.id);
           }
         }
       }
-      
-      toast({
-        title: "Venda registrada com sucesso!"
-      });
-      
+
+      toast({ title: "Venda registrada com sucesso!" });
       return saleData;
     } catch (error) {
-      console.error('Error creating sale:', error);
+      console.error("Error creating sale:", error);
       toast({
         variant: "destructive",
         title: "Erro ao criar venda",
-        description: "Ocorreu um erro ao registrar a venda."
+        description: "Ocorreu um erro ao registrar a venda.",
       });
       return null;
     }
   };
 
   useEffect(() => {
-    if (user) {
-      fetchSales();
-    }
+    if (user) fetchSales();
   }, [user]);
 
   return {
@@ -257,6 +236,6 @@ export function useSales() {
     fetchSales,
     fetchSaleDetails,
     deleteSale,
-    createSale
+    createSale,
   };
 }

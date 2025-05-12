@@ -11,8 +11,6 @@ interface SaleSummaryProps {
   serviceSubtotal?: number;
   itemDiscounts?: number;
   itemSurcharges?: number;
-  generalDiscount?: number;
-  generalSurcharge?: number;
 }
 
 export function SaleSummary({
@@ -25,8 +23,6 @@ export function SaleSummary({
   serviceSubtotal,
   itemDiscounts = 0,
   itemSurcharges = 0,
-  generalDiscount = 0,
-  generalSurcharge = 0
 }: SaleSummaryProps) {
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -68,24 +64,10 @@ export function SaleSummary({
         </div>
       )}
       
-      {generalDiscount > 0 && (
-        <div className="flex justify-between text-sm text-red-600">
-          <span>Desconto geral:</span>
-          <span className="font-mono">-{formatCurrency(generalDiscount)}</span>
-        </div>
-      )}
-      
       {itemSurcharges > 0 && (
         <div className="flex justify-between text-sm text-green-600">
           <span>Acréscimos nos itens:</span>
           <span className="font-mono">+{formatCurrency(itemSurcharges)}</span>
-        </div>
-      )}
-      
-      {generalSurcharge > 0 && (
-        <div className="flex justify-between text-sm text-green-600">
-          <span>Acréscimo geral:</span>
-          <span className="font-mono">+{formatCurrency(generalSurcharge)}</span>
         </div>
       )}
       
