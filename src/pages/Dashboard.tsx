@@ -329,7 +329,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {new Date(appointment.date).toLocaleDateString('pt-BR')}, {appointment.time.substring(0, 5)}
+                        {appointment.date.split('-').reverse().join('/')}, {appointment.time.substring(0, 5)}
                       </p>
                     </div>
                   </div>

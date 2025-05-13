@@ -115,7 +115,7 @@ const AppointmentForm = ({ open, onClose, onSuccess, defaultValues, supabase, us
   useEffect(() => {
     if (defaultValues) {
       setValue("time", defaultValues.time || "");
-      setDate(defaultValues.date ? new Date(defaultValues.date) : new Date());
+      setDate(defaultValues.date ? new Date(defaultValues.date + "T12:00:00") : new Date());
       setValue("petId", defaultValues.pet?.id || "");
       setValue("clientId", defaultValues.client?.id || "");
       setValue("serviceId", defaultValues.service?.id || "");

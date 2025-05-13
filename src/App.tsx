@@ -56,7 +56,7 @@ const App = () => (
             <Route path="/expired" element={<ExpiredSubscription />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/UpdatePassword" element={<UpdatePassword />} />
-            <Route path="/confirmed-email" element={<ConfirmedEmail />} />
+            <Route path="/ConfirmedEmail" element={<ConfirmedEmail />} />
             {/* Protegidas */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
