@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
@@ -22,8 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
-  PopoverContent,
   PopoverTrigger,
+  PopoverContent,
 } from "@/components/ui/popover";
 import {
   format,
@@ -73,10 +73,10 @@ const statusBadgeStyles = {
 };
 
 const statusLabels = {
-  confirmed: "Confirmado",
-  pending: "Pendente",
-  cancelled: "Cancelado",
-  completed: "Concluído",
+  confirmed: "Confirmado" as const,
+  pending: "Pendente" as const,
+  cancelled: "Cancelado" as const,
+  completed: "Concluído" as const,
 };
 
 interface Appointment {
@@ -102,6 +102,26 @@ export default function Appointments() {
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+
+  // 1. Função de deletar
+  const deleteAppointment = async (id: string) => {
+    if (!confirm("Tem certeza que deseja deletar este agendamento?")) return;
+    try {
+      const { error } = await supabase
+        .from("appointments")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Agendamento removido com sucesso", variant: "default" });
+      fetchAppointments();
+    } catch (e: any) {
+      toast({
+        title: "Erro ao deletar agendamento",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const goToPrevious = () => {
     if (viewMode === "day") setCurrentDate(subDays(currentDate, 1));
@@ -145,7 +165,6 @@ export default function Appointments() {
   async function fetchAppointments() {
     if (!user) return;
     setLoading(true);
-
     try {
       const dates = getDateRange().map(formatDateForAPI);
       let q = supabase
@@ -161,58 +180,48 @@ export default function Appointments() {
 
       const { data: raw, error } = await q;
       if (error) throw error;
-      if (!raw) {
-        setAppointments([]);
-        setLoading(false);
-        return;
-      }
 
       const formatted: Appointment[] = [];
-      for (const a of raw) {
-        let petName = "—",
-          clientName = "—",
-          serviceName = "—",
-          clientId = "";
-
-        if (a.pet_id) {
-          const petRes = await supabase
-            .from("pets")
-            .select("id, name, client_id")
-            .eq("id", a.pet_id)
-            .single();
-          if (petRes.data) {
-            petName = petRes.data.name;
-            clientId = petRes.data.client_id;
-            const cliRes = await supabase
-              .from("clients")
-              .select("id, name")
-              .eq("id", clientId)
+      if (raw) {
+        for (const a of raw) {
+          let petName = "—", clientName = "—", serviceName = "—", clientId = "";
+          if (a.pet_id) {
+            const petRes = await supabase
+              .from("pets")
+              .select("id, name, client_id")
+              .eq("id", a.pet_id)
               .single();
-            if (cliRes.data) clientName = cliRes.data.name;
+            if (petRes.data) {
+              petName = petRes.data.name;
+              clientId = petRes.data.client_id;
+              const cliRes = await supabase
+                .from("clients")
+                .select("id, name")
+                .eq("id", clientId)
+                .single();
+              if (cliRes.data) clientName = cliRes.data.name;
+            }
           }
+          if (a.service_id) {
+            const svcRes = await supabase
+              .from("services")
+              .select("id, name")
+              .eq("id", a.service_id)
+              .single();
+            if (svcRes.data) serviceName = svcRes.data.name;
+          }
+          formatted.push({
+            id: a.id,
+            date: a.date,
+            time: a.time,
+            status: a.status as any,
+            notes: a.notes,
+            pet: { id: a.pet_id || "", name: petName },
+            client: { id: clientId, name: clientName },
+            service: { id: a.service_id || "", name: serviceName },
+          });
         }
-
-        if (a.service_id) {
-          const svcRes = await supabase
-            .from("services")
-            .select("id, name")
-            .eq("id", a.service_id)
-            .single();
-          if (svcRes.data) serviceName = svcRes.data.name;
-        }
-
-        formatted.push({
-          id: a.id,
-          date: a.date,
-          time: a.time,
-          status: a.status as any,
-          notes: a.notes,
-          pet: { id: a.pet_id || "", name: petName },
-          client: { id: clientId, name: clientName },
-          service: { id: a.service_id || "", name: serviceName },
-        });
       }
-
       setAppointments(formatted);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Erro ao carregar agendamentos", description: e.message });
@@ -232,6 +241,7 @@ export default function Appointments() {
   const getForDate = (d: Date) =>
     appointments.filter((a) => a.date === formatDateForAPI(d));
 
+  // 2. renderDay (mesa de dia)
   const renderDay = () => (
     <Card>
       <CardHeader className="flex items-center justify-between">
@@ -278,7 +288,7 @@ export default function Appointments() {
                 className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2"
               >
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900 truncate">
+                  <div className="text-sm font-medium text-gray-900 truncate">  
                     {a.client.name} – {a.pet.name}
                   </div>
                   <div className="text-sm text-gray-500 truncate">
@@ -299,8 +309,8 @@ export default function Appointments() {
                   <Button size="icon" variant="ghost" onClick={() => { setSelectedEdit(a); setShowForm(true); }}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => {/* delete */}}>
-                    <Trash className="h-4 w-4" />
+                  <Button size="icon" variant="ghost" onClick={() => deleteAppointment(a.id)}>
+                    <Trash className="h-4 w-4 text-red-500 hover:text-red-700" />
                   </Button>
                 </div>
               </div>
@@ -311,6 +321,7 @@ export default function Appointments() {
     </Card>
   );
 
+  // 3. renderWeek
   const renderWeek = () => {
     const days = getDateRange();
     return (
@@ -390,6 +401,7 @@ export default function Appointments() {
     );
   };
 
+  // 4. renderMonth
   const renderMonth = () => {
     const days = getDateRange();
     return (
@@ -466,7 +478,7 @@ export default function Appointments() {
                                 </div>
                               ))}
                               {dayAppts.length > 3 && (
-                                <div className="text-xs text-center text-petblue-600">
+                                <div className="text-xs text-petblue-600">
                                   +{dayAppts.length - 3} mais
                                 </div>
                               )}
@@ -536,7 +548,7 @@ export default function Appointments() {
         </div>
       </div>
 
-      {/* Exibe a view correta */}
+      {/* Views */}
       {viewMode === "day" && renderDay()}
       {viewMode === "week" && renderWeek()}
       {viewMode === "month" && renderMonth()}
