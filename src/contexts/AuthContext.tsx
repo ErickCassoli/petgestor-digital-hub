@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session, User } from "@supabase/supabase-js";
@@ -30,6 +31,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Defina no seu .env (Vite) ou .env.local (CRA) a variável:
+// VITE_APP_URL=https://app.seudominio.com
+const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -44,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     : false;
   const isSubscriptionActive = profile?.is_subscribed || false;
 
-  // Busca perfil no Supabase
+  // Fetch do perfil no Supabase
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from("profiles")
@@ -59,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data as Profile;
   };
 
-  // Exposto para forçar re-fetch do perfil
   const refreshProfile = async () => {
     if (!user?.id) return;
     setLoading(true);
@@ -68,7 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
 
-  // Monitora sessão e carrega perfil
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
@@ -91,18 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
-        fetchProfile(existingSession.user.id).then((p) => {
-          setProfile(p);
-        });
+        fetchProfile(existingSession.user.id).then((p) => setProfile(p));
       } else {
         setProfile(null);
       }
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -115,16 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Bem-vindo de volta ao PetGestor!",
       });
 
-      // Atualiza sessão e perfil
-      const {
-        data: { session: newSession },
-      } = await supabase.auth.getSession();
+      const { data: { session: newSession } } = await supabase.auth.getSession();
       if (!newSession?.user) return;
 
       const userProfile = await fetchProfile(newSession.user.id);
       setProfile(userProfile);
 
-      // Redireciona conforme assinatura/trial
       if (
         userProfile?.is_subscribed ||
         (userProfile?.trial_end_date && new Date() < new Date(userProfile.trial_end_date))
@@ -151,14 +146,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/ConfirmedEmail`,
+          // Aqui usamos APP_URL, que deve ser seu domínio de produção
+          emailRedirectTo: `${APP_URL}/ConfirmedEmail`,
           data: { role },
         },
       });
       if (error) throw error;
 
       sonnerToast.success("Conta criada com sucesso", {
-        description: "Bem-vindo ao PetGestor!",
+        description: "Confirme seu e-mail para ativar sua conta.",
       });
     } catch (error: any) {
       console.error("Sign up error:", error);
@@ -192,7 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/UpdatePassword`,
+        // Mesma lógica de env var para o reset
+        redirectTo: `${APP_URL}/UpdatePassword`,
       });
       if (error) throw error;
 
