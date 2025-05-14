@@ -22,9 +22,10 @@ interface AuthContextType {
   signUp: (email: string, password: string, role: "admin" | "atendente") => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Omit<Profile, "id">>) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   isSubscriptionActive: boolean;
   isInTrialPeriod: boolean;
-  resetPassword: (email: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,13 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     : false;
   const isSubscriptionActive = profile?.is_subscribed || false;
 
-  // Fetch profile from Supabase
-  const fetchProfile = async (userId: string) => {
+  // Busca perfil no Supabase
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
+
     if (error) {
       console.error("Error fetching profile:", error);
       return null;
@@ -57,6 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data as Profile;
   };
 
+  // Exposto para forçar re-fetch do perfil
+  const refreshProfile = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    const updated = await fetchProfile(user.id);
+    setProfile(updated);
+    setLoading(false);
+  };
+
+  // Monitora sessão e carrega perfil
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
@@ -64,9 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          fetchProfile(newSession.user.id).then(setProfile);
+          fetchProfile(newSession.user.id).then((p) => {
+            setProfile(p);
+            setLoading(false);
+          });
         } else {
           setProfile(null);
+          setLoading(false);
         }
       }
     );
@@ -75,7 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
-        fetchProfile(existingSession.user.id).then(setProfile);
+        fetchProfile(existingSession.user.id).then((p) => {
+          setProfile(p);
+        });
+      } else {
+        setProfile(null);
       }
       setLoading(false);
     });
@@ -95,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Bem-vindo de volta ao PetGestor!",
       });
 
-      // Obter sessão e perfil para decidir rota
+      // Atualiza sessão e perfil
       const {
         data: { session: newSession },
       } = await supabase.auth.getSession();
@@ -104,7 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userProfile = await fetchProfile(newSession.user.id);
       setProfile(userProfile);
 
-      if (userProfile?.is_subscribed || (userProfile?.trial_end_date && new Date() < new Date(userProfile.trial_end_date))) {
+      // Redireciona conforme assinatura/trial
+      if (
+        userProfile?.is_subscribed ||
+        (userProfile?.trial_end_date && new Date() < new Date(userProfile.trial_end_date))
+      ) {
         navigate("/dashboard");
       } else {
         navigate("/expired");
@@ -194,8 +218,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .update(updates)
         .eq("id", user.id);
       if (error) throw error;
+
       const updated = await fetchProfile(user.id);
       setProfile(updated);
+
       sonnerToast.success("Perfil atualizado", {
         description: "Suas informações foram atualizadas com sucesso.",
       });
@@ -219,9 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         updateProfile,
+        resetPassword,
         isSubscriptionActive,
         isInTrialPeriod,
-        resetPassword,
+        refreshProfile,
       }}
     >
       {children}

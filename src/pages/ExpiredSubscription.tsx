@@ -130,7 +130,7 @@ const ExpiredSubscription = () => {
         <div className="mt-6 text-sm text-gray-500">
           Dúvidas? Entre em contato com nosso suporte em<br />
           <a href="mailto:suporte@petgestor.com.br" className="text-petblue-600 hover:text-petblue-800">
-            suporte@petgestor.com.br
+            contato@petgestor.com.br
           </a>
         </div>
       </div>

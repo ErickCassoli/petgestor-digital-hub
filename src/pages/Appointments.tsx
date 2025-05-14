@@ -1,74 +1,69 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Calendar as CalendarIcon, 
-  Check, 
-  ChevronLeft, 
-  ChevronRight, 
-  Clock, 
-  FileText, 
-  User, 
-  X, 
-  Edit, 
-  Trash, 
-  Filter 
+import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  FileText,
+  User,
+  Edit,
+  Trash,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, addDays, subDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  format,
+  addDays,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  isSameDay,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import AppointmentForm from "@/components/AppointmentForm";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import ClockDateDisplay from "@/components/dashboard/ClockDateDisplay";
 
-interface Appointment {
-  id: string;
-  date: string;
-  time: string;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
-  notes: string | null;
-  pet: {
-    id: string;
-    name: string;
-  };
-  client: {
-    id: string;
-    name: string;
-  };
-  service: {
-    id: string;
-    name: string;
-  };
-}
+const formatDate = (date: Date) =>
+  format(date, "EEEE, d 'de' MMMM", { locale: ptBR });
 
-interface Service {
-  id: string;
-  name: string;
-}
-
-const formatDate = (date: Date) => {
-  return format(date, "EEEE, d 'de' MMMM", {
-    locale: ptBR,
-  });
-};
-
-const formatDateShort = (date: Date) => {
-  return format(date, "dd/MM", {
-    locale: ptBR,
-  });
-};
-
-const formatDateForAPI = (date: Date) => {
-  return format(date, "yyyy-MM-dd");
-};
+const formatDateForAPI = (date: Date) =>
+  format(date, "yyyy-MM-dd");
 
 const statusBadgeStyles = {
   confirmed: "bg-green-500",
@@ -84,169 +79,147 @@ const statusLabels = {
   completed: "Concluído",
 };
 
-const Appointments = () => {
+interface Appointment {
+  id: string;
+  date: string;
+  time: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  notes: string | null;
+  pet: { id: string; name: string };
+  client: { id: string; name: string };
+  service: { id: string; name: string };
+}
+
+export default function Appointments() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedEdit, setSelectedEdit] = useState<Appointment | null>(null);
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<{ id: string; name: string }[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
-  const goToPreviousDay = () => {
+  const goToPrevious = () => {
     if (viewMode === "day") setCurrentDate(subDays(currentDate, 1));
     else if (viewMode === "week") setCurrentDate(subDays(currentDate, 7));
     else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
-  
-  const goToNextDay = () => {
+
+  const goToNext = () => {
     if (viewMode === "day") setCurrentDate(addDays(currentDate, 1));
     else if (viewMode === "week") setCurrentDate(addDays(currentDate, 7));
     else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const fetchServices = async () => {
+  async function fetchServices() {
     if (!user) return;
     try {
       const { data, error } = await supabase
-        .from('services')
-        .select('id, name')
-        .eq('user_id', user.id);
-
+        .from("services")
+        .select("id, name")
+        .eq("user_id", user.id);
       if (error) throw error;
       setServices(data || []);
-    } catch (error: any) {
-      console.error("Error fetching services:", error);
-      toast({ variant: "destructive", title: "Erro ao carregar serviços", description: error?.message });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao carregar serviços", description: e.message });
     }
-  };
+  }
 
-  const getDateRangeForView = () => {
-    if (viewMode === "day") {
-      return [currentDate];
-    } else if (viewMode === "week") {
-      const start = startOfWeek(currentDate, { weekStartsOn: 0 });
-      const end = endOfWeek(currentDate, { weekStartsOn: 0 });
-      return eachDayOfInterval({ start, end });
-    } else {
-      const start = startOfMonth(currentDate);
-      const end = endOfMonth(currentDate);
-      return eachDayOfInterval({ start, end });
-    }
-  };
+  function getDateRange() {
+    if (viewMode === "day") return [currentDate];
+    if (viewMode === "week")
+      return eachDayOfInterval({
+        start: startOfWeek(currentDate, { weekStartsOn: 0 }),
+        end: endOfWeek(currentDate, { weekStartsOn: 0 }),
+      });
+    return eachDayOfInterval({
+      start: startOfMonth(currentDate),
+      end: endOfMonth(currentDate),
+    });
+  }
 
-  const fetchAppointments = async () => {
+  async function fetchAppointments() {
     if (!user) return;
     setLoading(true);
+
     try {
-      const dateRange = getDateRangeForView();
-      const formattedDates = dateRange.map(date => formatDateForAPI(date));
-      
-      let query = supabase
-        .from('appointments')
-        .select(`
-          id,
-          date,
-          time,
-          status,
-          notes,
-          pet_id,
-          service_id
-        `)
-        .eq('user_id', user.id)
-        .in('date', formattedDates)
+      const dates = getDateRange().map(formatDateForAPI);
+      let q = supabase
+        .from("appointments")
+        .select("id, date, time, status, notes, pet_id, service_id")
+        .eq("user_id", user.id)
+        .in("date", dates as readonly string[])
         .order("time", { ascending: true });
-      
+
       if (selectedServiceId && selectedServiceId !== "all") {
-        query = query.eq('service_id', selectedServiceId);
+        q = q.eq("service_id", selectedServiceId);
       }
-      
-      let { data: appointmentsData, error } = await query;
 
+      const { data: raw, error } = await q;
       if (error) throw error;
-
-      if (!appointmentsData || appointmentsData.length === 0) {
+      if (!raw) {
         setAppointments([]);
         setLoading(false);
         return;
       }
 
-      const formattedAppointments: Appointment[] = [];
-      
-      for (const appointment of appointmentsData) {
-        let petName = 'Sem informação';
-        let clientName = 'Sem informação';
-        let serviceName = 'Sem informação';
-        let clientId = '';
+      const formatted: Appointment[] = [];
+      for (const a of raw) {
+        let petName = "—",
+          clientName = "—",
+          serviceName = "—",
+          clientId = "";
 
-        if (appointment.pet_id) {
-          const { data: petData, error: petError } = await supabase
-            .from('pets')
-            .select('id, name, client_id')
-            .eq('id', appointment.pet_id)
+        if (a.pet_id) {
+          const petRes = await supabase
+            .from("pets")
+            .select("id, name, client_id")
+            .eq("id", a.pet_id)
             .single();
-            
-          if (petData) {
-            petName = petData.name;
-            clientId = petData.client_id;
-            
-            // Get client name using the client_id from pet
-            const { data: clientData, error: clientError } = await supabase
-              .from('clients')
-              .select('id, name')
-              .eq('id', clientId)
+          if (petRes.data) {
+            petName = petRes.data.name;
+            clientId = petRes.data.client_id;
+            const cliRes = await supabase
+              .from("clients")
+              .select("id, name")
+              .eq("id", clientId)
               .single();
-              
-            if (clientData) {
-              clientName = clientData.name;
-              clientId = clientData.id;
-            }
+            if (cliRes.data) clientName = cliRes.data.name;
           }
-        }
-        
-        if (appointment.service_id) {
-          const { data: serviceData, error: serviceError } = await supabase
-            .from('services')
-            .select('id, name')
-            .eq('id', appointment.service_id)
-            .single();
-            
-          if (serviceData) serviceName = serviceData.name;
         }
 
-        formattedAppointments.push({
-          id: appointment.id,
-          date: appointment.date,
-          time: appointment.time,
-          status: appointment.status as "pending" | "confirmed" | "cancelled" | "completed",
-          notes: appointment.notes,
-          pet: { 
-            id: appointment.pet_id || "", 
-            name: petName
-          },
-          client: { 
-            id: clientId, 
-            name: clientName
-          },
-          service: { 
-            id: appointment.service_id || "", 
-            name: serviceName
-          }
+        if (a.service_id) {
+          const svcRes = await supabase
+            .from("services")
+            .select("id, name")
+            .eq("id", a.service_id)
+            .single();
+          if (svcRes.data) serviceName = svcRes.data.name;
+        }
+
+        formatted.push({
+          id: a.id,
+          date: a.date,
+          time: a.time,
+          status: a.status as any,
+          notes: a.notes,
+          pet: { id: a.pet_id || "", name: petName },
+          client: { id: clientId, name: clientName },
+          service: { id: a.service_id || "", name: serviceName },
         });
       }
 
-      setAppointments(formattedAppointments);
-    } catch (error: any) {
-      console.error("Error fetching appointments:", error);
-      toast({ variant: "destructive", title: "Erro ao carregar agendamentos", description: error?.message });
+      setAppointments(formatted);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao carregar agendamentos", description: e.message });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
     fetchServices();
@@ -254,121 +227,79 @@ const Appointments = () => {
 
   useEffect(() => {
     fetchAppointments();
-  }, [user, currentDate, toast, showForm, viewMode, selectedServiceId]);
+  }, [user, currentDate, viewMode, selectedServiceId, showForm]);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Deseja realmente excluir esse agendamento?")) return;
-    try {
-      const { error } = await supabase.from("appointments").delete().eq("id", id).eq("user_id", user.id);
-      if (error) throw error;
-      toast({ title: "Agendamento excluído com sucesso!" });
-      setAppointments((prev) => prev.filter((a) => a.id !== id));
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao excluir", description: e.message });
-    }
-  };
+  const getForDate = (d: Date) =>
+    appointments.filter((a) => a.date === formatDateForAPI(d));
 
-  const startEdit = (appt: Appointment) => {
-    setSelectedEdit(appt);
-    setShowForm(true);
-  };
-
-  const getAppointmentsForDate = (date: Date) => {
-    const formattedDate = formatDateForAPI(date);
-    return appointments.filter(appointment => appointment.date === formattedDate);
-  };
-
-  const renderDayView = () => (
+  const renderDay = () => (
     <Card>
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Agendamentos para {formatDate(currentDate)}</CardTitle>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={goToPreviousDay}>
+          <Button size="icon" variant="outline" onClick={goToPrevious}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-[200px] justify-start text-left font-normal",
-                  !currentDate && "text-muted-foreground"
-                )}
-              >
+              <Button variant="outline" className="w-full sm:w-[200px] justify-start text-left">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(currentDate, "dd/MM/yyyy")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-[90vw] max-w-[300px] p-0" align="center">
               <Calendar
                 mode="single"
                 selected={currentDate}
-                onSelect={(date) => {
-                  setCurrentDate(date ?? new Date());
-                  setCalendarOpen(false);
-                }}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
+                onSelect={(d) => setCurrentDate(d || new Date())}
+                className="p-3"
               />
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="icon" onClick={goToNextDay}>
+          <Button size="icon" variant="outline" onClick={goToNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="px-2 sm:px-0">
         {loading ? (
           <div className="p-6 flex justify-center items-center">
-            <Clock className="mr-2 h-4 w-4 animate-spin" />
-            Carregando agendamentos...
+            <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
           </div>
-        ) : getAppointmentsForDate(currentDate).length === 0 ? (
+        ) : getForDate(currentDate).length === 0 ? (
           <div className="p-6 text-center">
-            <CardDescription className="text-gray-500">
-              Nenhum agendamento para este dia.
-            </CardDescription>
+            <CardDescription>Nenhum agendamento para este dia.</CardDescription>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {getAppointmentsForDate(currentDate).map((appointment) => (
+            {getForDate(currentDate).map((a) => (
               <div
-                key={appointment.id}
-                className="p-4 flex items-center justify-between"
+                key={a.id}
+                className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2"
               >
-                <div>
-                  <div className="text-sm font-medium text-gray-900">
-                    {appointment.client.name} - {appointment.pet.name}
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {a.client.name} – {a.pet.name}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    <Clock className="inline-block h-4 w-4 mr-1" />
-                    {appointment.time} - {appointment.service.name}
+                  <div className="text-sm text-gray-500 truncate">
+                    <Clock className="inline h-4 w-4 mr-1" />
+                    {a.time} – {a.service.name}
                   </div>
-                  {appointment.notes && (
-                    <div className="text-xs text-gray-600 mt-1">
-                      <User className="inline-block h-3 w-3 mr-1" />
-                      {appointment.notes}
+                  {a.notes && (
+                    <div className="text-xs text-gray-600 mt-1 truncate">
+                      <User className="inline h-3 w-3 mr-1" />
+                      {a.notes}
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 items-center">
-                  <Badge className={statusBadgeStyles[appointment.status]}>
-                    {statusLabels[appointment.status]}
+                <div className="flex items-center space-x-2">
+                  <Badge className={statusBadgeStyles[a.status]}>
+                    {statusLabels[a.status]}
                   </Badge>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Editar"
-                    onClick={() => startEdit(appointment)}
-                  >
+                  <Button size="icon" variant="ghost" onClick={() => { setSelectedEdit(a); setShowForm(true); }}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Excluir"
-                    onClick={() => handleDelete(appointment.id)}
-                  >
+                  <Button size="icon" variant="ghost" onClick={() => {/* delete */}}>
                     <Trash className="h-4 w-4" />
                   </Button>
                 </div>
@@ -380,107 +311,78 @@ const Appointments = () => {
     </Card>
   );
 
-  const renderWeekView = () => {
-    const dateRange = getDateRangeForView();
-    
+  const renderWeek = () => {
+    const days = getDateRange();
     return (
       <Card>
         <CardHeader className="flex items-center justify-between">
           <CardTitle>
-            Semana: {format(dateRange[0], "dd/MM/yyyy")} - {format(dateRange[dateRange.length - 1], "dd/MM/yyyy")}
+            Semana: {format(days[0], "dd/MM/yyyy")} – {format(days[days.length - 1], "dd/MM/yyyy")}
           </CardTitle>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon" onClick={goToPreviousDay}>
+            <Button size="icon" variant="outline" onClick={goToPrevious}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-[200px] justify-start text-left font-normal",
-                    !currentDate && "text-muted-foreground"
-                  )}
-                >
+                <Button variant="outline" className="w-full sm:w-[200px] justify-start text-left">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {format(currentDate, "MMMM yyyy", { locale: ptBR })}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-[90vw] max-w-[300px] p-0" align="center">
                 <Calendar
                   mode="single"
                   selected={currentDate}
-                  onSelect={(date) => {
-                    setCurrentDate(date ?? new Date());
-                    setCalendarOpen(false);
-                  }}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
+                  onSelect={(d) => setCurrentDate(d || new Date())}
+                  className="p-3"
                 />
               </PopoverContent>
             </Popover>
-            <Button variant="outline" size="icon" onClick={goToNextDay}>
+            <Button size="icon" variant="outline" onClick={goToNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-0">
           {loading ? (
             <div className="p-6 flex justify-center items-center">
-              <Clock className="mr-2 h-4 w-4 animate-spin" />
-              Carregando agendamentos...
+              <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
             </div>
           ) : (
-            <div className="grid grid-cols-7 gap-2">
-              {dateRange.map((date, index) => (
-                <div key={index} className="border rounded-md p-2">
-                  <div className={cn(
-                    "text-center font-medium mb-2 p-1 rounded-md",
-                    isSameDay(date, new Date()) && "bg-petblue-100"
-                  )}>
-                    {format(date, "EEE", { locale: ptBR })}
-                    <br />
-                    {format(date, "dd/MM")}
-                  </div>
-                  <div className="max-h-[200px] overflow-y-auto">
-                    {getAppointmentsForDate(date).length === 0 ? (
-                      <div className="text-center text-xs text-gray-400 py-2">
-                        Nenhum agendamento
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px] grid grid-cols-7 gap-2">
+                {days.map((d) => {
+                  const dayAppts = getForDate(d);
+                  return (
+                    <div key={d.toString()} className="border rounded p-2 flex flex-col">
+                      <div
+                        className={cn(
+                          "text-center font-medium mb-2 p-1 rounded",
+                          isSameDay(d, new Date()) && "bg-petblue-100"
+                        )}  
+                      >
+                        {format(d, "EEE", { locale: ptBR })}<br/>{format(d, "dd/MM")}
                       </div>
-                    ) : (
-                      getAppointmentsForDate(date).map(appt => (
-                        <div key={appt.id} className="text-xs mb-2 p-1 rounded bg-gray-50">
-                          <div className="font-medium">{appt.time} - {appt.client.name}</div>
-                          <div>{appt.service.name}</div>
-                          <div className="flex justify-between mt-1">
-                            <Badge className={cn("text-xs px-1 py-0", statusBadgeStyles[appt.status])}>
-                              {statusLabels[appt.status]}
-                            </Badge>
-                            <div className="flex">
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-4 w-4 p-0" 
-                                onClick={() => startEdit(appt)}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-4 w-4 p-0" 
-                                onClick={() => handleDelete(appt.id)}
-                              >
-                                <Trash className="h-3 w-3" />
-                              </Button>
+                      <div className="flex-1 overflow-y-auto">
+                        {dayAppts.length === 0 ? (
+                          <div className="text-xs text-gray-400 text-center">Nenhum</div>
+                        ) : (
+                          dayAppts.map((a) => (
+                            <div
+                              key={a.id}
+                              className="text-xs mb-2 p-1 rounded bg-gray-50 truncate whitespace-nowrap cursor-pointer hover:bg-gray-100"
+                              onClick={() => { setSelectedEdit(a); setShowForm(true); }}
+                            >
+                              <span className="font-medium">{a.time}</span> – {a.client.name}
                             </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))}
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>
@@ -488,114 +390,95 @@ const Appointments = () => {
     );
   };
 
-  const renderMonthView = () => {
-    const dateRange = getDateRangeForView();
-    
+  const renderMonth = () => {
+    const days = getDateRange();
     return (
       <Card>
         <CardHeader className="flex items-center justify-between">
-          <CardTitle>
-            {format(currentDate, "MMMM yyyy", { locale: ptBR })}
-          </CardTitle>
+          <CardTitle>{format(currentDate, "MMMM yyyy", { locale: ptBR })}</CardTitle>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon" onClick={goToPreviousDay}>
+            <Button size="icon" variant="outline" onClick={goToPrevious}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-[200px] justify-start text-left font-normal",
-                    !currentDate && "text-muted-foreground"
-                  )}
-                >
+                <Button variant="outline" className="w-full sm:w-[200px] justify-start text-left">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {format(currentDate, "MMMM yyyy", { locale: ptBR })}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-[90vw] max-w-[300px] p-0" align="center">
                 <Calendar
                   mode="single"
                   selected={currentDate}
-                  onSelect={(date) => {
-                    setCurrentDate(date ?? new Date());
-                    setCalendarOpen(false);
-                  }}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
+                  onSelect={(d) => setCurrentDate(d || new Date())}
+                  className="p-3"
                 />
               </PopoverContent>
             </Popover>
-            <Button variant="outline" size="icon" onClick={goToNextDay}>
+            <Button size="icon" variant="outline" onClick={goToNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-0">
           {loading ? (
             <div className="p-6 flex justify-center items-center">
-              <Clock className="mr-2 h-4 w-4 animate-spin" />
-              Carregando agendamentos...
+              <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dom</TableHead>
-                  <TableHead>Seg</TableHead>
-                  <TableHead>Ter</TableHead>
-                  <TableHead>Qua</TableHead>
-                  <TableHead>Qui</TableHead>
-                  <TableHead>Sex</TableHead>
-                  <TableHead>Sáb</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from({ length: Math.ceil(dateRange.length / 7) }).map((_, weekIndex) => (
-                  <TableRow key={weekIndex}>
-                    {Array.from({ length: 7 }).map((_, dayIndex) => {
-                      const dayNum = weekIndex * 7 + dayIndex;
-                      const date = dayNum < dateRange.length ? dateRange[dayNum] : null;
-                      
-                      if (!date) return <TableCell key={dayIndex} />;
-                      
-                      const dayAppointments = getAppointmentsForDate(date);
-                      const appointmentCount = dayAppointments.length;
-                      
-                      return (
-                        <TableCell key={dayIndex} className="h-24 align-top">
-                          <div className={cn(
-                            "font-medium",
-                            isSameDay(date, new Date()) && "bg-petblue-100 p-1 rounded-full w-6 h-6 flex items-center justify-center mx-auto mb-1"
-                          )}>
-                            {format(date, "d")}
-                          </div>
-                          {appointmentCount > 0 ? (
-                            <div>
-                              {dayAppointments.slice(0, 3).map((appt) => (
-                                <div 
-                                  key={appt.id} 
-                                  className="text-xs mb-1 p-1 rounded truncate cursor-pointer hover:bg-gray-100"
-                                  onClick={() => startEdit(appt)}
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((h) => (
+                        <TableHead key={h}>{h}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from({ length: Math.ceil(days.length / 7) }).map((_, wi) => (
+                      <TableRow key={wi}>
+                        {Array.from({ length: 7 }).map((_, di) => {
+                          const idx = wi * 7 + di;
+                          const day = days[idx];
+                          if (!day) return <TableCell key={di} />;
+                          const dayAppts = getForDate(day);
+                          return (
+                            <TableCell key={di} className="align-top h-24">
+                              <div
+                                className={cn(
+                                  "font-medium truncate",
+                                  isSameDay(day, new Date()) &&
+                                    "bg-petblue-100 p-1 rounded-full mx-auto w-6 h-6 flex items-center justify-center"
+                                )}
+                              >
+                                {format(day, "d")}
+                              </div>
+                              {dayAppts.slice(0, 3).map((a) => (
+                                <div
+                                  key={a.id}
+                                  className="text-xs truncate whitespace-nowrap mt-1 cursor-pointer hover:bg-gray-100"
+                                  onClick={() => { setSelectedEdit(a); setShowForm(true); }}
                                 >
-                                  <span className="font-medium">{appt.time}</span> {appt.client.name.substring(0, 10)}...
+                                  <span className="font-medium">{a.time}</span> – {a.client.name}
                                 </div>
                               ))}
-                              {appointmentCount > 3 && (
+                              {dayAppts.length > 3 && (
                                 <div className="text-xs text-center text-petblue-600">
-                                  +{appointmentCount - 3} mais
+                                  +{dayAppts.length - 3} mais
                                 </div>
                               )}
-                            </div>
-                          ) : null}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -603,61 +486,62 @@ const Appointments = () => {
   };
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+    <div className="px-2">
+      {/* Cabeçalho */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agendamentos</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 text-center sm:text-left">
+            Agendamentos
+          </h1>
+          <p className="text-gray-600 mt-1 text-center sm:text-left">
             Gerencie os agendamentos do seu petshop
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
-          <ClockDateDisplay />
-        </div>
+        <ClockDateDisplay />
       </div>
-      
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-        <Tabs 
-          defaultValue="day" 
-          className="w-full sm:w-auto"
-          onValueChange={(value) => setViewMode(value as "day" | "week" | "month")}
-        >
-          <TabsList>
+
+      {/* Controles */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <Tabs defaultValue="day" className="w-full sm:w-auto" onValueChange={(v) => setViewMode(v as any)}>
+          <TabsList className="flex flex-wrap">
             <TabsTrigger value="day">Dia</TabsTrigger>
             <TabsTrigger value="week">Semana</TabsTrigger>
             <TabsTrigger value="month">Mês</TabsTrigger>
           </TabsList>
         </Tabs>
-        
-        <div className="flex gap-2 mt-2 sm:mt-0">
-          <Select 
-            defaultValue="all"
-            onValueChange={(value) => setSelectedServiceId(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por serviço" />
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Select defaultValue="all" onValueChange={(v) => setSelectedServiceId(v)}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Todos os serviços" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os serviços</SelectItem>
-              {services.map((service) => (
-                <SelectItem key={service.id} value={service.id}>
-                  {service.name}
+              {services.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
-          <Button className="bg-petblue-600 hover:bg-petblue-700" onClick={() => { setSelectedEdit(null); setShowForm(true); }}>
+          <Button
+            className="bg-petblue-600 hover:bg-petblue-700 w-full sm:w-auto"
+            onClick={() => {
+              setSelectedEdit(null);
+              setShowForm(true);
+            }}
+          >
             <FileText className="h-4 w-4 mr-2" />
             Novo Agendamento
           </Button>
         </div>
       </div>
 
-      {viewMode === "day" && renderDayView()}
-      {viewMode === "week" && renderWeekView()}
-      {viewMode === "month" && renderMonthView()}
+      {/* Exibe a view correta */}
+      {viewMode === "day" && renderDay()}
+      {viewMode === "week" && renderWeek()}
+      {viewMode === "month" && renderMonth()}
 
+      {/* Formulário */}
       <AppointmentForm
         open={showForm}
         onClose={() => setShowForm(false)}
@@ -668,6 +552,4 @@ const Appointments = () => {
       />
     </div>
   );
-};
-
-export default Appointments;
+}
