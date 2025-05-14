@@ -1,16 +1,47 @@
+// src/pages/ConfirmedEmail.tsx
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 const ConfirmedEmail = () => {
   const navigate = useNavigate();
 
-  // Optional: redirect to login after a few seconds
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate("/login", { replace: true });
-    }, 5000);
-    return () => clearTimeout(timer);
+    (async () => {
+      try {
+        // 1) Extrai os tokens do hash da URL
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+        if (!access_token || !refresh_token) {
+          throw new Error("Não foi possível encontrar os tokens de sessão.");
+        }
+
+        // 2) Seta a sessão no Supabase
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (sessionError) throw sessionError;
+
+        // 3) Limpa o hash da barra de endereço
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        sonnerToast.success("E-mail confirmado!", {
+          description: "Sua conta foi ativada com sucesso.",
+        });
+      } catch (err: any) {
+        sonnerToast.error("Erro ao confirmar e-mail", {
+          description: err.message,
+        });
+      } finally {
+        // 4) Redireciona pro login daqui a 5s
+        setTimeout(() => navigate("/login", { replace: true }), 5000);
+      }
+    })();
   }, [navigate]);
 
   return (
@@ -27,7 +58,7 @@ const ConfirmedEmail = () => {
             Sua conta foi ativada com sucesso. Agora você pode fazer login.
           </p>
           <Button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/login", { replace: true })}
             className="w-full bg-petblue-600 hover:bg-petblue-700"
           >
             Ir para o login
