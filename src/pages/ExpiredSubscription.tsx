@@ -1,11 +1,12 @@
 // src/pages/ExpiredSubscription.tsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Lock, AlertTriangle, ChevronRight } from "lucide-react";
 import { StripeSubscriptionCheckout } from "@/components/subscription/StripeSubscriptionCheckout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
 
 function useStripePrice() {
   const [price, setPrice] = useState<{ unit_amount: number; currency: string } | null>(null);
@@ -24,6 +25,7 @@ function useStripePrice() {
 const ExpiredSubscription = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const price = useStripePrice();
 
   const handleSignOut = async () => {
@@ -35,11 +37,11 @@ const ExpiredSubscription = () => {
         description: error.message,
       });
     } else {
-      window.location.href = "/login";
+      navigate("/login", { replace: true });
     }
   };
 
-  // mantém a lógica de toasts do sucesso/cancelamento de checkout…
+  // Se quiser manter a lógica de toast de success/cancel do checkout, inclua aqui…
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -63,9 +65,7 @@ const ExpiredSubscription = () => {
           </div>
 
           <p className="text-gray-600 mb-6">
-            Olá, <span className="font-medium">{user?.email}</span>! Seu período de
-            avaliação gratuita terminou. Para continuar gerenciando seu petshop com o
-            PetGestor, por favor assine nosso plano.
+            Olá, <span className="font-medium">{user?.email}</span>! Seu período de avaliação gratuita terminou. Para continuar gerenciando seu petshop com o PetGestor, por favor assine nosso plano.
           </p>
 
           <div className="bg-gray-50 p-4 rounded-lg mb-6">
