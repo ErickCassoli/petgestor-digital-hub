@@ -59,6 +59,7 @@ const App = () => (
             <Route path="/ConfirmedEmail" element={<ConfirmedEmail />} />
             {/* Protegidas */}
             <Route element={<ProtectedRoute />}>
+              <Route path="/expired" element={<ExpiredSubscription />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/clientes" element={<Clients />} />
               <Route path="/agendamentos" element={<Appointments />} />

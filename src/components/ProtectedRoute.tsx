@@ -1,4 +1,4 @@
-
+// src/components/ProtectedRoute.tsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -6,48 +6,71 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 const ProtectedRoute = () => {
-  const { user, loading, isInTrialPeriod, isSubscriptionActive, profile } = useAuth();
+  const {
+    user,
+    loading,
+    profile,
+    isInTrialPeriod,
+    isSubscriptionActive,
+    signOut,
+  } = useAuth();
   const location = useLocation();
-
-  // Routes that require admin role
   const adminOnlyRoutes = ["/relatorios", "/assinatura"];
   const currentPathIsAdminOnly = adminOnlyRoutes.includes(location.pathname);
 
   useEffect(() => {
-    // Show a toast message when accessing a restricted route
     if (profile?.role === "atendente" && currentPathIsAdminOnly) {
       toast.error("Acesso restrito", {
-        description: "Você não tem permissão para acessar esta página."
+        description: "Você não tem permissão para acessar esta página.",
       });
     }
   }, [profile?.role, currentPathIsAdminOnly]);
 
+  // 1) Durante o loading de auth, mostra spinner
   if (loading) {
-    // Show loading spinner or skeleton
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-petblue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-petblue-600" />
       </div>
     );
   }
 
-  // If not logged in, redirect to login
+  // 2) Se logado mas e-mail não confirmado, desloga e vai p/ login com toast
+  if (user && !(user as any).email_confirmed_at) {
+    toast.error("Por favor, confirme seu e-mail antes de continuar.");
+    signOut();
+    return <Navigate to="/login" replace />;
+  }
+
+  // 3) Se não estiver logado, redireciona p/ login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If subscription expired and not in trial period, redirect to expired page
-  // Except for the subscription page itself
-  if ((isInTrialPeriod === false) && (isSubscriptionActive === false) && location.pathname !== "/assinatura") {
-    return <Navigate to="/expired" replace />;
+  // 4) Enquanto trial/subscription carregam, mostra spinner
+  if (isInTrialPeriod == null || isSubscriptionActive == null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-petblue-600" />
+      </div>
+    );
   }
 
-  // Check role-based access for specific routes
-  if (profile?.role === "atendente" && currentPathIsAdminOnly) {
+  // 5) Role-based: atendente não acessa rotas admin-only
+  if (profile.role === "atendente" && currentPathIsAdminOnly) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // User is authenticated and has access to this route
+  // 6) Se trial expirou e sem assinatura, redireciona p/ expired (exceto /assinatura)
+  if (
+    isInTrialPeriod === false &&
+    isSubscriptionActive === false &&
+    location.pathname !== "/assinatura"
+  ) {
+    return <Navigate to="/expired" replace />;
+  }
+
+  // 7) Caso contrário, segue pra rota interna
   return (
     <DashboardLayout>
       <Outlet />
