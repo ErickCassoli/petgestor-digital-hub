@@ -119,7 +119,7 @@ const AppointmentForm = ({
   useEffect(() => {
     if (defaultValues) {
       setValue("time", defaultValues.time || "");
-      setDate(defaultValues.date ? new Date(defaultValues.date) : new Date());
+      setDate(defaultValues.date ? new Date(defaultValues.date + "T12:00:00") : new Date());
       setValue("petId", defaultValues.pet?.id || "");
       setValue("clientId", defaultValues.client?.id || "");
       setClientQuery(defaultValues.client?.name || "");
@@ -153,7 +153,6 @@ const AppointmentForm = ({
             service_id: values.serviceId,
             status: values.status,
             notes: values.notes,
-            client_id: values.clientId,
           })
           .eq("id", defaultValues.id)
           .eq("user_id", user.id);
@@ -170,7 +169,6 @@ const AppointmentForm = ({
             status: values.status,
             notes: values.notes,
             user_id: user.id,
-            client_id: values.clientId,
           },
         ]);
         if (error) throw error;
@@ -339,7 +337,6 @@ const AppointmentForm = ({
                   <option value="pending">Pendente</option>
                   <option value="confirmed">Confirmado</option>
                   <option value="cancelled">Cancelado</option>
-                  <option value="completed">Concluído</option>
                 </select>
               </div>
 
