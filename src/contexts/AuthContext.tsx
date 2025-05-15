@@ -67,12 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile]);
 
   useEffect(() => {
-    // Inscreve no listener de mudança de autenticação
     const { data } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
-
         if (newSession?.user) {
           fetchProfile(newSession.user.id).then((p) => {
             setProfile(p);
@@ -84,10 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     );
-
     const subscription = data.subscription;
 
-    // Obtém sessão existente ao iniciar
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
@@ -99,9 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
   const signIn = useCallback(
@@ -110,17 +104,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
         sonnerToast.success("Login realizado com sucesso", {
           description: "Bem-vindo de volta ao PetGestor!",
         });
+
         const {
           data: { session: newSession },
         } = await supabase.auth.getSession();
         if (!newSession?.user) return;
+
         const userProfile = await fetchProfile(newSession.user.id);
         setProfile(userProfile);
-        if (userProfile?.is_subscribed || isInTrialPeriod) navigate("/dashboard");
-        else navigate("/expired");
+
+        const inTrial = userProfile?.trial_end_date
+          ? new Date() < new Date(userProfile.trial_end_date)
+          : false;
+
+        if (userProfile?.is_subscribed || inTrial) {
+          navigate("/dashboard");
+        } else {
+          navigate("/expired");
+        }
       } catch (err: any) {
         console.error("Sign in error:", err);
         sonnerToast.error("Erro no login", {
@@ -131,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [fetchProfile, isInTrialPeriod, navigate]
+    [fetchProfile, navigate]
   );
 
   const signUp = useCallback(
@@ -183,23 +188,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${APP_URL}/UpdatePassword`,
-      });
-      if (error) throw error;
-      sonnerToast.success("Verifique seu e-mail", {
-        description: "Enviamos um link para redefinir sua senha.",
-      });
-    } catch (err: any) {
-      console.error("Reset password error:", err);
-      sonnerToast.error("Erro ao redefinir senha", {
-        description: err.message || "Não foi possível enviar o e-mail de recuperação.",
-      });
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${APP_URL}/UpdatePassword`,
+        });
+        if (error) throw error;
+        sonnerToast.success("Verifique seu e-mail", {
+          description: "Enviamos um link para redefinir sua senha.",
+        });
+      } catch (err: any) {
+        console.error("Reset password error:", err);
+        sonnerToast.error("Erro ao redefinir senha", {
+          description: err.message || "Não foi possível enviar o e-mail de recuperação.",
+        });
+        throw err;
+      } finally {
+        setLoading(false);
+      }
   }, []);
 
   const updateProfile = useCallback(
