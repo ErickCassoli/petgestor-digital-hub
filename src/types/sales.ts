@@ -51,6 +51,7 @@ export interface CartItem {
   discount?: number;
   surcharge?: number;
   total?: number;
+  unitType?: number;
 }
 
 export interface DiscountValues {
@@ -66,4 +67,36 @@ export interface SaleFormData {
   surcharge: number;
   paymentMethod: string;
   notes: string;
+}
+
+export interface Product {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  price: number;
+  stock: number;
+  min_stock: number;
+  created_at: string;
+  updated_at: string;
+  type: number;        // 1 = unidade, 2 = peso
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+}
+
+export interface CartItem {
+  id: string;
+  type: "product" | "service";
+  name: string;
+  price: number;
+  quantity: number;
+  unitType?: number;   // mapeia de Product.type
+  discount?: number;
+  surcharge?: number;
+  total?: number;
 }
