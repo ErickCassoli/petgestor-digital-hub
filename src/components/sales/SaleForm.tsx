@@ -41,7 +41,6 @@ interface Service {
   name: string;
   price: number;
   description?: string;
-  duration: number;
 }
 
 interface SaleFormProps {
@@ -92,7 +91,7 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     if (!user) return;
     const { data } = await supabase
       .from("services")
-      .select("id, name, price, description, duration")
+      .select("id, name, price, description")
       .eq("user_id", user.id)
       .order("name");
     setServices(data || []);

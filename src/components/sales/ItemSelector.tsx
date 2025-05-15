@@ -18,7 +18,6 @@ interface Service {
   id: string;
   name: string;
   price: number;
-  duration: number;
 }
 
 interface ItemSelectorProps {
@@ -148,7 +147,7 @@ export function ItemSelector({ products, services, onAddItem }: ItemSelectorProp
                   <div>
                     <div className="font-medium">{service.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {service.duration} min | {service.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {service.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
                   </div>
                   <Button

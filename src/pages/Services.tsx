@@ -14,7 +14,6 @@ interface Service {
   name: string;
   price: number;
   description: string;
-  duration: number;
 }
 
 export default function Services() {
@@ -27,14 +26,14 @@ export default function Services() {
 
   // For new/editable service
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", description: "", duration: "" });
+  const [form, setForm] = useState({ name: "", price: "", description: ""});
 
   const fetchServices = async () => {
     if (!user) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("services")
-      .select("id, name, price, description, duration")
+      .select("id, name, price, description")
       .eq("user_id", user.id)
       .order("name");
     if (error) {
@@ -74,7 +73,7 @@ export default function Services() {
   // Save new or edited service
   const handleSave = async () => {
     setLoading(true);
-    if (!form.name || !form.price || !form.duration) {
+    if (!form.name || !form.price) {
       toast({ title: "Preencha nome, preço e duração!", variant: "destructive" });
       setLoading(false);
       return;
@@ -85,7 +84,6 @@ export default function Services() {
         name: form.name,
         price: Number(form.price),
         description: form.description,
-        duration: Number(form.duration)
       }).eq("id", editId).eq("user_id", user.id);
       if (error) {
         toast({ title: "Erro ao salvar!", variant: "destructive" });
@@ -93,7 +91,7 @@ export default function Services() {
         toast({ title: "Serviço atualizado." });
         fetchServices();
         setEditId(null);
-        setForm({ name: "", price: "", description: "", duration: "" });
+        setForm({ name: "", price: "", description: ""});
       }
     } else {
       // Insert new
@@ -101,7 +99,6 @@ export default function Services() {
         name: form.name,
         price: Number(form.price),
         description: form.description,
-        duration: Number(form.duration),
         user_id: user.id
       });
       if (error) {
@@ -109,7 +106,7 @@ export default function Services() {
       } else {
         toast({ title: "Serviço criado!" });
         fetchServices();
-        setForm({ name: "", price: "", description: "", duration: "" });
+        setForm({ name: "", price: "", description: ""});
       }
     }
     setLoading(false);
@@ -122,7 +119,7 @@ export default function Services() {
       name: service.name, 
       price: service.price.toString(), 
       description: service.description || "",
-      duration: service.duration.toString()
+
     });
   };
 
@@ -138,7 +135,7 @@ export default function Services() {
       fetchServices();
       if (editId === id) {
         setEditId(null);
-        setForm({ name: "", price: "", description: "", duration: "" });
+        setForm({ name: "", price: "", description: ""});
       }
     }
     setLoading(false);
@@ -179,19 +176,6 @@ export default function Services() {
               />
             </div>
             <div>
-              <label htmlFor="duration" className="block text-sm font-medium mb-1">Duração (minutos)</label>
-              <Input
-                id="duration"
-                name="duration"
-                placeholder="Duração (min)"
-                type="number"
-                min="1"
-                value={form.duration}
-                onChange={handleChange}
-                disabled={loading}
-              />
-            </div>
-            <div>
               <label htmlFor="description" className="block text-sm font-medium mb-1">Descrição</label>
               <Textarea
                 id="description"
@@ -212,7 +196,7 @@ export default function Services() {
             {editId && (
               <Button variant="outline" onClick={() => { 
                 setEditId(null); 
-                setForm({ name: "", price: "", description: "", duration: "" }); 
+                setForm({ name: "", price: "", description: ""}); 
               }}>
                 Cancelar
               </Button>
@@ -261,7 +245,6 @@ export default function Services() {
                     <tr key={service.id} className="border-b hover:bg-muted/50">
                       <td className="p-2">{service.name}</td>
                       <td className="p-2 text-right">{Number(service.price).toFixed(2)}</td>
-                      <td className="p-2 text-center">{service.duration}</td>
                       <td className="p-2 max-w-xs truncate">{service.description}</td>
                       <td className="p-2 text-center">
                         <div className="flex gap-2 justify-center">
