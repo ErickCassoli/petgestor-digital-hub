@@ -84,16 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     const subscription = data.subscription;
 
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      setSession(existingSession);
-      setUser(existingSession?.user ?? null);
-      if (existingSession?.user) {
-        fetchProfile(existingSession.user.id).then((p) => setProfile(p));
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+     setSession(existingSession);
+     setUser(existingSession?.user ?? null);
+     if (existingSession?.user) {
+       // espera terminar o fetch antes de tirar o loading
+       fetchProfile(existingSession.user.id).then((p) => {
+         setProfile(p);
+         setLoading(false);
+       });
+     } else {
+       setProfile(null);
+       setLoading(false);
+     }
+   });
 
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
