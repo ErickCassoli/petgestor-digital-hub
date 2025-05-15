@@ -6,7 +6,7 @@ import { Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface StripeSubscriptionCheckoutProps {
+interface Props {
   priceId: string;
   disabled?: boolean;
 }
@@ -14,7 +14,7 @@ interface StripeSubscriptionCheckoutProps {
 export function StripeSubscriptionCheckout({
   priceId,
   disabled = false,
-}: StripeSubscriptionCheckoutProps) {
+}: Props) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -24,34 +24,33 @@ export function StripeSubscriptionCheckout({
 
     setLoading(true);
     try {
-      // URL para redirecionar de volta após o checkout
-      const returnUrl = window.location.origin + window.location.pathname;
-
-      const payload = {
-        returnUrl,
-        email: user.email,
-        priceId,
-      };
+      // Sempre envia só a rota base de assinatura
+      const returnUrl = `${window.location.origin}/assinatura`;
 
       const { data, error } = await supabase.functions.invoke(
         "create-subscription-checkout",
         {
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            returnUrl,
+            email: user.email,
+            priceId,
+          }),
         }
       );
 
       if (error) throw error;
       if (data?.url) {
-        window.location.href = data.url;
+        // Substitui no histórico para o "voltar" funcionar corretamente
+        window.location.replace(data.url);
       } else {
         throw new Error("No checkout URL returned");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating checkout:", err);
       toast({
         variant: "destructive",
         title: "Erro ao processar assinatura",
-        description: "Não foi possível iniciar o processo de assinatura.",
+        description: err.message || "Não foi possível iniciar o processo de assinatura.",
       });
     } finally {
       setLoading(false);
