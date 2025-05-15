@@ -54,7 +54,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ClockDateDisplay from "@/components/dashboard/ClockDateDisplay";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 const formatDate = (date: Date) =>
   format(date, "EEEE, d 'de' MMMM", { locale: ptBR });
@@ -106,7 +113,9 @@ export default function Appointments() {
   // Filters / controls
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
+    null
+  );
 
   // Delete appointment
   const deleteAppointment = async (id: string) => {
@@ -120,7 +129,11 @@ export default function Appointments() {
       toast({ title: "Agendamento removido", variant: "default" });
       fetchAppointments();
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao deletar", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Erro ao deletar",
+        description: e.message,
+      });
     }
   };
 
@@ -128,12 +141,18 @@ export default function Appointments() {
   const goToPrevious = () => {
     if (viewMode === "day") setCurrentDate(subDays(currentDate, 1));
     else if (viewMode === "week") setCurrentDate(subDays(currentDate, 7));
-    else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    else
+      setCurrentDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+      );
   };
   const goToNext = () => {
     if (viewMode === "day") setCurrentDate(addDays(currentDate, 1));
     else if (viewMode === "week") setCurrentDate(addDays(currentDate, 7));
-    else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    else
+      setCurrentDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+      );
   };
 
   // Load services for filter dropdown
@@ -147,15 +166,25 @@ export default function Appointments() {
       if (error) throw error;
       setServices(data || []);
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro serviços", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Erro serviços",
+        description: e.message,
+      });
     }
   }
 
   function getDateRange() {
     if (viewMode === "day") return [currentDate];
     if (viewMode === "week")
-      return eachDayOfInterval({ start: startOfWeek(currentDate), end: endOfWeek(currentDate) });
-    return eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) });
+      return eachDayOfInterval({
+        start: startOfWeek(currentDate),
+        end: endOfWeek(currentDate),
+      });
+    return eachDayOfInterval({
+      start: startOfMonth(currentDate),
+      end: endOfMonth(currentDate),
+    });
   }
 
   // Load appointments for the selected range & filter
@@ -182,7 +211,10 @@ export default function Appointments() {
       if (raw) {
         for (const a of raw) {
           // fetch pet, client, service names
-          let petName = "—", clientName = "—", serviceName = "—", clientId = "";
+          let petName = "—",
+            clientName = "—",
+            serviceName = "—",
+            clientId = "";
           if (a.pet_id) {
             const petRes = await supabase
               .from("pets")
@@ -222,33 +254,48 @@ export default function Appointments() {
       }
       setAppointments(formatted);
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro agendamentos", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Erro agendamentos",
+        description: e.message,
+      });
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { fetchServices(); }, [user]);
-  useEffect(() => { fetchAppointments(); }, [user, currentDate, viewMode, selectedServiceId, showForm]);
+  useEffect(() => {
+    fetchServices();
+  }, [user]);
+  useEffect(() => {
+    fetchAppointments();
+  }, [user, currentDate, viewMode, selectedServiceId, showForm]);
 
-  const getForDate = (d: Date) => appointments.filter((a) => a.date === formatDateForAPI(d));
+  const getForDate = (d: Date) =>
+    appointments.filter((a) => a.date === formatDateForAPI(d));
 
   // Load invoice for viewing
   const viewInvoice = async (appointmentId: string) => {
     try {
       const { data, error } = await sb
         .from("invoices")
-        .select(`
+        .select(
+          `
           *,
           invoice_items (*, services(name))
-        `)
+        `
+        )
         .eq("appointment_id", appointmentId)
         .single();
       if (error) throw error;
       setInvoiceToView(data);
       setShowViewInvoice(true);
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro fatura", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Erro fatura",
+        description: e.message,
+      });
     }
   };
 
@@ -264,12 +311,18 @@ export default function Appointments() {
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-[200px] justify-start text-left">
+              <Button
+                variant="outline"
+                className="w-full sm:w-[200px] justify-start text-left"
+              >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(currentDate, "dd/MM/yyyy")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[90vw] max-w-[300px] p-0" align="center">
+            <PopoverContent
+              className="w-[90vw] max-w-[300px] p-0"
+              align="center"
+            >
               <Calendar
                 mode="single"
                 selected={currentDate}
@@ -358,212 +411,221 @@ export default function Appointments() {
   );
 
   const renderWeek = () => {
-  const days = getDateRange();
-  return (
-    <Card>
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle>
-          Semana: {format(days[0], "dd/MM/yyyy")} – {format(days[days.length - 1], "dd/MM/yyyy")}
-        </CardTitle>
-        <div className="flex items-center space-x-2">
-          <Button size="icon" variant="outline" onClick={goToPrevious}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full sm:w-[200px] justify-start text-left"
+    const days = getDateRange();
+    return (
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>
+            Semana: {format(days[0], "dd/MM/yyyy")} –{" "}
+            {format(days[days.length - 1], "dd/MM/yyyy")}
+          </CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button size="icon" variant="outline" onClick={goToPrevious}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-[200px] justify-start text-left"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[90vw] max-w-[300px] p-0"
+                align="center"
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(currentDate, "MMMM yyyy", { locale: ptBR })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-[90vw] max-w-[300px] p-0"
-              align="center"
-            >
-              <Calendar
-                mode="single"
-                selected={currentDate}
-                onSelect={(d) => setCurrentDate(d || new Date())}
-                className="p-3"
-              />
-            </PopoverContent>
-          </Popover>
-          <Button size="icon" variant="outline" onClick={goToNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-2 sm:px-0">
-        {loading ? (
-          <div className="p-6 flex justify-center items-center">
-            <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
+                <Calendar
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(d) => setCurrentDate(d || new Date())}
+                  className="p-3"
+                />
+              </PopoverContent>
+            </Popover>
+            <Button size="icon" variant="outline" onClick={goToNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        ) : (
-          <div className="w-full overflow-x-auto">
-            <div className="min-w-[700px] grid grid-cols-7 gap-2">
-              {days.map((d) => {
-                const dayAppts = getForDate(d);
-                return (
-                  <div
-                    key={d.toISOString()}
-                    className="border rounded p-2 flex flex-col"
-                  >
-                    <div
-                      className={cn(
-                        "text-center font-medium mb-2 p-1 rounded",
-                        isSameDay(d, new Date()) && "bg-petblue-100"
-                      )}
-                    >
-                      {format(d, "EEE", { locale: ptBR })}
-                      <br />
-                      {format(d, "dd/MM")}
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      {dayAppts.length === 0 ? (
-                        <div className="text-xs text-gray-400 text-center">
-                          Nenhum
-                        </div>
-                      ) : (
-                        dayAppts.map((a) => (
-                          <div
-                            key={a.id}
-                            className="text-xs mb-2 p-1 rounded bg-gray-50 truncate whitespace-nowrap cursor-pointer hover:bg-gray-100"
-                            onClick={() => {
-                              setSelectedEdit(a);
-                              setShowForm(true);
-                            }}
-                          >
-                            <span className="font-medium">{a.time}</span> –{" "}
-                            {a.client.name}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+        </CardHeader>
+
+        <CardContent className="px-2 sm:px-0">
+          {loading ? (
+            <div className="p-6 flex justify-center items-center">
+              <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-const renderMonth = () => {
-  const days = getDateRange();
-  const weeks = Math.ceil(days.length / 7);
-  return (
-    <Card>
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle>
-          {format(currentDate, "MMMM yyyy", { locale: ptBR })}
-        </CardTitle>
-        <div className="flex items-center space-x-2">
-          <Button size="icon" variant="outline" onClick={goToPrevious}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full sm:w-[200px] justify-start text-left"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(currentDate, "MMMM yyyy", { locale: ptBR })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-[90vw] max-w-[300px] p-0"
-              align="center"
-            >
-              <Calendar
-                mode="single"
-                selected={currentDate}
-                onSelect={(d) => setCurrentDate(d || new Date())}
-                className="p-3"
-              />
-            </PopoverContent>
-          </Popover>
-          <Button size="icon" variant="outline" onClick={goToNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-2 sm:px-0">
-        {loading ? (
-          <div className="p-6 flex justify-center items-center">
-            <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
-          </div>
-        ) : (
-          <div className="w-full overflow-x-auto">
-            <div className="min-w-[700px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(
-                      (d) => (
-                        <TableHead key={d}>{d}</TableHead>
-                      )
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Array.from({ length: weeks }).map((_, wi) => (
-                    <TableRow key={wi}>
-                      {Array.from({ length: 7 }).map((_, di) => {
-                        const idx = wi * 7 + di;
-                        const day = days[idx];
-                        if (!day) return <TableCell key={di} />;
-                        const dayAppts = getForDate(day);
-                        return (
-                          <TableCell key={di} className="align-top h-24">
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px] grid grid-cols-7 gap-2">
+                {days.map((d) => {
+                  const dayAppts = getForDate(d);
+                  return (
+                    <div
+                      key={d.toISOString()}
+                      className="border rounded p-2 flex flex-col"
+                    >
+                      <div
+                        className={cn(
+                          "text-center font-medium mb-2 p-1 rounded",
+                          isSameDay(d, new Date()) && "bg-petblue-100"
+                        )}
+                      >
+                        {format(d, "EEE", { locale: ptBR })}
+                        <br />
+                        {format(d, "dd/MM")}
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {dayAppts.length === 0 ? (
+                          <div className="text-xs text-gray-400 text-center">
+                            Nenhum
+                          </div>
+                        ) : (
+                          dayAppts.map((a) => (
                             <div
-                              className={cn(
-                                "font-medium truncate",
-                                isSameDay(day, new Date()) &&
-                                  "bg-petblue-100 p-1 rounded-full mx-auto w-6 h-6 flex items-center justify-center"
-                              )}
-                            >
-                              {format(day, "d")}
-                            </div>
-                            {dayAppts.slice(0, 3).map((a) => (
-                              <div
-                                key={a.id}
-                                className="text-xs truncate whitespace-nowrap mt-1 cursor-pointer hover:bg-gray-100"
-                                onClick={() => {
+                              key={a.id}
+                              className="text-xs mb-2 p-1 rounded bg-gray-50 truncate whitespace-nowrap cursor-pointer hover:bg-gray-100"
+                              onClick={() => {
+                                if (a.status === "completed") {
+                                  viewInvoice(a.id);
+                                } else {
                                   setSelectedEdit(a);
                                   setShowForm(true);
-                                }}
-                              >
-                                <span className="font-medium">{a.time}</span> –{" "}
-                                {a.client.name}
-                              </div>
-                            ))}
-                            {dayAppts.length > 3 && (
-                              <div className="text-xs text-petblue-600">
-                                +{dayAppts.length - 3} mais
-                              </div>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                                }
+                              }}
+                            >
+                              <span className="font-medium">{a.time}</span> –{" "}
+                              {a.client.name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderMonth = () => {
+    const days = getDateRange();
+    const weeks = Math.ceil(days.length / 7);
+    return (
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>
+            {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+          </CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button size="icon" variant="outline" onClick={goToPrevious}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-[200px] justify-start text-left"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[90vw] max-w-[300px] p-0"
+                align="center"
+              >
+                <Calendar
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(d) => setCurrentDate(d || new Date())}
+                  className="p-3"
+                />
+              </PopoverContent>
+            </Popover>
+            <Button size="icon" variant="outline" onClick={goToNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+        </CardHeader>
+
+        <CardContent className="px-2 sm:px-0">
+          {loading ? (
+            <div className="p-6 flex justify-center items-center">
+              <Clock className="animate-spin h-5 w-5 mr-2" /> Carregando...
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[700px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(
+                        (d) => (
+                          <TableHead key={d}>{d}</TableHead>
+                        )
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from({ length: weeks }).map((_, wi) => (
+                      <TableRow key={wi}>
+                        {Array.from({ length: 7 }).map((_, di) => {
+                          const idx = wi * 7 + di;
+                          const day = days[idx];
+                          if (!day) return <TableCell key={di} />;
+                          const dayAppts = getForDate(day);
+                          return (
+                            <TableCell key={di} className="align-top h-24">
+                              <div
+                                className={cn(
+                                  "font-medium truncate",
+                                  isSameDay(day, new Date()) &&
+                                    "bg-petblue-100 p-1 rounded-full mx-auto w-6 h-6 flex items-center justify-center"
+                                )}
+                              >
+                                {format(day, "d")}
+                              </div>
+                              {dayAppts.slice(0, 3).map((a) => (
+                                <div
+                                  key={a.id}
+                                  className="text-xs truncate whitespace-nowrap mt-1 cursor-pointer hover:bg-gray-100"
+                                  onClick={() => {
+                                    if (a.status === "completed") {
+                                      viewInvoice(a.id);
+                                    } else {
+                                      setSelectedEdit(a);
+                                      setShowForm(true);
+                                    }
+                                  }}
+                                >
+                                  <span className="font-medium">{a.time}</span>{" "}
+                                  – {a.client.name}
+                                </div>
+                              ))}
+                              {dayAppts.length > 3 && (
+                                <div className="text-xs text-petblue-600">
+                                  +{dayAppts.length - 3} mais
+                                </div>
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <>
@@ -571,9 +633,7 @@ const renderMonth = () => {
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Agendamentos
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Agendamentos</h1>
             <p className="text-gray-600 mt-1">
               Gerencie os agendamentos do seu petshop
             </p>
@@ -590,7 +650,10 @@ const renderMonth = () => {
             </TabsList>
           </Tabs>
           <div className="flex gap-2">
-            <Select defaultValue="all" onValueChange={(v) => setSelectedServiceId(v)}>
+            <Select
+              defaultValue="all"
+              onValueChange={(v) => setSelectedServiceId(v)}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Todos os serviços" />
               </SelectTrigger>
@@ -603,7 +666,12 @@ const renderMonth = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={() => { setSelectedEdit(null); setShowForm(true); }}>
+            <Button
+              onClick={() => {
+                setSelectedEdit(null);
+                setShowForm(true);
+              }}
+            >
               <FileText className="h-4 w-4 mr-2" /> Novo
             </Button>
           </div>

@@ -1,18 +1,18 @@
-
+// src/pages/LandingPage.tsx
 import { Link } from "react-router-dom";
-import { 
-  Calendar, 
-  Users, 
-  ClipboardList, 
-  Package, 
-  BarChart, 
-  ChevronRight, 
+import {
+  Calendar,
+  Users,
+  ClipboardList,
+  Package,
+  BarChart,
+  ChevronRight,
   Check,
   Menu,
   X,
   Github,
   Twitter,
-  Instagram
+  Instagram,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -22,6 +22,42 @@ import TermsOfServiceModal from "@/components/TermsOfServiceModal";
 import CookiesPolicyModal from "@/components/CookiesPolicyModal";
 import { supabase } from "@/integrations/supabase/client";
 
+// Tipagens para os preços
+interface PriceInfo {
+  id: string;
+  unit_amount: number;
+  currency: string;
+}
+interface Prices {
+  monthly: PriceInfo;
+  trimestral: PriceInfo;
+  semestral: PriceInfo;
+}
+
+// Hook para carregar os três preços
+function useStripePrices() {
+  const [prices, setPrices] = useState<Prices | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrices = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "get-subscription-price"
+      );
+      if (error) throw error;
+      setPrices(data as Prices);
+    } catch (err: any) {
+      console.error("Erro ao carregar preços:", err);
+      setError(err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrices();
+  }, []);
+
+  return { prices, error, refresh: fetchPrices };
+}
 const features = [
   {
     title: "Agendamento de Serviços",
@@ -82,23 +118,17 @@ const steps = [
     description: "Cadastre clientes, agende serviços e gerencie seu petshop com facilidade.",
   },
 ];
-function useStripePrice() {
-  const [price, setPrice] = useState<{ unit_amount: number; currency: string } | null>(null);
 
-  useEffect(() => {
-    supabase.functions.invoke("get-subscription-price")
-      .then(({ data, error }) => {
-        if (error) throw error;
-        setPrice(data as any);
-      })
-      .catch(console.error);
-  }, []);
-
-  return price;
-}
 const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const price = useStripePrice();
+  const { prices, error: priceError } = useStripePrices();
+
+  // Configuração dos 3 planos
+  const plans = [
+    { key: "monthly" as const, title: "Plano Mensal", label: "/mês" },
+    { key: "trimestral" as const, title: "Plano Trimestral", label: "/3 meses" },
+    { key: "semestral" as const, title: "Plano Semestral", label: "/6 meses" },
+  ];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -300,71 +330,99 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      {/* Pricing Section */}
+       {/* Pricing Section */}
       <section id="pricing" className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Título */}
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-              Plano simples e acessível
+              Planos simples e acessíveis
             </h2>
             <p className="mt-4 text-xl text-gray-600">
-              Valor justo e sem surpresas.
+              Escolha o que cabe melhor no seu petshop.
             </p>
           </div>
 
-          <div className="mt-16 max-w-md mx-auto">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-petblue-200">
-              <div className="bg-petblue-50 px-6 py-8 text-center">
-                <h3 className="text-2xl font-bold text-gray-900">Plano Completo</h3>
-                <div className="mt-4 flex items-baseline justify-center">
-                  {price ? (
-                    <>
-                      <span className="text-4xl md:text-5xl font-bold text-petblue-600">
-                        {new Intl.NumberFormat("pt-BR", {
-                          style:    "currency",
-                          currency: price.currency.toUpperCase(),
-                        }).format(price.unit_amount / 100)}
-                      </span>
-                      <span className="ml-1 text-xl text-gray-600">/mês</span>
-                    </>
-                  ) : (
-                    <span className="text-4xl md:text-5xl font-bold text-gray-400 animate-pulse">
-                      ...
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="p-6">
-                <ul className="space-y-4">
-                  {[
-                    "Agendamento de serviços",
-                    "Cadastro de clientes e pets",
-                    "Histórico de atendimentos",
-                    "Gestão de produtos e estoque",
-                    "Relatórios de vendas",
-                    "Múltiplos usuários",
-                    "Suporte prioritário"
-                  ].map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                      <span className="ml-3 text-gray-600">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8">
-                  <Link to="/register">
-                    <Button className="w-full bg-petblue-600 text-white hover:bg-petblue-700 h-12 text-lg">
-                      Assinar agora
-                    </Button>
-                  </Link>
-                  <p className="mt-4 text-center text-sm text-gray-500">
-                    7 dias grátis. Cancele quando quiser.
-                  </p>
-                </div>
-              </div>
+          {/* Erro ao carregar preços */}
+          {priceError && (
+            <p className="mt-8 text-center text-red-600">
+              Não foi possível carregar os planos: {priceError}
+            </p>
+          )}
+
+          {/* Loading */}
+          {!prices && !priceError && (
+            <div className="flex items-center justify-center py-12">
+              <span className="text-gray-600 animate-pulse">
+                Carregando planos...
+              </span>
             </div>
-          </div>
+          )}
+
+          {/* Cards de Planos */}
+          {prices && (
+            <div className="mt-16 grid gap-8 md:grid-cols-3">
+              {plans.map(({ key, title, label }) => {
+                const price = prices[key];
+                return (
+                  <div
+                    key={key}
+                    className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-petblue-200"
+                  >
+                    <div className="bg-petblue-50 px-6 py-8 text-center">
+                      <h3 className="text-2xl font-bold text-gray-900">
+                        {title}
+                      </h3>
+                      <div className="mt-4 flex items-baseline justify-center">
+                        <span className="text-4xl md:text-5xl font-bold text-petblue-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: price.currency.toUpperCase(),
+                          }).format(price.unit_amount / 100)}
+                        </span>
+                        <span className="ml-1 text-xl text-gray-600">
+                          {label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <ul className="space-y-4">
+                        {[
+                          "Agendamento de serviços",
+                          "Cadastro de clientes e pets",
+                          "Histórico de atendimentos",
+                          "Gestão de produtos e estoque",
+                          "Relatórios de vendas",
+                          "Múltiplos usuários",
+                          "Suporte prioritário",
+                        ].map((feature, idx) => (
+                          <li
+                            key={idx}
+                            className="flex items-start"
+                          >
+                            <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                            <span className="ml-3 text-gray-600">
+                              {feature}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-8">
+                        <Link to="/register">
+                          <Button className="w-full bg-petblue-600 text-white hover:bg-petblue-700 h-12 text-lg">
+                            Assinar agora
+                          </Button>
+                        </Link>
+                        <p className="mt-4 text-center text-sm text-gray-500">
+                          7 dias grátis. Cancele quando quiser.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

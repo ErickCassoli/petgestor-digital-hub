@@ -17,102 +17,162 @@ import {
 } from "@/components/ui/card";
 import {
   CheckCircle,
+  Star,
   ShieldCheck,
   Calendar as CalendarIcon,
   Badge,
   CreditCard,
-  Star,
 } from "lucide-react";
 
-// Hook para buscar preço
-function useStripePrice() {
-  const [price, setPrice] = useState<{ unit_amount: number; currency: string } | null>(null);
-
-  useEffect(() => {
-    supabase.functions
-      .invoke("get-subscription-price")
-      .then(({ data, error }) => {
-        if (error) throw error;
-        setPrice(data as any);
-      })
-      .catch(console.error);
-  }, []);
-
-  return price;
-}
-
-// Tipo do retorno da Edge Function
-type SubscriptionResp = {
-  isSubscribed: boolean;
-  trialActive:  boolean;
-  subscriptionData: {
-    cancelAtPeriodEnd: boolean;
-    currentPeriodEnd:  number; // timestamp em segundos
-  } | null;
+// --- Tipagens
+type PriceInfo = { id: string; unit_amount: number; currency: string };
+type Prices = {
+  monthly: PriceInfo;
+  trimestral: PriceInfo;
+  semestral: PriceInfo;
 };
 
-// Hook para buscar status da assinatura
+// --- Hook para carregar preços com estado de erro e refresh
+function useStripePrices() {
+  const [prices, setPrices] = useState<Prices | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrices = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "get-subscription-price"
+      );
+      if (error) throw error;
+      setPrices(data as Prices);
+    } catch (err: any) {
+      console.error("Erro ao carregar preços:", err);
+      setError(err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrices();
+  }, []);
+
+  return { prices, error, refresh: fetchPrices };
+}
+
+// --- Hook existente para status de assinatura
+type SubscriptionResp = {
+  isSubscribed: boolean;
+  trialActive: boolean;
+  subscriptionData: {
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: number;
+  } | null;
+};
 function useSubscriptionData() {
   const [resp, setResp] = useState<SubscriptionResp>({
     isSubscribed: false,
-    trialActive:  false,
+    trialActive: false,
     subscriptionData: null,
   });
-
   const fetchData = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("check-subscription-status");
+      const { data, error } = await supabase.functions.invoke(
+        "check-subscription-status"
+      );
       if (error) throw error;
       setResp(data as SubscriptionResp);
     } catch (err) {
       console.error("Error fetching subscription data:", err);
     }
   };
-
   useEffect(() => {
     fetchData();
   }, []);
-
   return { ...resp, refresh: fetchData };
 }
 
+// --- Componente principal
 export default function Subscription() {
-  const { isSubscriptionActive, isInTrialPeriod, refreshProfile } = useAuth();
   const { toast } = useToast();
-  const price = useStripePrice();
-  const { isSubscribed, subscriptionData, refresh } = useSubscriptionData();
+  const { refreshProfile } = useAuth();
+  const { prices, error: priceError, refresh: refreshPrices } = useStripePrices();
+  const { isSubscribed, subscriptionData, refresh: refreshSubData } =
+    useSubscriptionData();
 
-  // Calcula grace period
+  // Grace period
   const isCanceled = subscriptionData?.cancelAtPeriodEnd;
   const periodEnd = subscriptionData?.currentPeriodEnd
     ? new Date(subscriptionData.currentPeriodEnd * 1000)
     : null;
   const isInGrace = Boolean(isCanceled && periodEnd && periodEnd > new Date());
 
-  // Lida com retorno do Stripe
+  // Quando volta do checkout, refaz todos os fetch
   useEffect(() => {
-    const handleReturnFromCheckout = async () => {
+    const handleReturn = async () => {
       const url = new URL(window.location.href);
-      const success  = url.searchParams.get("success");
+      const success = url.searchParams.get("success");
       const canceled = url.searchParams.get("canceled");
-
       if (success || canceled) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+        // limpa params da URL
+        window.history.replaceState({}, "", window.location.pathname);
 
-      if (success === "true") {
-        toast({ title: "Assinatura realizada com sucesso!" });
-        await refresh();         // refetch Edge Function
-        await refreshProfile();  // refetch perfil Supabase
-      } else if (canceled === "true") {
-        toast({ variant: "destructive", title: "Assinatura cancelada" });
-        await refresh();
-        await refreshProfile();
+        toast({
+          title:
+            success === "true"
+              ? "Assinatura realizada com sucesso!"
+              : "Assinatura cancelada",
+          variant: success === "true" ? undefined : "destructive",
+        });
+
+        // refetch subscription e preços
+        await Promise.all([
+          refreshSubData(),
+          refreshProfile(),
+          refreshPrices(),
+        ]);
       }
     };
+    handleReturn();
+  }, [toast, refreshSubData, refreshProfile, refreshPrices]);
 
-    handleReturnFromCheckout();
-  }, [toast, refresh, refreshProfile]);
+  // --- Guard Clauses
+  if (priceError) {
+    return (
+      <div className="p-6">
+        <p className="text-red-600">
+          Erro ao carregar planos: {priceError}
+        </p>
+      </div>
+    );
+  }
+
+  if (!prices) {
+    return (
+      <div className="flex items-center justify-center h-full py-20">
+        <span className="text-gray-600 animate-pulse">
+          Carregando planos...
+        </span>
+      </div>
+    );
+  }
+  const plans = [
+    {
+      key: "monthly" as const,
+      title: "Plano Mensal",
+      desc: "Acesso mensal",
+      label: "/mês",
+    },
+    {
+      key: "trimestral" as const,
+      title: "Plano Trimestral",
+      desc: "Acesso por 3 meses",
+      label: "/3 meses",
+    },
+    {
+      key: "semestral" as const,
+      title: "Plano Semestral",
+      desc: "Acesso por 6 meses",
+      label: "/6 meses",
+    },
+  ];
 
   return (
     <div className="space-y-8">
@@ -122,88 +182,89 @@ export default function Subscription() {
         <p className="text-gray-600">Gerencie sua assinatura do PetGestor</p>
       </div>
 
-      {/* Status + Plano */}
+      {/* Status */}
+      <SubscriptionStatus />
+
+      {/* Planos */}
+            {/* Cartões de plano */}
       <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <SubscriptionStatus />
-        </div>
+        {plans.map(({ key, title, desc, label }) => {
+          const price = prices[key];
 
-        <Card className="border-2 border-petblue-200">
-          <CardHeader className="bg-petblue-50">
-            <div className="flex items-center mb-2">
-              <Star className="h-5 w-5 text-petblue-400" fill="currentColor" />
-            </div>
-            <CardTitle>Plano Completo</CardTitle>
-            <CardDescription>Acesso a todas as funcionalidades</CardDescription>
-          </CardHeader>
+          return (
+            <Card key={key} className="border-2 border-petblue-200">
+              <CardHeader className="bg-petblue-50">
+                <div className="flex items-center mb-2">
+                  <Star
+                    className="h-5 w-5 text-petblue-400"
+                    fill="currentColor"
+                  />
+                </div>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{desc}</CardDescription>
+              </CardHeader>
 
-          <CardContent>
-            <div className="mb-6">
-              {price ? (
-                <>
+              <CardContent>
+                <div className="mb-6">
                   <span className="text-3xl font-bold text-gray-900">
                     {new Intl.NumberFormat("pt-BR", {
                       style: "currency",
                       currency: price.currency.toUpperCase(),
                     }).format(price.unit_amount / 100)}
                   </span>
-                  <span className="text-gray-500">/mês</span>
-                </>
-              ) : (
-                <span className="text-gray-500 animate-pulse">...</span>
-              )}
-            </div>
+                  <span className="text-gray-500">{label}</span>
+                </div>
 
-            <ul className="space-y-3 mb-6">
-              {[
-                "Agendamento de serviços",
-                "Cadastro ilimitado de clientes",
-                "Gestão de produtos e estoque",
-                "Relatórios de vendas",
-                "Múltiplos usuários",
-                "Suporte prioritário",
-              ].map((item) => (
-                <li key={item} className="flex items-center">
-                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                  <span className="text-gray-600">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Agendamento de serviços",
+                    "Cadastro ilimitado de clientes",
+                    "Gestão de produtos e estoque",
+                    "Relatórios de vendas",
+                    "Múltiplos usuários",
+                    "Suporte prioritário",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                      <span className="text-gray-600">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
 
-          <CardFooter className="flex flex-col space-y-4">
-            {/* 1) Grace Period */}
-            {isInGrace && periodEnd && (
-              <>
-                <p className="text-center text-gray-700 font-medium">
-                  Seu plano expira{" "}
-                  {formatDistance(periodEnd, new Date(), {
-                    addSuffix: true,
-                    locale: ptBR,
-                  })}
-                </p>
-                <StripeSubscriptionCheckout />
-              </>
-            )}
+              <CardFooter className="flex flex-col space-y-4">
+                {isInGrace && periodEnd && (
+                  <>
+                    <p className="text-center text-gray-700 font-medium">
+                      Seu plano expira{" "}
+                      {formatDistance(periodEnd, new Date(), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </p>
+                    <StripeSubscriptionCheckout priceId={price.id} />
+                  </>
+                )}
 
-            {/* 2) Se NÃO há assinatura no Stripe */}
-            {!isSubscribed && !isInGrace && (
-              <StripeSubscriptionCheckout />
-            )}
+                {!isSubscribed && !isInGrace && (
+                  <StripeSubscriptionCheckout priceId={price.id} />
+                )}
 
-            {/* 3) Se há assinatura (Stripe) */}
-            {isSubscribed && !isInGrace && (
-              <div className="bg-green-50 p-3 rounded text-center">
-                <CheckCircle className="h-5 w-5 text-green-500 mx-auto mb-1" />
-                <p className="text-green-700 font-medium">
-                  Você já possui este plano
-                </p>
-              </div>
-            )}
-          </CardFooter>
-        </Card>
+                {isSubscribed && !isInGrace && (
+                  <div className="bg-green-50 p-3 rounded text-center">
+                    <CheckCircle
+                      className="h-5 w-5 text-green-500 mx-auto mb-1"
+                    />
+                    <p className="text-green-700 font-medium">
+                      Você já possui este plano
+                    </p>
+                  </div>
+                )}
+              </CardFooter>
+            </Card>
+          );
+        })}
       </div>
-
       {/* Benefícios */}
       <Card className="mb-8">
         <CardHeader>

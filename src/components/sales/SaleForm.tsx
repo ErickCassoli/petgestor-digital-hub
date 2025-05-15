@@ -60,6 +60,9 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   const [selectedClient, setSelectedClient] = useState<string>("no_client");
   const [notes, setNotes] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [clientQuery, setClientQuery] = useState<string>("");
+  const [showClientSuggestions, setShowClientSuggestions] =
+    useState<boolean>(false);
 
   useEffect(() => {
     fetchClients();
@@ -111,7 +114,12 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     } else {
       setCartItems([
         ...cartItems,
-        { ...item, total: item.price * item.quantity, discount: 0, surcharge: 0 },
+        {
+          ...item,
+          total: item.price * item.quantity,
+          discount: 0,
+          surcharge: 0,
+        },
       ]);
     }
   };
@@ -146,9 +154,15 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
   // 1) subtotal bruto
   const subtotal = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
   // 2) total de descontos *individuais*
-  const itemDiscountsTotal = cartItems.reduce((sum, i) => sum + (i.discount || 0), 0);
+  const itemDiscountsTotal = cartItems.reduce(
+    (sum, i) => sum + (i.discount || 0),
+    0
+  );
   // 3) total de acréscimos *individuais*
-  const itemSurchargesTotal = cartItems.reduce((sum, i) => sum + (i.surcharge || 0), 0);
+  const itemSurchargesTotal = cartItems.reduce(
+    (sum, i) => sum + (i.surcharge || 0),
+    0
+  );
   // 4) total final
   const total = subtotal - itemDiscountsTotal + itemSurchargesTotal;
 
@@ -179,8 +193,8 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
       const result = await createSale(
         cartItems,
         subtotal,
-        itemDiscountsTotal,   // ← total de *todos* os discounts individuais
-        itemSurchargesTotal,  // ← total de *todos* os surcharges individuais
+        itemDiscountsTotal, // ← total de *todos* os discounts individuais
+        itemSurchargesTotal, // ← total de *todos* os surcharges individuais
         total,
         clientId,
         clientName,
@@ -201,6 +215,10 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
     }
   };
 
+  const filteredClients = clients.filter((c) =>
+    c.name.toLowerCase().includes(clientQuery.toLowerCase())
+  );
+
   return (
     <>
       <DialogHeader>
@@ -208,6 +226,48 @@ export function SaleForm({ onComplete, onCancel }: SaleFormProps) {
         <DialogDescription>
           Adicione produtos ou serviços para registrar uma nova venda
         </DialogDescription>
+        {/* AUTOCOMPLETE CLIENTE */}
+        <div className="relative mb-6">
+          <Label htmlFor="client">Cliente (opcional)</Label>
+          <input
+            id="client"
+            type="text"
+            className="input w-full"
+            placeholder="Digite para buscar..."
+            value={clientQuery}
+            onChange={(e) => {
+              setClientQuery(e.target.value);
+              setShowClientSuggestions(true);
+              // Se o usuário digitar algo novo, zera a seleção anterior
+              setSelectedClient("no_client");
+            }}
+            onFocus={() => setShowClientSuggestions(true)}
+            onBlur={() =>
+              setTimeout(() => setShowClientSuggestions(false), 200)
+            }
+            disabled={loading}
+          />
+          {/* Guarda o ID selecionado para envio */}
+          <input type="hidden" value={selectedClient} />
+
+          {showClientSuggestions && filteredClients.length > 0 && (
+            <ul className="absolute z-10 bg-white border w-full max-h-48 overflow-y-auto mt-1 rounded">
+              {filteredClients.map((c) => (
+                <li
+                  key={c.id}
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  onMouseDown={() => {
+                    setClientQuery(c.name);
+                    setSelectedClient(c.id);
+                    setShowClientSuggestions(false);
+                  }}
+                >
+                  {c.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </DialogHeader>
       <div className="grid gap-6 py-4">
         {/* … cliente, selector, notas … */}

@@ -336,7 +336,6 @@ const AppointmentForm = ({
                 >
                   <option value="pending">Pendente</option>
                   <option value="confirmed">Confirmado</option>
-                  <option value="cancelled">Cancelado</option>
                 </select>
               </div>
 
