@@ -1,5 +1,4 @@
-// src/contexts/AuthContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,9 +29,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Defina no seu .env (Vite) ou .env.local (CRA) a variável:
-// VITE_APP_URL=https://app.seudominio.com
 const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,31 +45,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     : false;
   const isSubscriptionActive = profile?.is_subscribed || false;
 
-  // Fetch do perfil no Supabase
-  const fetchProfile = async (userId: string): Promise<Profile | null> => {
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
-
     if (error) {
       console.error("Error fetching profile:", error);
       return null;
     }
     return data as Profile;
-  };
+  }, []);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     const updated = await fetchProfile(user.id);
     setProfile(updated);
     setLoading(false);
-  };
+  }, [user, fetchProfile]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    // Inscreve no listener de mudança de autenticação
+    const { data } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -90,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    const subscription = data.subscription;
+
+    // Obtém sessão existente ao iniciar
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
@@ -101,135 +99,130 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
 
-  const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-
-      sonnerToast.success("Login realizado com sucesso", {
-        description: "Bem-vindo de volta ao PetGestor!",
-      });
-
-      const { data: { session: newSession } } = await supabase.auth.getSession();
-      if (!newSession?.user) return;
-
-      const userProfile = await fetchProfile(newSession.user.id);
-      setProfile(userProfile);
-
-      if (
-        userProfile?.is_subscribed ||
-        (userProfile?.trial_end_date && new Date() < new Date(userProfile.trial_end_date))
-      ) {
-        navigate("/dashboard");
-      } else {
-        navigate("/expired");
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      setLoading(true);
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        sonnerToast.success("Login realizado com sucesso", {
+          description: "Bem-vindo de volta ao PetGestor!",
+        });
+        const {
+          data: { session: newSession },
+        } = await supabase.auth.getSession();
+        if (!newSession?.user) return;
+        const userProfile = await fetchProfile(newSession.user.id);
+        setProfile(userProfile);
+        if (userProfile?.is_subscribed || isInTrialPeriod) navigate("/dashboard");
+        else navigate("/expired");
+      } catch (err: any) {
+        console.error("Sign in error:", err);
+        sonnerToast.error("Erro no login", {
+          description: err.message || "Verifique seu e-mail e senha.",
+        });
+        throw err;
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      console.error("Sign in error:", error);
-      sonnerToast.error("Erro no login", {
-        description: error.message || "Verifique seu e-mail e senha.",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [fetchProfile, isInTrialPeriod, navigate]
+  );
 
-  const signUp = async (email: string, password: string, role: "admin" | "atendente") => {
+  const signUp = useCallback(
+    async (email: string, password: string, role: "admin" | "atendente") => {
+      setLoading(true);
+      try {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${APP_URL}/ConfirmedEmail`, data: { role } },
+        });
+        if (error) throw error;
+        sonnerToast.success("Conta criada com sucesso", {
+          description: "Confirme seu e-mail para ativar sua conta.",
+        });
+      } catch (err: any) {
+        console.error("Sign up error:", err);
+        sonnerToast.error("Erro no cadastro", {
+          description: err.message || "Verifique os dados informados.",
+        });
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [navigate]
+  );
+
+  const signOut = useCallback(async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          // Aqui usamos APP_URL, que deve ser seu domínio de produção
-          emailRedirectTo: `${APP_URL}/ConfirmedEmail`,
-          data: { role },
-        },
-      });
-      if (error) throw error;
-
-      sonnerToast.success("Conta criada com sucesso", {
-        description: "Confirme seu e-mail para ativar sua conta.",
-      });
-    } catch (error: any) {
-      console.error("Sign up error:", error);
-      sonnerToast.error("Erro no cadastro", {
-        description: error.message || "Verifique os dados informados.",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
       sonnerToast.success("Logout realizado", {
         description: "Você saiu da sua conta com sucesso.",
       });
-      navigate("/");
-    } catch (error: any) {
-      console.error("Sign out error:", error);
+      navigate("/login", { replace: true });
+    } catch (err: any) {
+      console.error("Sign out error:", err);
       sonnerToast.error("Erro ao sair", {
-        description: error.message || "Ocorreu um erro ao fazer logout.",
+        description: err.message || "Ocorreu um erro ao fazer logout.",
       });
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        // Mesma lógica de env var para o reset
-        redirectTo: `${APP_URL}/UpdatePassword`,
-      });
-      if (error) throw error;
-
-      sonnerToast.success("Verifique seu e-mail", {
-        description: "Enviamos um link para redefinir sua senha.",
-      });
-    } catch (error: any) {
-      console.error("Erro ao solicitar redefinição de senha:", error);
-      sonnerToast.error("Erro ao redefinir senha", {
-        description: error.message || "Não foi possível enviar o e-mail de recuperação.",
-      });
-      throw error;
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
-  const updateProfile = async (updates: Partial<Omit<Profile, "id">>) => {
-    if (!user) throw new Error("No user logged in");
+  const resetPassword = useCallback(async (email: string) => {
+    setLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("id", user.id);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${APP_URL}/UpdatePassword`,
+      });
       if (error) throw error;
-
-      const updated = await fetchProfile(user.id);
-      setProfile(updated);
-
-      sonnerToast.success("Perfil atualizado", {
-        description: "Suas informações foram atualizadas com sucesso.",
+      sonnerToast.success("Verifique seu e-mail", {
+        description: "Enviamos um link para redefinir sua senha.",
       });
-    } catch (error: any) {
-      console.error("Update profile error:", error);
-      sonnerToast.error("Erro ao atualizar perfil", {
-        description: error.message || "Ocorreu um erro ao atualizar suas informações.",
+    } catch (err: any) {
+      console.error("Reset password error:", err);
+      sonnerToast.error("Erro ao redefinir senha", {
+        description: err.message || "Não foi possível enviar o e-mail de recuperação.",
       });
-      throw error;
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
+
+  const updateProfile = useCallback(
+    async (updates: Partial<Omit<Profile, "id">>) => {
+      if (!user) throw new Error("No user logged in");
+      try {
+        const { error } = await supabase.from("profiles").update(updates).eq("id", user.id);
+        if (error) throw error;
+        const updated = await fetchProfile(user.id);
+        setProfile(updated);
+        sonnerToast.success("Perfil atualizado", {
+          description: "Suas informações foram atualizadas com sucesso.",
+        });
+      } catch (err: any) {
+        console.error("Update profile error:", err);
+        sonnerToast.error("Erro ao atualizar perfil", {
+          description: err.message || "Ocorreu um erro ao atualizar suas informações.",
+        });
+        throw err;
+      }
+    },
+    [user, fetchProfile]
+  );
 
   return (
     <AuthContext.Provider
