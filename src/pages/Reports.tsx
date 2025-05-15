@@ -1,21 +1,15 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Card, 
-  CardHeader, 
+import {
+  Card,
+  CardHeader,
   CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Calendar, 
-  Download, 
+import {
+  Calendar,
   ChevronDown,
-  Check,
-  Loader2,
-  FileSpreadsheet,
-  File,
-  Users
+  Loader2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,20 +37,27 @@ const periodOptions = [
   { label: "Este ano", value: "thisYear" }
 ];
 
+const tabOptions = [
+  { label: "Faturamento", value: "revenue" },
+  { label: "Serviços", value: "services" },
+  { label: "Produtos", value: "products" },
+  { label: "Clientes", value: "clients" },
+  { label: "Agendamentos", value: "appointments" },
+];
+
 const Reports = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState("30days");
   const [activeTab, setActiveTab] = useState("revenue");
   const [loading, setLoading] = useState(true);
-  const [exportLoading, setExportLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
   const getDateRange = () => {
     const today = new Date();
     let startDate: Date;
     let endDate = new Date();
-    
+
     switch (selectedPeriod) {
       case "7days":
         startDate = subDays(today, 7);
@@ -77,7 +78,7 @@ const Reports = () => {
       default:
         startDate = subDays(today, 30);
     }
-    
+
     return { startDate, endDate };
   };
 
@@ -86,19 +87,12 @@ const Reports = () => {
     return option ? option.label : "Período";
   };
 
-  const formatDateRange = () => {
-    const { startDate, endDate } = getDateRange();
-    return `${format(startDate, "dd 'de' MMMM", { locale: ptBR })} até ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
-  };
-
   useEffect(() => {
     const fetchReportData = async () => {
       if (!user) return;
-      
       setLoading(true);
       try {
         const { startDate, endDate } = getDateRange();
-        
         const { data, error } = await supabase.functions.invoke("generate-report", {
           body: {
             userId: user.id,
@@ -107,109 +101,35 @@ const Reports = () => {
             endDate: endDate.toISOString()
           }
         });
-        
-        if (error) {
-          console.error('Error invoking function:', error);
-          throw error;
-        }
-        
+        if (error) throw error;
         setReportData(data as ReportMetrics);
-      } catch (error) {
-        console.error('Error fetching report data:', error);
+      } catch {
         toast({
           variant: "destructive",
           title: "Erro ao gerar relatório",
-          description: "Ocorreu um erro ao buscar os dados para o relatório."
+          description: "Ocorreu um erro ao buscar os dados."
         });
       } finally {
         setLoading(false);
       }
     };
-    
     fetchReportData();
   }, [user, toast, activeTab, selectedPeriod]);
 
-  const handleExport = async (format: string) => {
-    try {
-      setExportLoading(true);
-      const { startDate, endDate } = getDateRange();
-      
-      const { data, error } = await supabase.functions.invoke("generate-report", {
-        body: {
-          userId: user?.id,
-          reportType: activeTab,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          exportFormat: format,
-        },
-      });
-      
-      if (error) throw error;
-      
-      if (["csv", "pdf", "excel", "xlsx"].includes(format) && data && data.exportedFile) {
-        const byteCharacters = atob(data.exportedFile);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-
-        let blob;
-        if (format === "pdf") {
-          blob = new Blob([byteArray], { type: "application/pdf" });
-        } else if (format === "excel" || format === "xlsx") {
-          blob = new Blob([byteArray], {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          });
-        } else {
-          blob = new Blob([byteArray], { type: "text/csv;charset=utf-8;" });
-        }
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute(
-          "download",
-          data.fileName || `relatorio_${activeTab}.${format}`
-        );
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({
-          title: "Relatório exportado com sucesso!",
-          description: `O arquivo foi baixado no formato ${format.toUpperCase()}.`,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Erro ao exportar",
-          description: "Não foi possível gerar o arquivo de exportação.",
-        });
-      }
-    } catch (error) {
-      console.error("Error exporting report:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao exportar relatório",
-        description: "Ocorreu um erro ao exportar o relatório.",
-      });
-    } finally {
-      setExportLoading(false);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
+      <div className="flex justify-center items-center min-h-[300px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2 text-lg text-gray-600">Carregando dados do relatório...</span>
       </div>
     );
   }
 
+  const activeTabLabel = tabOptions.find(opt => opt.value === activeTab)?.label || "";
+
   return (
-    <div>
+    <div className="px-4 sm:px-6 lg:px-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Relatórios</h1>
@@ -227,87 +147,74 @@ const Reports = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              {periodOptions.map((option) => (
+              {periodOptions.map(opt => (
                 <DropdownMenuItem
-                  key={option.value}
-                  onClick={() => setSelectedPeriod(option.value)}
+                  key={opt.value}
+                  onClick={() => setSelectedPeriod(opt.value)}
                   className="flex items-center justify-between"
                 >
-                  {option.label}
-                  {selectedPeriod === option.value && (
-                    <Check className="h-4 w-4 ml-2" />
-                  )}
+                  {opt.label}
                 </DropdownMenuItem>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90" disabled={exportLoading}>
-                {exportLoading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExport("csv")}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Exportar como CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("excel")}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Exportar como Excel (.xlsx)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                <File className="h-4 w-4 mr-2" />
-                Exportar como PDF
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
+      {/* Summary Card */}
       <Card className="mb-6">
         <CardHeader className="py-3">
           <CardTitle className="text-base font-medium">
-            Relatório de {activeTab === 'revenue' ? 'Faturamento' : 
-                        activeTab === 'services' ? 'Serviços' : 
-                        activeTab === 'products' ? 'Produtos' : 
-                        activeTab === 'clients' ? 'Clientes' : 
-                        'Agendamentos'} - {formatDateRange()}
+            Relatório de {activeTabLabel} -{" "}
+            {format(getDateRange().startDate, "dd 'de' MMMM", { locale: ptBR })} até{" "}
+            {format(getDateRange().endDate, "dd 'de' MMMM", { locale: ptBR })}
           </CardTitle>
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="revenue" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="revenue">Faturamento</TabsTrigger>
-          <TabsTrigger value="services">Serviços</TabsTrigger>
-          <TabsTrigger value="products">Produtos</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="appointments">Agendamentos</TabsTrigger>
+      {/* Tab selector: dropdown on mobile, tabs on desktop */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="sm:hidden mb-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                {activeTabLabel}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {tabOptions.map(opt => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  onClick={() => setActiveTab(opt.value)}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <TabsList className="hidden sm:flex mb-6">
+          {tabOptions.map(opt => (
+            <TabsTrigger key={opt.value} value={opt.value}>
+              {opt.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="revenue">
           <RevenueReport data={reportData} />
         </TabsContent>
-
         <TabsContent value="services">
           <ServicesReport data={reportData} />
         </TabsContent>
-
         <TabsContent value="products">
           <ProductsReport data={reportData} />
         </TabsContent>
-
         <TabsContent value="clients">
           <ClientsReport data={reportData} />
         </TabsContent>
-
         <TabsContent value="appointments">
           <AppointmentsReport data={reportData} />
         </TabsContent>
