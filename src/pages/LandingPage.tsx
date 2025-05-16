@@ -17,9 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
-import TermsOfServiceModal from "@/components/TermsOfServiceModal";
-import CookiesPolicyModal from "@/components/CookiesPolicyModal";
+import PrivacyPolicyModal from "@/components/terms/PrivacyPolicyModal";
+import TermsOfServiceModal from "@/components/terms/TermsOfServiceModal";
+import CookiesPolicyModal from "@/components/terms/CookiesPolicyModal";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tipagens para os preços
@@ -61,44 +61,52 @@ function useStripePrices() {
 const features = [
   {
     title: "Agendamento de Serviços",
-    description: "Organize facilmente os agendamentos do seu petshop, evitando conflitos de horários e melhorando a experiência dos clientes.",
+    description:
+      "Organize facilmente os agendamentos do seu petshop, evitando conflitos de horários e melhorando a experiência dos clientes.",
     icon: Calendar,
   },
   {
     title: "Cadastro de Clientes e Pets",
-    description: "Mantenha um banco de dados completo de clientes e seus pets, incluindo histórico de atendimentos, preferências e observações importantes.",
+    description:
+      "Mantenha um banco de dados completo de clientes e seus pets, incluindo histórico de atendimentos, preferências e observações importantes.",
     icon: Users,
   },
   {
     title: "Histórico de Atendimentos",
-    description: "Acesse o histórico completo de atendimentos e procedimentos realizados para cada pet, garantindo um acompanhamento contínuo e personalizado.",
+    description:
+      "Acesse o histórico completo de atendimentos e procedimentos realizados para cada pet, garantindo um acompanhamento contínuo e personalizado.",
     icon: ClipboardList,
   },
   {
     title: "Gestão de Produtos e Estoque",
-    description: "Controle seu estoque de produtos com alertas de nível baixo, evitando quebras de estoque e otimizando suas compras.",
+    description:
+      "Controle seu estoque de produtos com alertas de nível baixo, evitando quebras de estoque e otimizando suas compras.",
     icon: Package,
   },
   {
     title: "Relatórios de Vendas",
-    description: "Visualize relatórios detalhados de vendas, desempenho e tendências, ajudando na tomada de decisões estratégicas para seu petshop.",
+    description:
+      "Visualize relatórios detalhados de vendas, desempenho e tendências, ajudando na tomada de decisões estratégicas para seu petshop.",
     icon: BarChart,
   },
 ];
 
 const testimonials = [
   {
-    quote: "O PetGestor mudou completamente a forma como gerenciamos nosso petshop. Conseguimos reduzir erros de agendamento e melhorar o controle de estoque.",
+    quote:
+      "O PetGestor mudou completamente a forma como gerenciamos nosso petshop. Conseguimos reduzir erros de agendamento e melhorar o controle de estoque.",
     author: "Ana Luiza",
     role: "Proprietária do Patinhas Felizes",
   },
   {
-    quote: "Usamos o PetGestor há 3 meses e já notamos um aumento de 30% na eficiência do nosso atendimento. Os clientes perceberam a diferença!",
+    quote:
+      "Usamos o PetGestor há 3 meses e já notamos um aumento de 30% na eficiência do nosso atendimento. Os clientes perceberam a diferença!",
     author: "Carlos Eduardo",
     role: "Gerente do Mundo Pet",
   },
   {
-    quote: "O melhor investimento que fizemos para nosso petshop. Interface intuitiva e suporte excelente. Recomendo para todos os petshops!",
+    quote:
+      "O melhor investimento que fizemos para nosso petshop. Interface intuitiva e suporte excelente. Recomendo para todos os petshops!",
     author: "Mariana Silva",
     role: "Proprietária do Amigos Pets",
   },
@@ -107,15 +115,18 @@ const testimonials = [
 const steps = [
   {
     title: "Faça seu cadastro",
-    description: "Crie sua conta gratuita e comece seu período de testes de 7 dias, sem compromisso.",
+    description:
+      "Crie sua conta gratuita e comece seu período de testes de 7 dias, sem compromisso.",
   },
   {
     title: "Configure seu petshop",
-    description: "Adicione seus serviços, produtos e colaboradores em poucos minutos.",
+    description:
+      "Adicione seus serviços, produtos e colaboradores em poucos minutos.",
   },
   {
     title: "Comece a usar",
-    description: "Cadastre clientes, agende serviços e gerencie seu petshop com facilidade.",
+    description:
+      "Cadastre clientes, agende serviços e gerencie seu petshop com facilidade.",
   },
 ];
 
@@ -126,7 +137,11 @@ const LandingPage = () => {
   // Configuração dos 3 planos
   const plans = [
     { key: "monthly" as const, title: "Plano Mensal", label: "/mês" },
-    { key: "trimestral" as const, title: "Plano Trimestral", label: "/3 meses" },
+    {
+      key: "trimestral" as const,
+      title: "Plano Trimestral",
+      label: "/3 meses",
+    },
     { key: "semestral" as const, title: "Plano Semestral", label: "/6 meses" },
   ];
 
@@ -138,26 +153,43 @@ const LandingPage = () => {
           <div className="flex justify-between items-center py-4">
             {/* Logo */}
             <Link to="/" className="flex items-center">
-              <span className="text-2xl font-bold text-petblue-600">PetGestor</span>
+              <span className="text-2xl font-bold text-petblue-600">
+                PetGestor
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#features"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Recursos
               </a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#how-it-works"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Como Funciona
               </a>
-              <a href="#pricing" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#pricing"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Preço
               </a>
-              <a href="#testimonials" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#testimonials"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Depoimentos
               </a>
               <div className="ml-4 flex items-center space-x-4">
                 <Link to="/login">
-                  <Button variant="outline" className="border-petblue-600 text-petblue-600 hover:bg-petblue-50">
+                  <Button
+                    variant="outline"
+                    className="border-petblue-600 text-petblue-600 hover:bg-petblue-50"
+                  >
                     Entrar
                   </Button>
                 </Link>
@@ -183,7 +215,9 @@ const LandingPage = () => {
         <div
           className={cn(
             "md:hidden bg-white border-b border-gray-200 transition-all duration-300 ease-in-out",
-            mobileMenuOpen ? "max-h-screen py-4" : "max-h-0 overflow-hidden py-0"
+            mobileMenuOpen
+              ? "max-h-screen py-4"
+              : "max-h-0 overflow-hidden py-0"
           )}
         >
           <div className="container mx-auto px-4 space-y-4">
@@ -241,20 +275,30 @@ const LandingPage = () => {
           <div className="flex flex-col lg:flex-row items-center">
             <div className="lg:w-1/2 lg:pr-12">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Gerencie seu <span className="text-petblue-600">petshop</span> com eficiência e simplicidade
+                Gerencie seu <span className="text-petblue-600">petshop</span>{" "}
+                com eficiência e simplicidade
               </h1>
               <p className="mt-6 text-xl text-gray-600 max-w-2xl">
-                O PetGestor é a solução completa para o gerenciamento do seu petshop. Agendamentos, clientes, estoque e vendas em um só lugar.
+                O PetGestor é a solução completa para o gerenciamento do seu
+                petshop. Agendamentos, clientes, estoque e vendas em um só
+                lugar.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                 <Link to="/register">
-                  <Button size="lg" className="bg-petblue-600 text-white hover:bg-petblue-700 w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    className="bg-petblue-600 text-white hover:bg-petblue-700 w-full sm:w-auto"
+                  >
                     Começar grátis
                     <ChevronRight size={16} className="ml-2" />
                   </Button>
                 </Link>
                 <a href="#features">
-                  <Button size="lg" variant="outline" className="border-petblue-600 text-petblue-600 hover:bg-petblue-50 w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-petblue-600 text-petblue-600 hover:bg-petblue-50 w-full sm:w-auto"
+                  >
                     Conhecer recursos
                   </Button>
                 </a>
@@ -330,7 +374,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-       {/* Pricing Section */}
+      {/* Pricing Section */}
       <section id="pricing" className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Título */}
@@ -396,10 +440,7 @@ const LandingPage = () => {
                           "Múltiplos usuários",
                           "Suporte prioritário",
                         ].map((feature, idx) => (
-                          <li
-                            key={idx}
-                            className="flex items-start"
-                          >
+                          <li key={idx} className="flex items-start">
                             <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
                             <span className="ml-3 text-gray-600">
                               {feature}
@@ -440,17 +481,28 @@ const LandingPage = () => {
 
           <div className="mt-16 grid gap-8 md:grid-cols-3">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div
+                key={index}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
+              >
                 <div className="flex items-center space-x-1 mb-4 text-petblue-500">
                   {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <svg
+                      key={i}
+                      className="w-5 h-5 fill-current"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                     </svg>
                   ))}
                 </div>
-                <p className="text-gray-600 italic mb-4">"{testimonial.quote}"</p>
+                <p className="text-gray-600 italic mb-4">
+                  "{testimonial.quote}"
+                </p>
                 <div>
-                  <p className="font-semibold text-gray-900">{testimonial.author}</p>
+                  <p className="font-semibold text-gray-900">
+                    {testimonial.author}
+                  </p>
                   <p className="text-sm text-gray-500">{testimonial.role}</p>
                 </div>
               </div>
@@ -466,11 +518,15 @@ const LandingPage = () => {
             Pronto para transformar seu petshop?
           </h2>
           <p className="mt-4 text-xl text-petblue-100 max-w-3xl mx-auto">
-            Comece hoje mesmo com 7 dias grátis. Sem compromisso e sem necessidade de cartão de crédito.
+            Comece hoje mesmo com 7 dias grátis. Sem compromisso e sem
+            necessidade de cartão de crédito.
           </p>
           <div className="mt-8">
             <Link to="/register">
-              <Button size="lg" className="bg-white text-petblue-600 hover:bg-gray-100">
+              <Button
+                size="lg"
+                className="bg-white text-petblue-600 hover:bg-gray-100"
+              >
                 Começar gratuitamente
               </Button>
             </Link>
@@ -483,7 +539,9 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">PetGestor</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                PetGestor
+              </h3>
               <p className="text-gray-600 mb-4">
                 A solução completa para a gestão do seu petshop.
               </p>
@@ -500,24 +558,43 @@ const LandingPage = () => {
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Produto</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Produto
+              </h3>
               <ul className="space-y-2">
-                <li><a href="#features" className="footer-link">Recursos</a></li>
-                <li><a href="#pricing" className="footer-link">Preço</a></li>
+                <li>
+                  <a href="#features" className="footer-link">
+                    Recursos
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="footer-link">
+                    Preço
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Legal</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Legal
+              </h3>
               <ul className="space-y-2">
-              <li><TermsOfServiceModal /></li>
-              <li><PrivacyPolicyModal /></li>
-              <li><CookiesPolicyModal /></li>
+                <li>
+                  <TermsOfServiceModal />
+                </li>
+                <li>
+                  <PrivacyPolicyModal />
+                </li>
+                <li>
+                  <CookiesPolicyModal />
+                </li>
               </ul>
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-gray-200 text-center">
             <p className="text-gray-500 text-sm">
-              &copy; {new Date().getFullYear()} PetGestor. Todos os direitos reservados.
+              &copy; {new Date().getFullYear()} PetGestor. Todos os direitos
+              reservados.
             </p>
           </div>
         </div>

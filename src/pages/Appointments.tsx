@@ -42,9 +42,9 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import AppointmentForm from "@/components/AppointmentForm";
-import InvoiceForm from "@/components/InvoiceForm";
-import ViewInvoice from "@/components/ViewInvoice";
+import AppointmentForm from "@/components/appointment/AppointmentForm";
+import InvoiceForm from "@/components/appointment/InvoiceForm";
+import ViewInvoice from "@/components/appointment/ViewInvoice";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import TermsOfServiceModal from "@/components/TermsOfServiceModal";
-import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
+import TermsOfServiceModal from "@/components/terms/TermsOfServiceModal";
+import PrivacyPolicyModal from "@/components/terms/PrivacyPolicyModal";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -26,8 +25,13 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email.trim() || !password.trim() || !confirmPassword.trim() || !name.trim()) {
+
+    if (
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim() ||
+      !name.trim()
+    ) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
@@ -35,7 +39,7 @@ const Register = () => {
       });
       return;
     }
-    
+
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
@@ -44,7 +48,7 @@ const Register = () => {
       });
       return;
     }
-    
+
     try {
       setIsLoading(true);
       await signUp(email, password, role);
@@ -63,7 +67,9 @@ const Register = () => {
           <Link to="/" className="inline-block">
             <h1 className="text-3xl font-bold text-petblue-600">PetGestor</h1>
           </Link>
-          <h2 className="mt-2 text-2xl font-bold text-gray-900">Crie sua conta</h2>
+          <h2 className="mt-2 text-2xl font-bold text-gray-900">
+            Crie sua conta
+          </h2>
           <p className="mt-2 text-gray-600">
             Comece a usar o PetGestor gratuitamente por 7 dias.
           </p>
@@ -82,7 +88,7 @@ const Register = () => {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -194,10 +200,7 @@ const Register = () => {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-500 text-center">
               Ao criar uma conta, você concorda com nossos{" "}
-              <TermsOfServiceModal />{" "}
-              e{" "}<PrivacyPolicyModal />
-              
-              .
+              <TermsOfServiceModal /> e <PrivacyPolicyModal />.
             </p>
           </div>
         </div>

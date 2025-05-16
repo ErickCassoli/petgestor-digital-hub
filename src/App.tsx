@@ -22,11 +22,6 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import UpdatePassword from "@/pages/UpdatePassword";
 import ConfirmedEmail from "@/pages/ConfirmedEmail";
 
-
-
-
-
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -69,7 +64,10 @@ const App = () => (
               <Route path="/servicos" element={<Services />} />
             </Route>
             {/* Conveniência */}
-            <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/admin"
+              element={<Navigate to="/dashboard" replace />}
+            />
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
