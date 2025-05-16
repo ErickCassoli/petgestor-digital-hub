@@ -194,21 +194,34 @@ export function useSales() {
         .insert(saleItemsPayload);
       if (itemsError) throw itemsError;
 
-      // 3) Atualizar estoques de produtos
+      // 3) Atualizar estoques de produtos (suportando frações)
       for (const item of items) {
         if (item.type === "product") {
-          const { data: prod } = await supabase
+          // Busca o estoque atual (agora numeric)
+          const { data: prod, error: prodErr } = await supabase
             .from("products")
             .select("stock")
             .eq("id", item.id)
             .single();
-          if (prod) {
-            const newStock = Math.max(0, prod.stock - item.quantity);
-            await supabase
-              .from("products")
-              .update({ stock: newStock })
-              .eq("id", item.id)
-              .eq("user_id", user.id);
+          if (prodErr || !prod) {
+            console.error("Erro ao buscar estoque do produto:", prodErr);
+            continue;
+          }
+          // Garante que seja número
+          const currentStock =
+            typeof prod.stock === "string" ? parseFloat(prod.stock) : prod.stock;
+          // Subtrai a quantidade vendida e formata com 2 casas
+          const newStock = parseFloat((currentStock - item.quantity).toFixed(2));
+
+          // Grava de volta no banco
+          const { error: updateErr } = await supabase
+            .from("products")
+            .update({ stock: newStock })
+            .eq("id", item.id)
+            .eq("user_id", user.id);
+
+          if (updateErr) {
+            console.error("Erro ao atualizar estoque:", updateErr);
           }
         }
       }
