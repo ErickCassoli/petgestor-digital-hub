@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile]);
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -82,42 +89,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     );
-    const subscription = data.subscription;
 
-     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-     setSession(existingSession);
-     setUser(existingSession?.user ?? null);
-     if (existingSession?.user) {
-       // espera terminar o fetch antes de tirar o loading
-       fetchProfile(existingSession.user.id).then((p) => {
-         setProfile(p);
-         setLoading(false);
-       });
-     } else {
-       setProfile(null);
-       setLoading(false);
-     }
-   });
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
+      if (existingSession?.user) {
+        fetchProfile(existingSession.user.id).then((p) => {
+          setProfile(p);
+          setLoading(false);
+        });
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
+    });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
       setLoading(true);
       try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-
-        sonnerToast.success("Login realizado com sucesso", {
-          description: "Bem-vindo de volta ao PetGestor!",
+        // 1) Autentica
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
+        if (signInError) throw signInError;
 
+        // 2) Chama a função que atualiza status de assinatura
+        const { error: fnError } = await supabase.functions.invoke(
+          "check-subscription-status"
+        );
+        if (fnError) console.error("Erro ao atualizar assinatura:", fnError);
+
+        // 3) Recupera a nova sessão
         const {
           data: { session: newSession },
         } = await supabase.auth.getSession();
         if (!newSession?.user) return;
 
+        // 4) Busca o profile já com status atualizado
         const userProfile = await fetchProfile(newSession.user.id);
         setProfile(userProfile);
 
@@ -125,6 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? new Date() < new Date(userProfile.trial_end_date)
           : false;
 
+        sonnerToast.success("Login realizado com sucesso", {
+          description: "Bem-vindo de volta ao PetGestor!",
+        });
+
+        // 5) Redireciona conforme status
         if (userProfile?.is_subscribed || inTrial) {
           navigate("/dashboard");
         } else {
@@ -166,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [navigate]
+    []
   );
 
   const signOut = useCallback(async () => {
@@ -192,30 +212,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     setLoading(true);
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${APP_URL}/UpdatePassword`,
-        });
-        if (error) throw error;
-        sonnerToast.success("Verifique seu e-mail", {
-          description: "Enviamos um link para redefinir sua senha.",
-        });
-      } catch (err: any) {
-        console.error("Reset password error:", err);
-        sonnerToast.error("Erro ao redefinir senha", {
-          description: err.message || "Não foi possível enviar o e-mail de recuperação.",
-        });
-        throw err;
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${APP_URL}/UpdatePassword`,
+      });
+      if (error) throw error;
+      sonnerToast.success("Verifique seu e-mail", {
+        description: "Enviamos um link para redefinir sua senha.",
+      });
+    } catch (err: any) {
+      console.error("Reset password error:", err);
+      sonnerToast.error("Erro ao redefinir senha", {
+        description: err.message || "Não foi possível enviar o e-mail de recuperação.",
+      });
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const updateProfile = useCallback(
     async (updates: Partial<Omit<Profile, "id">>) => {
       if (!user) throw new Error("No user logged in");
       try {
-        const { error } = await supabase.from("profiles").update(updates).eq("id", user.id);
+        const { error } = await supabase
+          .from("profiles")
+          .update(updates)
+          .eq("id", user.id);
         if (error) throw error;
         const updated = await fetchProfile(user.id);
         setProfile(updated);
