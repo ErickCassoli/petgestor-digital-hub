@@ -111,9 +111,7 @@ export default function Subscription() {
       const success = url.searchParams.get("success");
       const canceled = url.searchParams.get("canceled");
       if (success || canceled) {
-        // limpa params da URL
         window.history.replaceState({}, "", window.location.pathname);
-
         toast({
           title:
             success === "true"
@@ -121,8 +119,6 @@ export default function Subscription() {
               : "Assinatura cancelada",
           variant: success === "true" ? undefined : "destructive",
         });
-
-        // refetch subscription e preços
         await Promise.all([
           refreshSubData(),
           refreshProfile(),
@@ -137,9 +133,7 @@ export default function Subscription() {
   if (priceError) {
     return (
       <div className="p-6">
-        <p className="text-red-600">
-          Erro ao carregar planos: {priceError}
-        </p>
+        <p className="text-red-600">Erro ao carregar planos: {priceError}</p>
       </div>
     );
   }
@@ -147,30 +141,37 @@ export default function Subscription() {
   if (!prices) {
     return (
       <div className="flex items-center justify-center h-full py-20">
-        <span className="text-gray-600 animate-pulse">
-          Carregando planos...
-        </span>
+        <span className="text-gray-600 animate-pulse">Carregando planos...</span>
       </div>
     );
   }
-  const plans = [
+
+  // cálculo base para desconto
+  const baseMonthly = prices.monthly.unit_amount / 100;
+
+  // configuração dos planos com meses e destaque
+  const planConfigs = [
     {
       key: "monthly" as const,
       title: "Plano Mensal",
       desc: "Acesso mensal",
       label: "/mês",
+      months: 1,
     },
     {
       key: "trimestral" as const,
       title: "Plano Trimestral",
       desc: "Acesso por 3 meses",
       label: "/3 meses",
+      months: 3,
+      isPopular: true,
     },
     {
       key: "semestral" as const,
       title: "Plano Semestral",
       desc: "Acesso por 6 meses",
       label: "/6 meses",
+      months: 6,
     },
   ];
 
@@ -186,35 +187,69 @@ export default function Subscription() {
       <SubscriptionStatus />
 
       {/* Planos */}
-            {/* Cartões de plano */}
       <div className="grid md:grid-cols-3 gap-8">
-        {plans.map(({ key, title, desc, label }) => {
-          const price = prices[key];
+        {planConfigs.map(({ key, title, desc, label, months, isPopular }) => {
+          const price = prices[key]!;
+          const total = price.unit_amount / 100;
+          const mensalEquiv = total / months;
+          const discountPercent =
+            months > 1
+              ? Math.round((1 - mensalEquiv / baseMonthly) * 100)
+              : 0;
 
           return (
-            <Card key={key} className="border-2 border-petblue-200">
-              <CardHeader className="bg-petblue-50">
-                <div className="flex items-center mb-2">
-                  <Star
-                    className="h-5 w-5 text-petblue-400"
-                    fill="currentColor"
-                  />
+            <Card
+              key={key}
+              id={`plan-${key}`}
+              className={`
+                relative border-2 rounded-xl
+                transition-transform duration-300
+                hover:scale-105 hover:shadow-2xl cursor-pointer
+                ${isPopular
+                  ? "border-petblue-600 ring-2 ring-petblue-200"
+                  : "border-petblue-200"}
+              `}
+            >
+              {/* Badge “Mais Popular” */}
+              {isPopular && (
+                <div className="absolute top-4 right-4 bg-gradient-to-r from-petblue-500 to-petblue-700 text-white uppercase text-xs font-bold px-3 py-1 rounded-full">
+                  Mais Popular
+                </div>
+              )}
+
+              <CardHeader className="bg-petblue-50 text-center">
+                <div className="flex justify-center mb-2">
+                  <Star className="h-5 w-5 text-petblue-400" fill="currentColor" />
                 </div>
                 <CardTitle>{title}</CardTitle>
                 <CardDescription>{desc}</CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                <div className="mb-6">
+                <div className="mt-4">
                   <span className="text-3xl font-bold text-gray-900">
                     {new Intl.NumberFormat("pt-BR", {
                       style: "currency",
                       currency: price.currency.toUpperCase(),
-                    }).format(price.unit_amount / 100)}
+                    }).format(total)}
                   </span>
-                  <span className="text-gray-500">{label}</span>
+                  <span className="text-gray-500 ml-1">{label}</span>
+                  {months > 1 && (
+                    <div className="mt-2">
+                      <span className="text-green-600 font-semibold text-sm">
+                        {discountPercent}% OFF
+                      </span>
+                      <span className="text-gray-500 text-xs ml-2">
+                        equiv. a{" "}
+                        {new Intl.NumberFormat("pt-BR", {
+                          style: "currency",
+                          currency: price.currency.toUpperCase(),
+                        }).format(mensalEquiv)}
+                        /mês
+                      </span>
+                    </div>
+                  )}
                 </div>
+              </CardHeader>
 
+              <CardContent>
                 <ul className="space-y-3 mb-6">
                   {[
                     "Agendamento de serviços",
@@ -252,9 +287,7 @@ export default function Subscription() {
 
                 {isSubscribed && !isInGrace && (
                   <div className="bg-green-50 p-3 rounded text-center">
-                    <CheckCircle
-                      className="h-5 w-5 text-green-500 mx-auto mb-1"
-                    />
+                    <CheckCircle className="h-5 w-5 text-green-500 mx-auto mb-1" />
                     <p className="text-green-700 font-medium">
                       Você já possui este plano
                     </p>
@@ -265,6 +298,7 @@ export default function Subscription() {
           );
         })}
       </div>
+
       {/* Benefícios */}
       <Card className="mb-8">
         <CardHeader>
@@ -277,32 +311,23 @@ export default function Subscription() {
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <CalendarIcon className="h-8 w-8 text-petblue-600 mb-3" />
-              <h3 className="font-medium text-gray-900 mb-2">
-                Sistema de Agendamentos
-              </h3>
+              <h3 className="font-medium text-gray-900 mb-2">Sistema de Agendamentos</h3>
               <p className="text-sm text-gray-600">
-                Gerencie todos os agendamentos do seu petshop com facilidade,
-                evitando conflitos de horários.
+                Gerencie todos os agendamentos do seu petshop com facilidade, evitando conflitos de horários.
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <Badge className="h-8 w-8 text-petblue-600 mb-3" />
-              <h3 className="font-medium text-gray-900 mb-2">
-                Marca Profissional
-              </h3>
+              <h3 className="font-medium text-gray-900 mb-2">Marca Profissional</h3>
               <p className="text-sm text-gray-600">
-                Ofereça uma experiência mais profissional para seus clientes
-                com confirmações automáticas.
+                Ofereça uma experiência mais profissional para seus clientes com confirmações automáticas.
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <CreditCard className="h-8 w-8 text-petblue-600 mb-3" />
-              <h3 className="font-medium text-gray-900 mb-2">
-                Pagamento Simplificado
-              </h3>
+              <h3 className="font-medium text-gray-900 mb-2">Pagamento Simplificado</h3>
               <p className="text-sm text-gray-600">
-                Pagamento mensal simples e seguro via cartão de crédito, sem
-                complicações.
+                Pagamento mensal simples e seguro via cartão de crédito, sem complicações.
               </p>
             </div>
           </div>

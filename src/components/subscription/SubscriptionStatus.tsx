@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,8 +10,8 @@ import { ptBR } from "date-fns/locale";
 interface SubscriptionData {
   id: string;
   status: string;
-  currentPeriodStart: string;
-  currentPeriodEnd: string;
+  currentPeriodStart: number;  // timestamp em segundos
+  currentPeriodEnd: number;    // timestamp em segundos
   cancelAtPeriodEnd: boolean;
   priceId: string;
   amount: number;
@@ -33,19 +32,19 @@ export function SubscriptionStatus() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionStatusResponse | null>(null);
-  
+
   const checkSubscriptionStatus = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke("check-subscription-status");
-      
+
       if (error) {
         console.error("Error checking subscription:", error);
         return;
       }
-      
+
       setSubscriptionInfo(data as SubscriptionStatusResponse);
     } catch (error) {
       console.error("Error checking subscription:", error);
@@ -53,20 +52,19 @@ export function SubscriptionStatus() {
       setLoading(false);
     }
   };
-  
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await checkSubscriptionStatus();
     setRefreshing(false);
   };
-  
+
   useEffect(() => {
     if (user) {
       checkSubscriptionStatus();
     }
   }, [user]);
-  
-  // Determine the subscription status display
+
   const renderSubscriptionStatus = () => {
     if (loading) {
       return (
@@ -75,12 +73,25 @@ export function SubscriptionStatus() {
         </div>
       );
     }
-    
+
+    // Assinatura ativa
     if (subscriptionInfo?.isSubscribed && subscriptionInfo.subscriptionData) {
       const data = subscriptionInfo.subscriptionData;
-      const formattedNextPayment = format(new Date(data.currentPeriodEnd), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-      const formattedStartDate = format(new Date(data.currentPeriodStart), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-      
+      // converte de segundos para milissegundos
+      const startDate = new Date(data.currentPeriodStart * 1000);
+      const nextPaymentDate = new Date(data.currentPeriodEnd * 1000);
+
+      const formattedStartDate = format(
+        startDate,
+        "dd 'de' MMMM 'de' yyyy",
+        { locale: ptBR }
+      );
+      const formattedNextPayment = format(
+        nextPaymentDate,
+        "dd 'de' MMMM 'de' yyyy",
+        { locale: ptBR }
+      );
+
       return (
         <div>
           <div className="flex items-center mb-6">
@@ -90,11 +101,11 @@ export function SubscriptionStatus() {
             <div>
               <h3 className="text-lg font-medium text-gray-900">Assinatura Ativa</h3>
               <p className="text-green-600">
-                Plano Completo - R$ {data.amount.toFixed(2).replace('.', ',')} por mês
+                Plano Completo - R$ {data.amount.toFixed(2).replace(".", ",")} por mês
               </p>
             </div>
           </div>
-          
+
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <div className="flex items-start">
               <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
@@ -106,38 +117,32 @@ export function SubscriptionStatus() {
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600">Status</span>
-              <span className="font-medium text-gray-900">
-                Ativo
-              </span>
+              <span className="font-medium text-gray-900">Ativo</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600">Data de início</span>
-              <span className="font-medium text-gray-900">
-                {formattedStartDate}
-              </span>
+              <span className="font-medium text-gray-900">{formattedStartDate}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600">ID da assinatura</span>
-              <span className="font-medium text-gray-900 text-sm">
-                {data.id}
-              </span>
+              <span className="font-medium text-gray-900 text-sm">{data.id}</span>
             </div>
             <div className="flex justify-between py-3">
               <span className="text-gray-600">Próxima cobrança</span>
               <span className="font-medium text-gray-900">
-                {formattedNextPayment} - R$ {data.amount.toFixed(2).replace('.', ',')}
+                {formattedNextPayment} – R$ {data.amount.toFixed(2).replace(".", ",")}
               </span>
             </div>
           </div>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
             disabled={refreshing}
             className="mt-6"
           >
@@ -151,12 +156,13 @@ export function SubscriptionStatus() {
         </div>
       );
     }
-    
+
+    // Período de avaliação
     if (isInTrialPeriod) {
-      const trialEndDate = profile?.trial_end_date 
+      const trialEndDate = profile?.trial_end_date
         ? format(new Date(profile.trial_end_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-        : 'Não disponível';
-      
+        : "Não disponível";
+
       return (
         <div>
           <div className="flex items-center mb-6">
@@ -166,13 +172,13 @@ export function SubscriptionStatus() {
             <div>
               <h3 className="text-lg font-medium text-gray-900">Período de Avaliação</h3>
               <p className="text-amber-600">
-                {profile?.trial_end_date ? 
-                  `Restam ${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias` : 
-                  'Restam 7 dias'}
+                {profile?.trial_end_date
+                  ? `Restam ${Math.ceil((new Date(profile.trial_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} dias`
+                  : "Restam 7 dias"}
               </p>
             </div>
           </div>
-          
+
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
             <div className="flex items-start">
               <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
@@ -184,32 +190,28 @@ export function SubscriptionStatus() {
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600">Tipo de plano</span>
-              <span className="font-medium text-gray-900">
-                Avaliação
-              </span>
+              <span className="font-medium text-gray-900">Avaliação</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600">Data de início</span>
               <span className="font-medium text-gray-900">
-                {/* Using a fixed date format since we don't have access to created_at */}
-                {new Date().toLocaleDateString('pt-BR')}
+                {new Date().toLocaleDateString("pt-BR")}
               </span>
             </div>
             <div className="flex justify-between py-3">
               <span className="text-gray-600">Data de término</span>
-              <span className="font-medium text-gray-900">
-                {trialEndDate}
-              </span>
+              <span className="font-medium text-gray-900">{trialEndDate}</span>
             </div>
           </div>
         </div>
       );
     }
-    
+
+    // Sem assinatura
     return (
       <div>
         <div className="flex items-center mb-6">
@@ -218,12 +220,10 @@ export function SubscriptionStatus() {
           </div>
           <div>
             <h3 className="text-lg font-medium text-gray-900">Assinatura Não Ativa</h3>
-            <p className="text-gray-500">
-              Você não possui uma assinatura ativa
-            </p>
+            <p className="text-gray-500">Você não possui uma assinatura ativa</p>
           </div>
         </div>
-        
+
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex items-start">
             <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
@@ -238,18 +238,14 @@ export function SubscriptionStatus() {
       </div>
     );
   };
-  
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Status da Assinatura</CardTitle>
-        <CardDescription>
-          Informações sobre o seu plano atual
-        </CardDescription>
+        <CardDescription>Informações sobre o seu plano atual</CardDescription>
       </CardHeader>
-      <CardContent>
-        {renderSubscriptionStatus()}
-      </CardContent>
+      <CardContent>{renderSubscriptionStatus()}</CardContent>
     </Card>
   );
 }

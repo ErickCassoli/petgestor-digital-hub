@@ -235,7 +235,6 @@ export default function Services() {
                   <tr className="bg-muted">
                     <th className="p-2 text-left">Nome</th>
                     <th className="p-2 text-right">Preço (R$)</th>
-                    <th className="p-2 text-center">Duração (min)</th>
                     <th className="p-2">Descrição</th>
                     <th className="p-2 text-center">Ações</th>
                   </tr>
