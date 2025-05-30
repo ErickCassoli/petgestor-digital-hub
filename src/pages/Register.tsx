@@ -77,17 +77,6 @@ const Register = () => {
 
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Seu nome completo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>

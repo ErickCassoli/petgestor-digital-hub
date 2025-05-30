@@ -267,7 +267,7 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Bem-vindo, {profile?.name || user?.email}. Aqui está um resumo do seu petshop.
+            Bem-vindo, {profile?.name}. Aqui está um resumo do seu petshop.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 mt-4 sm:mt-0">

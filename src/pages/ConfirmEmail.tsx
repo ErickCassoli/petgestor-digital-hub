@@ -25,6 +25,9 @@ const ConfirmEmail = () => {
           <p className="text-gray-600 mb-6">
             Enviamos um link de confirmação para seu e-mail. Por favor, acesse sua caixa de entrada e clique no link para ativar sua conta.
           </p>
+          <p className="text-gray-600 mb-6">
+            <b>Atenção</b>: Se você não receber o e-mail, verifique sua pasta de spam ou lixo eletrônico.
+          </p>
           <Button
             onClick={() => navigate("/login", { replace: true })}
             className="w-full bg-petblue-600 hover:bg-petblue-700"
