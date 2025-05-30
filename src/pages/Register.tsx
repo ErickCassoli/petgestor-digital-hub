@@ -52,7 +52,7 @@ const Register = () => {
     try {
       setIsLoading(true);
       await signUp(email, password, role);
-      navigate("/dashboard");
+      navigate("/ConfirmEmail");
     } catch (error) {
       console.error("Registration error handling in component:", error);
     } finally {

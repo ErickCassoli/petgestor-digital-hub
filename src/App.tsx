@@ -21,6 +21,7 @@ import Services from "@/pages/Services";
 import ForgotPassword from "@/pages/ForgotPassword";
 import UpdatePassword from "@/pages/UpdatePassword";
 import ConfirmedEmail from "@/pages/ConfirmedEmail";
+import ConfirmEmail from "@/pages/ConfirmEmail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/UpdatePassword" element={<UpdatePassword />} />
             <Route path="/ConfirmedEmail" element={<ConfirmedEmail />} />
+            <Route path="/ConfirmEmail" element={<ConfirmEmail />} />
             {/* Protegidas */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
