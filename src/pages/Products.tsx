@@ -27,7 +27,10 @@ import {
   Loader2
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
+import { FreePlanAd } from "@/components/ads/FreePlanAd";
 import { supabase } from "@/integrations/supabase/client";
+import { buildSupabaseToast } from "@/utils/supabaseError";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +58,7 @@ const Products = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const adSlotProducts = import.meta.env.VITE_ADSENSE_SLOT_PRODUCTS;
   const [loading, setLoading] = useState(true);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -288,11 +292,11 @@ const Products = () => {
       }
     } catch (err) {
       console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Erro ao salvar",
-        description: "Ocorreu um erro ao salvar o produto."
+      const friendly = buildSupabaseToast(err, {
+        title: 'Erro ao salvar',
+        description: 'Ocorreu um erro ao salvar o produto.',
       });
+      toast({ variant: 'destructive', ...friendly });
     } finally {
       setIsProductDialogOpen(false);
     }
@@ -332,6 +336,8 @@ const Products = () => {
 
   return (
     <div>
+      <PlanLimitNotice usage={{ products: products.length }} />
+
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
         <div>
@@ -635,6 +641,8 @@ const Products = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FreePlanAd slot={adSlotProducts} className="mt-10" />
     </div>
   );
 };

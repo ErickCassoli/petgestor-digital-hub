@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon, Save, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
+import { buildSupabaseToast } from "@/utils/supabaseError";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -178,8 +179,12 @@ const AppointmentForm = ({
       reset();
       onSuccess();
       onClose();
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao salvar", description: e.message });
+    } catch (err) {
+      const friendly = buildSupabaseToast(err, {
+        title: 'Erro ao salvar',
+        description: 'Ocorreu um erro ao salvar o agendamento.',
+      });
+      toast({ variant: 'destructive', ...friendly });
     } finally {
       setLoading(false);
     }

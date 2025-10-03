@@ -8,6 +8,7 @@ import {
   BarChart,
   ChevronRight,
   Check,
+  Star,
   Menu,
   X,
   Github,
@@ -21,6 +22,7 @@ import PrivacyPolicyModal from "@/components/terms/PrivacyPolicyModal";
 import TermsOfServiceModal from "@/components/terms/TermsOfServiceModal";
 import CookiesPolicyModal from "@/components/terms/CookiesPolicyModal";
 import { supabase } from "@/integrations/supabase/client";
+import { PLAN_FEATURES, PLAN_DESCRIPTIONS, FREE_PLAN_LIMITS } from "@/constants/plans";
 
 // Tipagens para os preços
 interface PriceInfo {
@@ -137,7 +139,6 @@ const LandingPage = () => {
   const { prices, error: priceError } = useStripePrices();
 
   // Valor mensal base para cálculo de desconto (0 até carregar)
-  const baseMonthly = prices ? prices.monthly.unit_amount / 100 : 0;
 
   // Configuração dos planos
   const planConfigs = [
@@ -323,109 +324,95 @@ const LandingPage = () => {
       <section id="pricing" className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Planos simples e acessíveis</h2>
-            <p className="mt-4 text-xl text-gray-600">Escolha o que cabe melhor no seu petshop.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Planos pensados para o seu petshop</h2>
+            <p className="mt-4 text-xl text-gray-600">Comece gratuito e evolua para o Pro quando precisar.</p>
           </div>
-          {priceError && <p className="mt-8 text-center text-red-600">Não foi possível carregar os planos: {priceError}</p>}
+          {priceError && (
+            <p className="mt-8 text-center text-red-600 text-sm">Nao foi possivel carregar os planos: {priceError}</p>
+          )}
           {!prices && !priceError && (
             <div className="flex items-center justify-center py-12">
               <span className="text-gray-600 animate-pulse">Carregando planos...</span>
             </div>
           )}
           {prices && (
-            <div className="mt-16 grid gap-8 md:grid-cols-3">
-              {planConfigs.map(({ key, title, months, isPopular }) => {
-                const price = prices[key]!;
-                const total = price.unit_amount / 100;
-                const mensalEquiv = total / months;
-                const discountPercent = months > 1 ? Math.round((1 - mensalEquiv / baseMonthly) * 100) : 0;
+            <div className="mt-16 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold uppercase text-petblue-600">Free</span>
+                  <span className="text-xs rounded-full bg-petblue-50 text-petblue-600 px-3 py-1">Sem custo</span>
+                </div>
+                <h3 className="mt-4 text-2xl font-bold text-gray-900">Plano Free</h3>
+                <p className="mt-2 text-sm text-gray-600">{PLAN_DESCRIPTIONS.free.summary}</p>
+                <ul className="mt-6 space-y-3 text-sm text-gray-700">
+                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.pets} pets cadastrados</li>
+                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.appointmentsPerMonth} agendamentos por mes</li>
+                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.products} itens de estoque</li>
+                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.services} servicos ativos</li>
+                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Monetizacao com anuncios AdSense</li>
+                </ul>
+                <div className="mt-6 text-sm text-gray-500">Ideal para comecar a organizar o petshop sem investir.</div>
+              </div>
+              <div className="rounded-2xl border border-petblue-200 bg-white p-8 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold uppercase text-petblue-600">Pro</span>
+                  <span className="text-xs rounded-full bg-petblue-50 text-petblue-600 px-3 py-1">Sem limites</span>
+                </div>
+                <h3 className="mt-4 text-2xl font-bold text-gray-900">Plano Pro</h3>
+                <p className="mt-2 text-sm text-gray-600">{PLAN_DESCRIPTIONS.pro.summary}</p>
+                <ul className="mt-6 space-y-3 text-sm text-gray-700">
+                  {PLAN_FEATURES.pro.map((feature) => (
+                    <li key={feature} className="flex gap-2">
+                      <Star className="h-4 w-4 text-amber-500 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 grid gap-4 md:grid-cols-3">
+                  {planConfigs.map(({ key, title, months, isPopular }) => {
+                    const price = prices[key]!;
+                    const total = price.unit_amount / 100;
+                    const monthly = total / months;
+                    const discount = months > 1
+                      ? Math.round((1 - monthly / (prices.monthly.unit_amount / 100)) * 100)
+                      : 0;
 
-                return (
-                  <Link
-                    key={key}
-                    to="/register"
-                    id={`plan-${key}`}
-                    className={`
-                      relative flex flex-col justify-between
-                      bg-white rounded-2xl overflow-hidden border-2
-                      transition-transform duration-300
-                      hover:scale-105 hover:shadow-2xl cursor-pointer
-                      ${isPopular
-                        ? "border-petblue-600 ring-2 ring-petblue-200"
-                        : "border-petblue-200"}
-                    `}
-                  >
-                    {isPopular && (
-                      <div className="absolute top-4 right-4 bg-gradient-to-r from-petblue-500 to-petblue-700 text-white uppercase text-xs font-bold px-3 py-1 rounded-full">
-                        Mais Popular
-                      </div>
-                    )}
-
-                    <div className="bg-petblue-50 px-6 py-8 text-center">
-                      <h3 className="text-2xl font-bold text-gray-900">{title}</h3>
-                      <div className="mt-4 flex flex-col items-center">
-                        <span className="text-5xl font-extrabold text-petblue-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
+                    return (
+                      <Link
+                        key={key}
+                        to="/register"
+                        id={`plan-${key}`}
+                        className={`rounded-xl border p-4 transition hover:shadow ${
+                          isPopular ? 'border-petblue-400 bg-petblue-50' : 'border-gray-200'
+                        }`}
+                      >
+                        {isPopular && (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-petblue-700">
+                            <Star className="h-3 w-3" /> Popular
+                          </span>
+                        )}
+                        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+                        <p className="mt-2 text-xl font-bold text-petblue-600">
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
                             currency: price.currency.toUpperCase(),
                           }).format(total)}
-                        </span>
-                        <span className="mt-1 text-sm text-gray-600">
-                          /{months > 1 ? `${months} meses` : "mês"}
-                        </span>
-                        {months > 1 && (
-                          <>
-                            <span className="mt-2 text-green-600 font-semibold text-sm">
-                              {discountPercent}% OFF
-                            </span>
-                            <span className="text-gray-500 text-xs">
-                              equiv. a{" "}
-                              {new Intl.NumberFormat("pt-BR", {
-                                style: "currency",
-                                currency: price.currency.toUpperCase(),
-                              }).format(mensalEquiv)}
-                              /mês
-                            </span>
-                          </>
+                        </p>
+                        <p className="text-xs text-gray-500">Equivalente a {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: price.currency.toUpperCase() }).format(monthly)} por mes</p>
+                        {discount > 0 && (
+                          <p className="text-xs text-green-600 mt-1">Economize {discount}%</p>
                         )}
-                      </div>
-                    </div>
-
-                    <div className="p-6 flex-1">
-                      <ul className="space-y-4">
-                        {[
-                          "Agendamento de serviços",
-                          "Cadastro de clientes e pets",
-                          "Histórico de atendimentos",
-                          "Gestão de produtos e estoque",
-                          "Relatórios de vendas",
-                          "Múltiplos usuários",
-                          "Suporte prioritário",
-                        ].map((f) => (
-                          <li key={f} className="flex items-start">
-                            <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                            <span className="ml-3 text-gray-600">{f}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="p-6">
-                      <Button className="
-                        w-full py-3 text-lg font-semibold
-                        bg-gradient-to-r from-petblue-500 to-petblue-700
-                        hover:from-petblue-600 hover:to-petblue-800 text-white
-                      ">
-                        Assinar agora
-                      </Button>
-                    </div>
-                  </Link>
-                );
-              })}
+                        <Button className="mt-4 w-full bg-petblue-600 hover:bg-petblue-700">Quero este plano</Button>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>
       </section>
+
 
       {/* Testimonials Section */}
       <section id="testimonials" className="py-16 md:py-24 bg-gray-50">

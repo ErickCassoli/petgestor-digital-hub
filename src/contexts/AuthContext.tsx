@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   createContext,
   useContext,
   useState,
@@ -15,9 +15,12 @@ import { toast as sonnerToast } from "sonner";
 interface Profile {
   id: string;
   name: string | null;
-  role: "admin" | "atendente";
+  role: 'admin' | 'atendente' | null;
   trial_end_date: string | null;
   is_subscribed: boolean;
+  plan: 'free' | 'pro';
+  plan_started_at: string | null;
+  stripe_customer_id: string | null;
 }
 
 interface AuthContextType {
@@ -50,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isInTrialPeriod = profile?.trial_end_date
     ? new Date() < new Date(profile.trial_end_date)
     : false;
-  const isSubscriptionActive = profile?.is_subscribed || false;
+  const isSubscriptionActive = profile?.plan === 'pro' || profile?.is_subscribed || false;
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
@@ -62,7 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching profile:", error);
       return null;
     }
-    return data as Profile;
+    if (!data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name ?? null,
+      role: (data.role as Profile['role']) ?? null,
+      trial_end_date: data.trial_end_date ?? null,
+      is_subscribed: Boolean(data.is_subscribed),
+      plan: data.plan === 'pro' ? 'pro' : 'free',
+      plan_started_at: data.plan_started_at ?? null,
+      stripe_customer_id: data.stripe_customer_id ?? null,
+    } satisfies Profile;
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -120,19 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (signInError) throw signInError;
 
-        // 2) Chama a função que atualiza status de assinatura
+        // 2) Chama a funÃ§Ã£o que atualiza status de assinatura
         const { error: fnError } = await supabase.functions.invoke(
           "check-subscription-status"
         );
         if (fnError) console.error("Erro ao atualizar assinatura:", fnError);
 
-        // 3) Recupera a nova sessão
+        // 3) Recupera a nova sessÃ£o
         const {
           data: { session: newSession },
         } = await supabase.auth.getSession();
         if (!newSession?.user) return;
 
-        // 4) Busca o profile já com status atualizado
+        // 4) Busca o profile jÃ¡ com status atualizado
         const userProfile = await fetchProfile(newSession.user.id);
         setProfile(userProfile);
 
@@ -145,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         // 5) Redireciona conforme status
-        if (userProfile?.is_subscribed || inTrial) {
+        if (userProfile?.plan === 'pro' || userProfile?.is_subscribed || inTrial) {
           navigate("/dashboard");
         } else {
           navigate("/expired");
@@ -197,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setProfile(null);
       sonnerToast.success("Logout realizado", {
-        description: "Você saiu da sua conta com sucesso.",
+        description: "VocÃª saiu da sua conta com sucesso.",
       });
       navigate("/login", { replace: true });
     } catch (err: any) {
@@ -223,7 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       console.error("Reset password error:", err);
       sonnerToast.error("Erro ao redefinir senha", {
-        description: err.message || "Não foi possível enviar o e-mail de recuperação.",
+        description: err.message || "NÃ£o foi possÃ­vel enviar o e-mail de recuperaÃ§Ã£o.",
       });
       throw err;
     } finally {
@@ -243,12 +259,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const updated = await fetchProfile(user.id);
         setProfile(updated);
         sonnerToast.success("Perfil atualizado", {
-          description: "Suas informações foram atualizadas com sucesso.",
+          description: "Suas informaÃ§Ãµes foram atualizadas com sucesso.",
         });
       } catch (err: any) {
         console.error("Update profile error:", err);
         sonnerToast.error("Erro ao atualizar perfil", {
-          description: err.message || "Ocorreu um erro ao atualizar suas informações.",
+          description: err.message || "Ocorreu um erro ao atualizar suas informaÃ§Ãµes.",
         });
         throw err;
       }
@@ -283,3 +299,9 @@ export function useAuth() {
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
+
+
+
+
+
+

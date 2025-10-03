@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { toast as sonnerToast } from "sonner";
 import ClockDateDisplay from "@/components/dashboard/ClockDateDisplay";
+import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
+import { FreePlanAd } from "@/components/ads/FreePlanAd";
 
 interface MetricCardProps {
   title: string;
@@ -37,6 +39,9 @@ interface DashboardMetrics {
   appointmentsToday: number;
   productCount: number;
   monthlySales: number;
+  petCount: number;
+  servicesCount: number;
+  monthlyAppointments: number;
 }
 
 interface AppointmentPreview {
@@ -69,7 +74,10 @@ const Dashboard = () => {
     clientCount: 0,
     appointmentsToday: 0,
     productCount: 0,
-    monthlySales: 0
+    monthlySales: 0,
+    petCount: 0,
+    servicesCount: 0,
+    monthlyAppointments: 0,
   });
   const [appointments, setAppointments] = useState<AppointmentPreview[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
@@ -124,6 +132,33 @@ const Dashboard = () => {
         if (salesError) throw salesError;
         
         const monthlySales = salesData?.reduce((sum, sale) => sum + Number(sale.total), 0) || 0;
+
+        const { count: petCount, error: petError } = await supabase
+          .from('pets')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        if (petError) throw petError;
+
+        const { count: servicesCount, error: servicesError } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        if (servicesError) throw servicesError;
+
+        const startOfMonthDate = new Date(startOfMonth);
+        const endOfMonthDate = new Date(startOfMonth);
+        endOfMonthDate.setMonth(endOfMonthDate.getMonth() + 1, 0);
+        const startOfMonthIso = startOfMonthDate.toISOString().split('T')[0];
+        const endOfMonthIso = endOfMonthDate.toISOString().split('T')[0];
+
+        const { count: monthlyAppointments, error: monthlyAppointmentsError } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('date', startOfMonthIso)
+          .lte('date', endOfMonthIso);
+        if (monthlyAppointmentsError) throw monthlyAppointmentsError;
+
         
         // Fetch upcoming appointments
         const { data: appointmentsData, error: appointmentsError } = await supabase
@@ -211,7 +246,10 @@ const Dashboard = () => {
           clientCount: clientCount || 0,
           appointmentsToday: appointmentsToday || 0,
           productCount: productCount || 0,
-          monthlySales: monthlySales
+          monthlySales: monthlySales,
+          petCount: petCount || 0,
+          servicesCount: servicesCount || 0,
+          monthlyAppointments: monthlyAppointments || 0,
         });
         
         setAppointments(formattedAppointments);
@@ -290,6 +328,13 @@ const Dashboard = () => {
           <p className="text-sm mt-1">Tente recarregar a página ou entre em contato com o suporte.</p>
         </div>
       )}
+
+      <PlanLimitNotice usage={{
+        pets: metrics.petCount,
+        products: metrics.productCount,
+        services: metrics.servicesCount,
+        appointmentsPerMonth: metrics.monthlyAppointments,
+      }} />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {metricCards.map((metric, index) => (
@@ -403,6 +448,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <FreePlanAd slot={import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD} className="mt-10" />
     </div>
   );
 };

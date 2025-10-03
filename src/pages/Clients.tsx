@@ -15,6 +15,8 @@ import ClientFormDialog from "@/components/clientpet/ClientFormDialog";
 import PetFormDialog from "@/components/clientpet/PetFormDialog";
 import DeleteDialog from "@/components/clientpet/DeleteDialog";
 import PetHistoryDialog from "@/components/clientpet/PetHistoryDialog";
+import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
+import { FreePlanAd } from "@/components/ads/FreePlanAd";
 import { useClientsPets } from "@/hooks/useClientsPets";
 import { Client, Pet } from "@/types/clients";
 
@@ -30,6 +32,8 @@ const Clients: React.FC = () => {
   } = useClientsPets();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const totalPets = clients.reduce((sum, client) => sum + client.pets.length, 0);
+  const adSlotClients = import.meta.env.VITE_ADSENSE_SLOT_CLIENTS;
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [petDialogOpen, setPetDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -110,6 +114,8 @@ const Clients: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <PlanLimitNotice usage={{ pets: totalPets }} />
 
       <SearchInput
         value={searchTerm}
@@ -198,14 +204,18 @@ const Clients: React.FC = () => {
           )
         }
         onConfirm={() => {
-          if (deleteType === "client" && selectedClient)
+          if (deleteType === "client" && selectedClient) {
             deleteClient(selectedClient.id);
-          if (deleteType === "pet" && selectedPet)
+          }
+          if (deleteType === "pet" && selectedPet) {
             deletePet(selectedPet.id);
+          }
           setDeleteDialogOpen(false);
         }}
         onClose={() => setDeleteDialogOpen(false)}
       />
+
+      <FreePlanAd slot={adSlotClients} className="mt-10" />
 
       <PetHistoryDialog
         open={historyDialogOpen}

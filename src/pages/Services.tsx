@@ -5,7 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { buildSupabaseToast } from "@/utils/supabaseError";
 import { Textarea } from "@/components/ui/textarea";
+import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
+import { FreePlanAd } from "@/components/ads/FreePlanAd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Search } from "lucide-react";
 
@@ -20,6 +23,7 @@ export default function Services() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
+  const adSlotServices = import.meta.env.VITE_ADSENSE_SLOT_SERVICES;
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -142,7 +146,10 @@ export default function Services() {
   };
 
   return (
-    <Card className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
+      <PlanLimitNotice usage={{ services: services.length }} />
+
+      <Card>
       <CardHeader>
         <CardTitle className="text-2xl font-bold">Gerenciar Serviços</CardTitle>
       </CardHeader>
@@ -260,5 +267,8 @@ export default function Services() {
         </div>
       </CardContent>
     </Card>
+
+      <FreePlanAd slot={adSlotServices} className="mt-10" />
+    </div>
   );
 }

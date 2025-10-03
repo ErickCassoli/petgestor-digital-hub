@@ -180,27 +180,36 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          is_subscribed: boolean | null
+          is_subscribed: boolean
           name: string | null
+          plan: string
+          plan_started_at: string | null
           role: string | null
+          stripe_customer_id: string | null
           trial_end_date: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id: string
-          is_subscribed?: boolean | null
+          is_subscribed?: boolean
           name?: string | null
+          plan?: string
+          plan_started_at?: string | null
           role?: string | null
+          stripe_customer_id?: string | null
           trial_end_date?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
-          is_subscribed?: boolean | null
+          is_subscribed?: boolean
           name?: string | null
+          plan?: string
+          plan_started_at?: string | null
           role?: string | null
+          stripe_customer_id?: string | null
           trial_end_date?: string | null
           updated_at?: string | null
         }
@@ -492,3 +501,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

@@ -34,6 +34,7 @@ export function StripeSubscriptionCheckout({
             returnUrl,
             email: user.email,
             priceId,
+            userId: user.id,
           }),
         }
       );

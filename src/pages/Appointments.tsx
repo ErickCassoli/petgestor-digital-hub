@@ -45,6 +45,8 @@ import { useToast } from "@/components/ui/use-toast";
 import AppointmentForm from "@/components/appointment/AppointmentForm";
 import InvoiceForm from "@/components/appointment/InvoiceForm";
 import ViewInvoice from "@/components/appointment/ViewInvoice";
+import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
+import { FreePlanAd } from "@/components/ads/FreePlanAd";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -109,6 +111,7 @@ export default function Appointments() {
   const [invoiceAppt, setInvoiceAppt] = useState<Appointment | null>(null);
   const [showViewInvoice, setShowViewInvoice] = useState(false);
   const [invoiceToView, setInvoiceToView] = useState<any>(null);
+  const adSlotAppointments = import.meta.env.VITE_ADSENSE_SLOT_APPOINTMENTS;
 
   // Filters / controls
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
@@ -628,7 +631,9 @@ export default function Appointments() {
   };
 
   return (
-    <>
+    <div className="space-y-6">
+      <PlanLimitNotice />
+      <>
       <div className="px-2">
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -713,5 +718,7 @@ export default function Appointments() {
         onClose={() => setShowViewInvoice(false)}
       />
     </>
-  );
+    <FreePlanAd slot={adSlotAppointments} className="mt-10" />
+  </div>
+);
 }
