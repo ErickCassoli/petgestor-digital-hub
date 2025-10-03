@@ -68,7 +68,7 @@ interface AppointmentDataFromDB {
 }
 
 const Dashboard = () => {
-  const { user, profile, isInTrialPeriod, isSubscriptionActive } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     clientCount: 0,
@@ -309,17 +309,7 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 mt-4 sm:mt-0">
-          <ClockDateDisplay />
-          {isInTrialPeriod && !isSubscriptionActive && (
-          <div className="bg-amber-50 p-3 border-b border-amber-200">
-            <p className="text-sm text-amber-800 font-medium">
-              Período de avaliação: {profile?.trial_end_date ? 
-                `${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
-                '7 dias'}
-            </p>
-          </div>
-        )}
-        </div>
+          <ClockDateDisplay />        </div>
       </div>
 
       {error && (
@@ -455,3 +445,6 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+
+

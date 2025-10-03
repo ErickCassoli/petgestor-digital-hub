@@ -27,7 +27,6 @@ function requiredEnv(key: string): string {
 
 const SUPABASE_URL = requiredEnv("SUPABASE_URL");
 const SERVICE_ROLE_KEY = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-const SUPABASE_ANON_KEY = requiredEnv("SUPABASE_ANON_KEY");
 const STRIPE_SECRET_KEY = requiredEnv("STRIPE_SECRET_KEY");
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -41,22 +40,17 @@ serve(async (req) => {
   }
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
+  const token = authHeader?.replace(/Bearer\s+/i, "").trim() ?? "";
+  if (!token) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
   const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabaseAuth.auth.getUser();
+  const { data: authData, error: userError } = await supabaseAdmin.auth.getUser(token);
+  const user = authData?.user;
 
   if (userError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -69,7 +63,7 @@ serve(async (req) => {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("id, plan, plan_started_at, trial_end_date, stripe_customer_id")
+    .select("id, plan, plan_started_at, stripe_customer_id")
     .eq("id", userId)
     .maybeSingle();
 
@@ -80,10 +74,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  const trialActive = Boolean(
-    profile?.trial_end_date && new Date(profile.trial_end_date) > new Date(),
-  );
 
   let plan: Plan = profile?.plan === "pro" ? "pro" : "free";
   let planStartedAt = profile?.plan_started_at ?? null;
@@ -109,9 +99,10 @@ serve(async (req) => {
 
         plan = PRO_STATUSES.has(status) ? "pro" : "free";
         if (plan === "pro") {
-          planStartedAt = profile?.plan === "pro" && profile?.plan_started_at
-            ? profile.plan_started_at
-            : new Date(subscription.current_period_start * 1000).toISOString();
+          planStartedAt =
+            profile?.plan === "pro" && profile?.plan_started_at
+              ? profile.plan_started_at
+              : new Date(subscription.current_period_start * 1000).toISOString();
         } else {
           planStartedAt = null;
         }
@@ -187,7 +178,6 @@ serve(async (req) => {
   const body = {
     plan,
     isSubscribed: plan === "pro",
-    trialActive,
     subscriptionData: subscriptionPayload,
     freeLimits,
   };

@@ -14,7 +14,6 @@ import Products from "@/pages/Products";
 import Sales from "@/pages/Sales";
 import Reports from "@/pages/Reports";
 import Subscription from "@/pages/Subscription";
-import ExpiredSubscription from "@/pages/ExpiredSubscription";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import NotFound from "@/pages/NotFound";
 import Services from "@/pages/Services";
@@ -49,7 +48,6 @@ const App = () => (
             {/* Publicas */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/expired" element={<ExpiredSubscription />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/UpdatePassword" element={<UpdatePassword />} />
             <Route path="/ConfirmedEmail" element={<ConfirmedEmail />} />

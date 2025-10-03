@@ -22,7 +22,11 @@ import PrivacyPolicyModal from "@/components/terms/PrivacyPolicyModal";
 import TermsOfServiceModal from "@/components/terms/TermsOfServiceModal";
 import CookiesPolicyModal from "@/components/terms/CookiesPolicyModal";
 import { supabase } from "@/integrations/supabase/client";
-import { PLAN_FEATURES, PLAN_DESCRIPTIONS, FREE_PLAN_LIMITS } from "@/constants/plans";
+import {
+  PLAN_FEATURES,
+  PLAN_DESCRIPTIONS,
+  FREE_PLAN_LIMITS,
+} from "@/constants/plans";
 
 // Tipagens para os preços
 interface PriceInfo {
@@ -120,7 +124,7 @@ const steps = [
   {
     title: "Faça seu cadastro",
     description:
-      "Crie sua conta gratuita e comece seu período de testes de 7 dias, sem compromisso.",
+      "Crie sua conta gratuita e comece sem compromisso.",
   },
   {
     title: "Configure seu petshop",
@@ -164,21 +168,36 @@ const LandingPage = () => {
               </span>
             </Link>
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#features"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Recursos
               </a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#how-it-works"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Como Funciona
               </a>
-              <a href="#pricing" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#pricing"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Preço
               </a>
-              <a href="#testimonials" className="text-gray-600 hover:text-petblue-600 transition-colors">
+              <a
+                href="#testimonials"
+                className="text-gray-600 hover:text-petblue-600 transition-colors"
+              >
                 Depoimentos
               </a>
               <div className="ml-4 flex items-center space-x-4">
                 <Link to="/login">
-                  <Button variant="outline" className="border-petblue-600 text-petblue-600 hover:bg-petblue-50">
+                  <Button
+                    variant="outline"
+                    className="border-petblue-600 text-petblue-600 hover:bg-petblue-50"
+                  >
                     Entrar
                   </Button>
                 </Link>
@@ -201,26 +220,30 @@ const LandingPage = () => {
         <div
           className={cn(
             "md:hidden bg-white border-b border-gray-200 transition-all duration-300 ease-in-out",
-            mobileMenuOpen ? "max-h-screen py-4" : "max-h-0 overflow-hidden py-0"
+            mobileMenuOpen
+              ? "max-h-screen py-4"
+              : "max-h-0 overflow-hidden py-0"
           )}
         >
           <div className="container mx-auto px-4 space-y-4">
-            {["features", "how-it-works", "pricing", "testimonials"].map((section) => (
-              <a
-                key={section}
-                href={`#${section}`}
-                className="block py-2 text-gray-600 hover:text-petblue-600"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {section === "features"
-                  ? "Recursos"
-                  : section === "how-it-works"
-                  ? "Como Funciona"
-                  : section === "pricing"
-                  ? "Preço"
-                  : "Depoimentos"}
-              </a>
-            ))}
+            {["features", "how-it-works", "pricing", "testimonials"].map(
+              (section) => (
+                <a
+                  key={section}
+                  href={`#${section}`}
+                  className="block py-2 text-gray-600 hover:text-petblue-600"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {section === "features"
+                    ? "Recursos"
+                    : section === "how-it-works"
+                    ? "Como Funciona"
+                    : section === "pricing"
+                    ? "Preço"
+                    : "Depoimentos"}
+                </a>
+              )
+            )}
             <div className="pt-4 flex flex-col space-y-3">
               <Link
                 to="/login"
@@ -247,25 +270,37 @@ const LandingPage = () => {
           <div className="flex flex-col lg:flex-row items-center">
             <div className="lg:w-1/2 lg:pr-12">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Gerencie seu <span className="text-petblue-600">petshop</span> com eficiência e simplicidade
+                Gerencie seu <span className="text-petblue-600">petshop</span>{" "}
+                com eficiência e simplicidade
               </h1>
               <p className="mt-6 text-xl text-gray-600 max-w-2xl">
-                O PetGestor é a solução completa para o gerenciamento do seu petshop. Agendamentos, clientes, estoque e vendas em um só lugar.
+                O PetGestor é a solução completa para o gerenciamento do seu
+                petshop. Agendamentos, clientes, estoque e vendas em um só
+                lugar.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                 <Link to="/register">
-                  <Button size="lg" className="bg-petblue-600 text-white hover:bg-petblue-700 w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    className="bg-petblue-600 text-white hover:bg-petblue-700 w-full sm:w-auto"
+                  >
                     Começar grátis
                     <ChevronRight size={16} className="ml-2" />
                   </Button>
                 </Link>
                 <a href="#features">
-                  <Button size="lg" variant="outline" className="border-petblue-600 text-petblue-600 hover:bg-petblue-50 w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-petblue-600 text-petblue-600 hover:bg-petblue-50 w-full sm:w-auto"
+                  >
                     Conhecer recursos
                   </Button>
                 </a>
               </div>
-              <p className="mt-4 text-sm text-gray-500">Experimente grátis por 7 dias. Sem compromisso.</p>
+              <p className="mt-4 text-sm text-gray-500">
+                Experimente grátis. Sem compromisso.
+              </p>
             </div>
             <div className="lg:w-1/2 mt-12 lg:mt-0 flex justify-center">
               <img
@@ -282,8 +317,12 @@ const LandingPage = () => {
       <section id="features" className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Recursos completos para seu petshop</h2>
-            <p className="mt-4 text-xl text-gray-600">Tudo o que você precisa para gerenciar seu negócio em um só lugar.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Recursos completos para seu petshop
+            </h2>
+            <p className="mt-4 text-xl text-gray-600">
+              Tudo o que você precisa para gerenciar seu negócio em um só lugar.
+            </p>
           </div>
           <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
@@ -291,7 +330,9 @@ const LandingPage = () => {
                 <div className="h-12 w-12 bg-petblue-100 rounded-lg flex items-center justify-center mb-4">
                   <feature.icon className="h-6 w-6 text-petblue-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {feature.title}
+                </h3>
                 <p className="text-gray-600">{feature.description}</p>
               </div>
             ))}
@@ -303,8 +344,12 @@ const LandingPage = () => {
       <section id="how-it-works" className="py-16 md:py-24 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Como funciona</h2>
-            <p className="mt-4 text-xl text-gray-600">Começar a usar o PetGestor é rápido e simples.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Como funciona
+            </h2>
+            <p className="mt-4 text-xl text-gray-600">
+              Começar a usar o PetGestor é rápido e simples.
+            </p>
           </div>
           <div className="mt-16 grid gap-8 md:grid-cols-3">
             {steps.map((step, index) => (
@@ -312,7 +357,9 @@ const LandingPage = () => {
                 <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-petblue-100 text-petblue-600 mb-6">
                   <span className="text-2xl font-bold">{index + 1}</span>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{step.title}</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {step.title}
+                </h3>
                 <p className="text-gray-600">{step.description}</p>
               </div>
             ))}
@@ -324,42 +371,80 @@ const LandingPage = () => {
       <section id="pricing" className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Planos pensados para o seu petshop</h2>
-            <p className="mt-4 text-xl text-gray-600">Comece gratuito e evolua para o Pro quando precisar.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Planos pensados para o seu petshop
+            </h2>
+            <p className="mt-4 text-xl text-gray-600">
+              Comece gratuito e evolua para o Pro quando precisar.
+            </p>
           </div>
           {priceError && (
-            <p className="mt-8 text-center text-red-600 text-sm">Nao foi possivel carregar os planos: {priceError}</p>
+            <p className="mt-8 text-center text-red-600 text-sm">
+              Nao foi possivel carregar os planos: {priceError}
+            </p>
           )}
           {!prices && !priceError && (
             <div className="flex items-center justify-center py-12">
-              <span className="text-gray-600 animate-pulse">Carregando planos...</span>
+              <span className="text-gray-600 animate-pulse">
+                Carregando planos...
+              </span>
             </div>
           )}
           {prices && (
             <div className="mt-16 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
               <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold uppercase text-petblue-600">Free</span>
-                  <span className="text-xs rounded-full bg-petblue-50 text-petblue-600 px-3 py-1">Sem custo</span>
+                  <span className="text-sm font-semibold uppercase text-petblue-600">
+                    Free
+                  </span>
+                  <span className="text-xs rounded-full bg-petblue-50 text-petblue-600 px-3 py-1">
+                    Sem custo
+                  </span>
                 </div>
-                <h3 className="mt-4 text-2xl font-bold text-gray-900">Plano Free</h3>
-                <p className="mt-2 text-sm text-gray-600">{PLAN_DESCRIPTIONS.free.summary}</p>
+                <h3 className="mt-4 text-2xl font-bold text-gray-900">
+                  Plano Free
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  {PLAN_DESCRIPTIONS.free.summary}
+                </p>
                 <ul className="mt-6 space-y-3 text-sm text-gray-700">
-                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.pets} pets cadastrados</li>
-                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.appointmentsPerMonth} agendamentos por mes</li>
-                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.products} itens de estoque</li>
-                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Ate {FREE_PLAN_LIMITS.services} servicos ativos</li>
-                  <li className="flex gap-2"><Check className="h-4 w-4 text-petblue-600 mt-0.5" />Monetizacao com anuncios AdSense</li>
+                  <li className="flex gap-2">
+                    <Check className="h-4 w-4 text-petblue-600 mt-0.5" />
+                    Ate {FREE_PLAN_LIMITS.pets} pets cadastrados
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="h-4 w-4 text-petblue-600 mt-0.5" />
+                    Ate {FREE_PLAN_LIMITS.appointmentsPerMonth} agendamentos por
+                    mes
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="h-4 w-4 text-petblue-600 mt-0.5" />
+                    Ate {FREE_PLAN_LIMITS.products} itens de estoque
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="h-4 w-4 text-petblue-600 mt-0.5" />
+                    Ate {FREE_PLAN_LIMITS.services} servicos ativos
+                  </li>
                 </ul>
-                <div className="mt-6 text-sm text-gray-500">Ideal para comecar a organizar o petshop sem investir.</div>
+                <div className="mt-6 text-sm text-gray-500">
+                  Ideal para comecar a organizar o petshop sem investir.
+                </div>
               </div>
               <div className="rounded-2xl border border-petblue-200 bg-white p-8 shadow-lg">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold uppercase text-petblue-600">Pro</span>
-                  <span className="text-xs rounded-full bg-petblue-50 text-petblue-600 px-3 py-1">Sem limites</span>
+                  <span className="text-sm font-semibold uppercase text-petblue-600">
+                    Pro
+                  </span>
+                  <span className="text-xs rounded-full bg-petblue-50 text-petblue-600 px-3 py-1">
+                    Sem limites
+                  </span>
                 </div>
-                <h3 className="mt-4 text-2xl font-bold text-gray-900">Plano Pro</h3>
-                <p className="mt-2 text-sm text-gray-600">{PLAN_DESCRIPTIONS.pro.summary}</p>
+                <h3 className="mt-4 text-2xl font-bold text-gray-900">
+                  Plano Pro
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  {PLAN_DESCRIPTIONS.pro.summary}
+                </p>
                 <ul className="mt-6 space-y-3 text-sm text-gray-700">
                   {PLAN_FEATURES.pro.map((feature) => (
                     <li key={feature} className="flex gap-2">
@@ -373,9 +458,13 @@ const LandingPage = () => {
                     const price = prices[key]!;
                     const total = price.unit_amount / 100;
                     const monthly = total / months;
-                    const discount = months > 1
-                      ? Math.round((1 - monthly / (prices.monthly.unit_amount / 100)) * 100)
-                      : 0;
+                    const discount =
+                      months > 1
+                        ? Math.round(
+                            (1 - monthly / (prices.monthly.unit_amount / 100)) *
+                              100
+                          )
+                        : 0;
 
                     return (
                       <Link
@@ -383,7 +472,9 @@ const LandingPage = () => {
                         to="/register"
                         id={`plan-${key}`}
                         className={`rounded-xl border p-4 transition hover:shadow ${
-                          isPopular ? 'border-petblue-400 bg-petblue-50' : 'border-gray-200'
+                          isPopular
+                            ? "border-petblue-400 bg-petblue-50"
+                            : "border-gray-200"
                         }`}
                       >
                         {isPopular && (
@@ -391,18 +482,31 @@ const LandingPage = () => {
                             <Star className="h-3 w-3" /> Popular
                           </span>
                         )}
-                        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          {title}
+                        </h4>
                         <p className="mt-2 text-xl font-bold text-petblue-600">
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
                             currency: price.currency.toUpperCase(),
                           }).format(total)}
                         </p>
-                        <p className="text-xs text-gray-500">Equivalente a {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: price.currency.toUpperCase() }).format(monthly)} por mes</p>
+                        <p className="text-xs text-gray-500">
+                          Equivalente a{" "}
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: price.currency.toUpperCase(),
+                          }).format(monthly)}{" "}
+                          por mes
+                        </p>
                         {discount > 0 && (
-                          <p className="text-xs text-green-600 mt-1">Economize {discount}%</p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Economize {discount}%
+                          </p>
                         )}
-                        <Button className="mt-4 w-full bg-petblue-600 hover:bg-petblue-700">Quero este plano</Button>
+                        <Button className="mt-4 w-full bg-petblue-600 hover:bg-petblue-700">
+                          Quero este plano
+                        </Button>
                       </Link>
                     );
                   })}
@@ -413,20 +517,30 @@ const LandingPage = () => {
         </div>
       </section>
 
-
       {/* Testimonials Section */}
       <section id="testimonials" className="py-16 md:py-24 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">O que nossos clientes dizem</h2>
-            <p className="mt-4 text-xl text-gray-600">Histórias de sucesso de petshops como o seu.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+              O que nossos clientes dizem
+            </h2>
+            <p className="mt-4 text-xl text-gray-600">
+              Histórias de sucesso de petshops como o seu.
+            </p>
           </div>
           <div className="mt-16 grid gap-8 md:grid-cols-3">
             {testimonials.map((t, i) => (
-              <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div
+                key={i}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
+              >
                 <div className="flex items-center space-x-1 mb-4 text-petblue-500">
                   {[...Array(5)].map((_, idx) => (
-                    <svg key={idx} className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <svg
+                      key={idx}
+                      className="w-5 h-5 fill-current"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                     </svg>
                   ))}
@@ -443,13 +557,19 @@ const LandingPage = () => {
       {/* CTA Section */}
       <section className="py-16 md:py-24 bg-petblue-600 text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold">Pronto para transformar seu petshop?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold">
+            Pronto para transformar seu petshop?
+          </h2>
           <p className="mt-4 text-xl text-petblue-100 max-w-3xl mx-auto">
-            Comece hoje mesmo com 7 dias grátis. Sem compromisso e sem necessidade de cartão de crédito.
+            Comece hoje mesmo. Sem compromisso e sem
+            necessidade de cartão de crédito.
           </p>
           <div className="mt-8">
             <Link to="/register">
-              <Button size="lg" className="bg-white text-petblue-600 hover:bg-gray-100">
+              <Button
+                size="lg"
+                className="bg-white text-petblue-600 hover:bg-gray-100"
+              >
                 Começar gratuitamente
               </Button>
             </Link>
@@ -462,30 +582,60 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">PetGestor</h3>
-              <p className="text-gray-600 mb-4">A solução completa para a gestão do seu petshop.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                PetGestor
+              </h3>
+              <p className="text-gray-600 mb-4">
+                A solução completa para a gestão do seu petshop.
+              </p>
               <div className="flex space-x-4">
-                <a href="https://www.instagram.com/petgestoroficial/" className="text-gray-400 hover:text-petblue-600"><Instagram className="h-5 w-5" /></a>
+                <a
+                  href="https://www.instagram.com/petgestoroficial/"
+                  className="text-gray-400 hover:text-petblue-600"
+                >
+                  <Instagram className="h-5 w-5" />
+                </a>
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Produto</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Produto
+              </h3>
               <ul className="space-y-2">
-                <li><a href="#features" className="footer-link">Recursos</a></li>
-                <li><a href="#pricing" className="footer-link">Preço</a></li>
+                <li>
+                  <a href="#features" className="footer-link">
+                    Recursos
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="footer-link">
+                    Preço
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Legal</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Legal
+              </h3>
               <ul className="space-y-2">
-                <li><TermsOfServiceModal /></li>
-                <li><PrivacyPolicyModal /></li>
-                <li><CookiesPolicyModal /></li>
+                <li>
+                  <TermsOfServiceModal />
+                </li>
+                <li>
+                  <PrivacyPolicyModal />
+                </li>
+                <li>
+                  <CookiesPolicyModal />
+                </li>
               </ul>
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-gray-200 text-center">
-            <p className="text-gray-500 text-sm">&copy; {new Date().getFullYear()} PetGestor. Todos os direitos reservados.</p>
+            <p className="text-gray-500 text-sm">
+              &copy; {new Date().getFullYear()} PetGestor. Todos os direitos
+              reservados.
+            </p>
           </div>
         </div>
       </footer>

@@ -1,9 +1,9 @@
-﻿-- Ensure profile subscription columns and defaults
+-- Ensure profile subscription columns and defaults
 alter table public.profiles
   add column if not exists plan text;
 
 update public.profiles
-  set plan = case when plan is null then 'free' else plan end;
+  set plan = coalesce(plan, 'free');
 
 alter table public.profiles
   alter column plan set default 'free';
@@ -17,28 +17,11 @@ alter table public.profiles
 alter table public.profiles
   add column if not exists stripe_customer_id text;
 
-alter table public.profiles
-  add column if not exists trial_end_date timestamptz;
-
-alter table public.profiles
-  add column if not exists is_subscribed boolean;
-
 update public.profiles
-  set is_subscribed = coalesce(is_subscribed, false);
-
-alter table public.profiles
-  alter column is_subscribed set default false;
-
-alter table public.profiles
-  alter column is_subscribed set not null;
-
-update public.profiles
-  set plan = case when is_subscribed then 'pro' else 'free' end
-  where plan is distinct from case when is_subscribed then 'pro' else 'free' end;
-
-update public.profiles
-  set plan_started_at = coalesce(plan_started_at, now())
-  where plan = 'pro';
+  set plan_started_at = case
+    when plan = 'pro' then coalesce(plan_started_at, now())
+    else null
+  end;
 
 do $$
 begin
@@ -55,20 +38,23 @@ begin
 end
 $$;
 
--- Keep subscription flags in sync
+-- Keep subscription metadata in sync
 create or replace function public.sync_profile_subscription()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.plan is null then
     new.plan := 'free';
   end if;
 
-  new.is_subscribed := (new.plan = 'pro');
-
-  if new.plan = 'pro' and new.plan_started_at is null then
-    new.plan_started_at := now();
+  if new.plan = 'pro' then
+    if new.plan_started_at is null then
+      new.plan_started_at := now();
+    end if;
+  else
+    new.plan_started_at := null;
   end if;
 
   return new;
@@ -85,32 +71,50 @@ create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
   v_name text := coalesce(new.raw_user_meta_data->>'name', new.email);
   v_role text := coalesce(new.raw_user_meta_data->>'role', 'admin');
+  has_plan boolean;
+  has_plan_started_at boolean;
 begin
-  insert into public.profiles (
-    id,
-    name,
-    role,
-    plan,
-    plan_started_at,
-    trial_end_date,
-    is_subscribed
-  ) values (
-    new.id,
-    v_name,
-    v_role,
-    'free',
-    now(),
-    now() + interval '7 days',
-    false
-  )
+  insert into public.profiles (id, name, role)
+  values (new.id, v_name, v_role)
   on conflict (id) do update
     set name = excluded.name,
         role = excluded.role,
         updated_at = now();
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'profiles'
+      and column_name = 'plan'
+  ) into has_plan;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'profiles'
+      and column_name = 'plan_started_at'
+  ) into has_plan_started_at;
+
+  if has_plan then
+    update public.profiles
+      set plan = 'free',
+          updated_at = now()
+    where id = new.id;
+  end if;
+
+  if has_plan_started_at then
+    update public.profiles
+      set plan_started_at = null,
+          updated_at = now()
+    where id = new.id;
+  end if;
 
   return new;
 end;

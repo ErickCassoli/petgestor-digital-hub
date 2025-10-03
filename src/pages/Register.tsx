@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TermsOfServiceModal from "@/components/terms/TermsOfServiceModal";
 import PrivacyPolicyModal from "@/components/terms/PrivacyPolicyModal";
 
@@ -14,8 +13,6 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<"admin" | "atendente">("admin");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,8 +26,7 @@ const Register = () => {
     if (
       !email.trim() ||
       !password.trim() ||
-      !confirmPassword.trim() ||
-      !name.trim()
+      !confirmPassword.trim()
     ) {
       toast({
         variant: "destructive",
@@ -51,7 +47,7 @@ const Register = () => {
 
     try {
       setIsLoading(true);
-      await signUp(email, password, role);
+      await signUp(email, password);
       navigate("/ConfirmEmail");
     } catch (error) {
       console.error("Registration error handling in component:", error);

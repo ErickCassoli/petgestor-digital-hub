@@ -42,7 +42,7 @@ interface SidebarItem {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, profile, signOut, isInTrialPeriod, isSubscriptionActive } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -134,28 +134,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <span className="text-2xl font-bold text-petblue-600">PetGestor</span>
           </Link>
         </div>
-
-        {isInTrialPeriod && !isSubscriptionActive && (
-          <div className="bg-amber-50 p-3 border-b border-amber-200">
-            <p className="text-sm text-amber-800 font-medium">
-              Período de avaliação: {profile?.trial_end_date ? 
-                `${Math.ceil((new Date(profile.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes` : 
-                '7 dias'}
-            </p>
-          </div>
-        )}
-
-        {!isInTrialPeriod && !isSubscriptionActive && profile?.role === 'admin' && (
-          <div className="bg-red-50 p-3 border-b border-red-200">
-            <p className="text-sm text-red-800 font-medium">
-              Seu período de avaliação terminou. 
-              <Link to="/assinatura" className="block mt-1 font-bold text-red-800 hover:underline">
-                Assinar agora
-              </Link>
-            </p>
-          </div>
-        )}
-
         <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
           {filteredItems.map((item) => (
             <Link
@@ -221,3 +199,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
+
+
+

@@ -18,7 +18,6 @@ function requiredEnv(key: string): string {
 
 const SUPABASE_URL = requiredEnv("SUPABASE_URL");
 const SERVICE_ROLE_KEY = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-const SUPABASE_ANON_KEY = requiredEnv("SUPABASE_ANON_KEY");
 const STRIPE_SECRET_KEY = requiredEnv("STRIPE_SECRET_KEY");
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -32,22 +31,17 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    const token = authHeader?.replace(/Bearer\s+/i, "").trim() ?? "";
+    if (!token) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAuth.auth.getUser();
+    const { data: authData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
 
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -65,10 +59,8 @@ serve(async (req) => {
     }
 
     const url = new URL(returnUrl);
-    // success url
     url.searchParams.set("success", "true");
     const successUrl = url.toString();
-    // cancel url
     url.searchParams.delete("success");
     url.searchParams.set("canceled", "true");
     const cancelUrl = url.toString();

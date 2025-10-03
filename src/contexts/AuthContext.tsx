@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   createContext,
   useContext,
   useState,
@@ -15,9 +15,7 @@ import { toast as sonnerToast } from "sonner";
 interface Profile {
   id: string;
   name: string | null;
-  role: 'admin' | 'atendente' | null;
-  trial_end_date: string | null;
-  is_subscribed: boolean;
+  role: 'admin' | 'atendente';
   plan: 'free' | 'pro';
   plan_started_at: string | null;
   stripe_customer_id: string | null;
@@ -29,12 +27,11 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, role: "admin" | "atendente") => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Omit<Profile, "id">>) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   isSubscriptionActive: boolean;
-  isInTrialPeriod: boolean;
   refreshProfile: () => Promise<void>;
 }
 
@@ -50,10 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isInTrialPeriod = profile?.trial_end_date
-    ? new Date() < new Date(profile.trial_end_date)
-    : false;
-  const isSubscriptionActive = profile?.plan === 'pro' || profile?.is_subscribed || false;
+  const isSubscriptionActive = profile?.plan === 'pro';
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
@@ -72,9 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       id: data.id,
       name: data.name ?? null,
-      role: (data.role as Profile['role']) ?? null,
-      trial_end_date: data.trial_end_date ?? null,
-      is_subscribed: Boolean(data.is_subscribed),
+      role: (data.role as Profile['role']) ?? 'admin',
       plan: data.plan === 'pro' ? 'pro' : 'free',
       plan_started_at: data.plan_started_at ?? null,
       stripe_customer_id: data.stripe_customer_id ?? null,
@@ -136,36 +128,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (signInError) throw signInError;
 
-        // 2) Chama a funÃ§Ã£o que atualiza status de assinatura
+        // 2) Chama a função que atualiza status de assinatura
         const { error: fnError } = await supabase.functions.invoke(
           "check-subscription-status"
         );
         if (fnError) console.error("Erro ao atualizar assinatura:", fnError);
 
-        // 3) Recupera a nova sessÃ£o
+        // 3) Recupera a nova sessão
         const {
           data: { session: newSession },
         } = await supabase.auth.getSession();
         if (!newSession?.user) return;
 
-        // 4) Busca o profile jÃ¡ com status atualizado
+        // 4) Busca o profile já com status atualizado
         const userProfile = await fetchProfile(newSession.user.id);
         setProfile(userProfile);
-
-        const inTrial = userProfile?.trial_end_date
-          ? new Date() < new Date(userProfile.trial_end_date)
-          : false;
 
         sonnerToast.success("Login realizado com sucesso", {
           description: "Bem-vindo de volta ao PetGestor!",
         });
 
-        // 5) Redireciona conforme status
-        if (userProfile?.plan === 'pro' || userProfile?.is_subscribed || inTrial) {
-          navigate("/dashboard");
-        } else {
-          navigate("/expired");
-        }
+        navigate("/dashboard");
       } catch (err: any) {
         console.error("Sign in error:", err);
         sonnerToast.error("Erro no login", {
@@ -180,13 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, role: "admin" | "atendente") => {
+    async (email: string, password: string) => {
       setLoading(true);
       try {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${APP_URL}/ConfirmedEmail`, data: { role } },
+          options: {
+            emailRedirectTo: `${APP_URL}/ConfirmedEmail`,
+            data: { role: 'admin', name: email },
+          },
         });
         if (error) throw error;
         sonnerToast.success("Conta criada com sucesso", {
@@ -213,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setProfile(null);
       sonnerToast.success("Logout realizado", {
-        description: "VocÃª saiu da sua conta com sucesso.",
+        description: "Você saiu da sua conta com sucesso.",
       });
       navigate("/login", { replace: true });
     } catch (err: any) {
@@ -239,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       console.error("Reset password error:", err);
       sonnerToast.error("Erro ao redefinir senha", {
-        description: err.message || "NÃ£o foi possÃ­vel enviar o e-mail de recuperaÃ§Ã£o.",
+        description: err.message || "Não foi possível enviar o e-mail de recuperação.",
       });
       throw err;
     } finally {
@@ -259,12 +245,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const updated = await fetchProfile(user.id);
         setProfile(updated);
         sonnerToast.success("Perfil atualizado", {
-          description: "Suas informaÃ§Ãµes foram atualizadas com sucesso.",
+          description: "Suas informações foram atualizadas com sucesso.",
         });
       } catch (err: any) {
         console.error("Update profile error:", err);
         sonnerToast.error("Erro ao atualizar perfil", {
-          description: err.message || "Ocorreu um erro ao atualizar suas informaÃ§Ãµes.",
+          description: err.message || "Ocorreu um erro ao atualizar suas informações.",
         });
         throw err;
       }
@@ -285,7 +271,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateProfile,
         resetPassword,
         isSubscriptionActive,
-        isInTrialPeriod,
         refreshProfile,
       }}
     >
@@ -299,6 +284,14 @@ export function useAuth() {
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
+
+
+
+
+
+
+
+
 
 
 

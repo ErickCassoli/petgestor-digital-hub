@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, AlertCircle, RefreshCw, Clock } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -23,7 +23,6 @@ interface SubscriptionData {
 interface SubscriptionStatusResponse {
   plan: SubscriptionPlan;
   isSubscribed: boolean;
-  trialActive: boolean;
   subscriptionData: SubscriptionData | null;
 }
 
@@ -40,7 +39,7 @@ function formatAmount(amount?: number | null, currency?: string | null) {
 }
 
 export function SubscriptionStatus() {
-  const { user, profile, isInTrialPeriod } = useAuth();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] =
@@ -153,31 +152,6 @@ export function SubscriptionStatus() {
     );
   };
 
-  const renderTrial = () => {
-    const trialEndDate = profile?.trial_end_date
-      ? format(new Date(profile.trial_end_date), "dd 'de' MMMM 'de' yyyy", {
-          locale: ptBR,
-        })
-      : "Indisponivel";
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center">
-          <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center mr-4">
-            <Clock className="h-6 w-6 text-amber-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">Periodo de avaliacao ativo</h3>
-            <p className="text-amber-600 text-sm">Voce tem acesso completo ate {trialEndDate}.</p>
-          </div>
-        </div>
-        <p className="text-sm text-gray-700">
-          Ao final do periodo de avaliacao voce pode continuar no plano Free com limites ou atualizar para o Pro para remover as restricoes.
-        </p>
-      </div>
-    );
-  };
-
   const renderFree = () => (
     <div className="space-y-4">
       <div className="flex items-center">
@@ -206,10 +180,6 @@ export function SubscriptionStatus() {
 
     if (subscriptionInfo?.isSubscribed) {
       return renderActivePlan(subscriptionInfo);
-    }
-
-    if (isInTrialPeriod) {
-      return renderTrial();
     }
 
     return renderFree();

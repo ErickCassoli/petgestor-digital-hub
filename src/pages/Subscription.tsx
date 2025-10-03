@@ -21,8 +21,6 @@ import {
   SubscriptionPlan,
 } from "@/constants/plans";
 
-import { Button } from "@/components/ui/button";
-
 const PRICE_IDS = ["monthly", "trimestral", "semestral"] as const;
 
 type PriceKey = typeof PRICE_IDS[number];
@@ -44,7 +42,6 @@ function formatCurrency(amount: number, currency: string) {
 type SubscriptionResponse = {
   plan: SubscriptionPlan;
   isSubscribed: boolean;
-  trialActive: boolean;
   subscriptionData: {
     currentPeriodEnd?: number | null;
     cancelAtPeriodEnd?: boolean;
@@ -79,7 +76,6 @@ function useSubscriptionData() {
   const [state, setState] = useState<SubscriptionResponse>({
     plan: "free",
     isSubscribed: false,
-    trialActive: false,
     subscriptionData: null,
   });
 
@@ -275,3 +271,6 @@ export default function Subscription() {
     </div>
   );
 }
+
+
+

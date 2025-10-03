@@ -31,11 +31,10 @@ export const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
     'Ate 15 agendamentos por mes',
     'Ate 20 itens de estoque',
     'Ate 5 servicos ativos',
-    'Monetizacao com anuncios AdSense',
   ],
   pro: [
     'Cadastro ilimitado de pets, agendamentos, estoque e servicos',
-    'Sem anuncios para seus usuarios',
+    'Sem anuncios',
     'Suporte prioritario',
     'Atualizacoes constantes inclusas',
   ],
