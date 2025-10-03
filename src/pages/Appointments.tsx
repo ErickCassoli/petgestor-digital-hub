@@ -1,5 +1,6 @@
-// src/pages/appointments.tsx
-import React, { useState, useEffect } from "react";
+﻿// src/pages/appointments.tsx
+import React, { useState, useEffect, useCallback } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
@@ -45,6 +46,7 @@ import { useToast } from "@/components/ui/use-toast";
 import AppointmentForm from "@/components/appointment/AppointmentForm";
 import InvoiceForm from "@/components/appointment/InvoiceForm";
 import ViewInvoice from "@/components/appointment/ViewInvoice";
+import type { AppDatabase } from "@/types/supabase-extensions";
 import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
 import { FreePlanAd } from "@/components/ads/FreePlanAd";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,10 +95,25 @@ interface Appointment {
   service: { id: string; name: string };
 }
 
+type InvoiceData = Parameters<typeof ViewInvoice>[0]['invoice'];
+
+const parseStatus = (value: string | null): Appointment["status"] => {
+  switch (value) {
+    case "confirmed":
+    case "cancelled":
+    case "completed":
+      return value;
+    case "pending":
+    default:
+      return "pending";
+  }
+};
+
+
 export default function Appointments() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const sb = supabase as any; // allow .from("invoices")
+  const supabaseExtended = supabase as SupabaseClient<AppDatabase>;
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -110,11 +127,16 @@ export default function Appointments() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceAppt, setInvoiceAppt] = useState<Appointment | null>(null);
   const [showViewInvoice, setShowViewInvoice] = useState(false);
-  const [invoiceToView, setInvoiceToView] = useState<any>(null);
+  const [invoiceToView, setInvoiceToView] = useState<InvoiceData>(null);
   const adSlotAppointments = import.meta.env.VITE_ADSENSE_SLOT_APPOINTMENTS;
 
   // Filters / controls
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
+  const handleViewModeChange = (value: string) => {
+    if (value === "day" || value === "week" || value === "month") {
+      setViewMode(value);
+    }
+  };
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null
@@ -131,11 +153,11 @@ export default function Appointments() {
       if (error) throw error;
       toast({ title: "Agendamento removido", variant: "default" });
       fetchAppointments();
-    } catch (e: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erro ao deletar",
-        description: e.message,
+        description: (error instanceof Error ? error.message : "N�o foi poss�vel deletar o agendamento."),
       });
     }
   };
@@ -159,8 +181,8 @@ export default function Appointments() {
   };
 
   // Load services for filter dropdown
-  async function fetchServices() {
-    if (!user) return;
+  const fetchServices = useCallback(async () => {
+    if (!user?.id) return;
     try {
       const { data, error } = await supabase
         .from("services")
@@ -168,16 +190,16 @@ export default function Appointments() {
         .eq("user_id", user.id);
       if (error) throw error;
       setServices(data || []);
-    } catch (e: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
-        title: "Erro serviços",
-        description: e.message,
+        title: "Erro servi�os",
+        description: (error instanceof Error ? error.message : "N�o foi poss�vel carregar os servi�os."),
       });
     }
-  }
+  }, [toast, user?.id]);
 
-  function getDateRange() {
+  const getDateRange = useCallback(() => {
     if (viewMode === "day") return [currentDate];
     if (viewMode === "week")
       return eachDayOfInterval({
@@ -188,11 +210,11 @@ export default function Appointments() {
       start: startOfMonth(currentDate),
       end: endOfMonth(currentDate),
     });
-  }
+  }, [currentDate, viewMode]);
 
   // Load appointments for the selected range & filter
-  async function fetchAppointments() {
-    if (!user) return;
+  const fetchAppointments = useCallback(async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
       const dates = getDateRange().map(formatDateForAPI);
@@ -203,7 +225,7 @@ export default function Appointments() {
         .in("date", dates as readonly string[])
         .order("time", { ascending: true });
 
-      if (selectedServiceId && selectedServiceId !== "all") {
+      if (selectedServiceId) {
         q = q.eq("service_id", selectedServiceId);
       }
 
@@ -213,10 +235,9 @@ export default function Appointments() {
       const formatted: Appointment[] = [];
       if (raw) {
         for (const a of raw) {
-          // fetch pet, client, service names
-          let petName = "—",
-            clientName = "—",
-            serviceName = "—",
+          let petName = "??",
+            clientName = "??",
+            serviceName = "??",
             clientId = "";
           if (a.pet_id) {
             const petRes = await supabase
@@ -247,7 +268,7 @@ export default function Appointments() {
             id: a.id,
             date: a.date,
             time: a.time,
-            status: a.status as any,
+            status: parseStatus(a.status),
             notes: a.notes,
             pet: { id: a.pet_id || "", name: petName },
             client: { id: clientId, name: clientName },
@@ -256,23 +277,24 @@ export default function Appointments() {
         }
       }
       setAppointments(formatted);
-    } catch (e: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erro agendamentos",
-        description: e.message,
+        description: (error instanceof Error ? error.message : "N�o foi poss�vel carregar os agendamentos."),
       });
     } finally {
       setLoading(false);
     }
-  }
+  }, [getDateRange, selectedServiceId, toast, user?.id]);
 
   useEffect(() => {
     fetchServices();
-  }, [user]);
+  }, [fetchServices]);
+
   useEffect(() => {
     fetchAppointments();
-  }, [user, currentDate, viewMode, selectedServiceId, showForm]);
+  }, [fetchAppointments, showForm]);
 
   const getForDate = (d: Date) =>
     appointments.filter((a) => a.date === formatDateForAPI(d));
@@ -280,7 +302,7 @@ export default function Appointments() {
   // Load invoice for viewing
   const viewInvoice = async (appointmentId: string) => {
     try {
-      const { data, error } = await sb
+      const { data, error } = await supabaseExtended
         .from("invoices")
         .select(
           `
@@ -293,16 +315,16 @@ export default function Appointments() {
       if (error) throw error;
       setInvoiceToView(data);
       setShowViewInvoice(true);
-    } catch (e: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erro fatura",
-        description: e.message,
+        description: (error instanceof Error ? error.message : "N�o foi poss�vel carregar a fatura."),
       });
     }
   };
 
-  // Renderers for day, week, month…
+  // Renderers for day, week, month�?�
 
   const renderDay = () => (
     <Card>
@@ -354,11 +376,11 @@ export default function Appointments() {
               <div key={a.id} className="p-4 flex justify-between items-center">
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">
-                    {a.client.name} – {a.pet.name}
+                    {a.client.name} �?" {a.pet.name}
                   </div>
                   <div className="text-sm text-gray-500">
                     <Clock className="inline h-4 w-4 mr-1" />
-                    {a.time} – {a.service.name}
+                    {a.time} �?" {a.service.name}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -419,7 +441,7 @@ export default function Appointments() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <CardTitle>
-            Semana: {format(days[0], "dd/MM/yyyy")} –{" "}
+            Semana: {format(days[0], "dd/MM/yyyy")} �?"{" "}
             {format(days[days.length - 1], "dd/MM/yyyy")}
           </CardTitle>
           <div className="flex items-center space-x-2">
@@ -498,7 +520,7 @@ export default function Appointments() {
                                 }
                               }}
                             >
-                              <span className="font-medium">{a.time}</span> –{" "}
+                              <span className="font-medium">{a.time}</span> �?"{" "}
                               {a.client.name}
                             </div>
                           ))
@@ -607,7 +629,7 @@ export default function Appointments() {
                                   }}
                                 >
                                   <span className="font-medium">{a.time}</span>{" "}
-                                  – {a.client.name}
+                                  �?" {a.client.name}
                                 </div>
                               ))}
                               {dayAppts.length > 3 && (
@@ -647,7 +669,7 @@ export default function Appointments() {
         </div>
         {/* Controles */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <Tabs defaultValue="day" onValueChange={(v) => setViewMode(v as any)}>
+          <Tabs defaultValue="day" onValueChange={handleViewModeChange}>
             <TabsList>
               <TabsTrigger value="day">Dia</TabsTrigger>
               <TabsTrigger value="week">Semana</TabsTrigger>
@@ -657,7 +679,7 @@ export default function Appointments() {
           <div className="flex gap-2">
             <Select
               defaultValue="all"
-              onValueChange={(v) => setSelectedServiceId(v)}
+              onValueChange={(value) => setSelectedServiceId(value === "all" ? null : value)}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Todos os serviços" />
@@ -722,3 +744,20 @@ export default function Appointments() {
   </div>
 );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

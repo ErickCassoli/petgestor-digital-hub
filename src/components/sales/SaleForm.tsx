@@ -1,6 +1,6 @@
-// src/components/sales/SaleForm.tsx
+﻿// src/components/sales/SaleForm.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -46,14 +46,8 @@ export function SaleForm({
   const [showClientSuggestions, setShowClientSuggestions] =
     useState<boolean>(false);
 
-  useEffect(() => {
-    fetchClients();
-    fetchProducts();
-    fetchServices();
-  }, []);
-
-  async function fetchClients() {
-    if (!user) return;
+  const fetchClients = useCallback(async () => {
+    if (!user?.id) return;
     const { data, error } = await supabase
       .from("clients")
       .select("id, name")
@@ -65,13 +59,13 @@ export function SaleForm({
       return;
     }
     setClients(data || []);
-  }
+  }, [user?.id]);
 
-  async function fetchProducts() {
-    if (!user) return;
+  const fetchProducts = useCallback(async () => {
+    if (!user?.id) return;
     const { data, error } = await supabase
       .from("products")
-      .select("*")                // traz todas as colunas, incluindo `type`
+      .select("*")
       .eq("user_id", user.id)
       .order("name");
 
@@ -79,12 +73,11 @@ export function SaleForm({
       console.error("Erro ao buscar produtos:", error);
       return;
     }
-    // força cast para Product[], já que sabemos que o BD tem o campo `type`
     setProducts((data || []) as Product[]);
-  }
+  }, [user?.id]);
 
-  async function fetchServices() {
-    if (!user) return;
+  const fetchServices = useCallback(async () => {
+    if (!user?.id) return;
     const { data, error } = await supabase
       .from("services")
       .select("id, name, price, description")
@@ -92,11 +85,17 @@ export function SaleForm({
       .order("name");
 
     if (error) {
-      console.error("Erro ao buscar serviços:", error);
+      console.error("Erro ao buscar servi�os:", error);
       return;
     }
     setServices(data || []);
-  }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchClients();
+    fetchProducts();
+    fetchServices();
+  }, [fetchClients, fetchProducts, fetchServices]);
 
   function handleAddItem(item: CartItem) {
     const idx = cartItems.findIndex(
@@ -319,3 +318,4 @@ export function SaleForm({
     </>
   );
 }
+

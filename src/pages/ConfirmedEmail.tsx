@@ -1,4 +1,4 @@
-// src/pages/ConfirmedEmail.tsx
+﻿// src/pages/ConfirmedEmail.tsx
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -33,11 +33,11 @@ const ConfirmedEmail = () => {
         sonnerToast.success("E-mail confirmado!", {
           description: "Sua conta foi ativada com sucesso.",
         });
-      } catch (err: any) {
+      } catch (error: unknown) {
+        const description = error instanceof Error ? error.message : "N�o foi poss�vel confirmar o e-mail.";
         sonnerToast.error("Erro ao confirmar e-mail", {
-          description: err.message,
+          description,
         });
-      } finally {
         // 4) Redireciona pro login daqui a 5s
         setTimeout(() => navigate("/login", { replace: true }), 5000);
       }
@@ -69,7 +69,7 @@ const ConfirmedEmail = () => {
         </div>
         <div className="mt-4">
           <Link to="/" className="text-petblue-600 hover:text-petblue-800">
-            &larr; Voltar à página inicial
+            &larr; Voltar para p�gina inicial
           </Link>
         </div>
       </div>
@@ -78,3 +78,10 @@ const ConfirmedEmail = () => {
 };
 
 export default ConfirmedEmail;
+
+
+
+
+
+
+

@@ -1,5 +1,5 @@
-
-import { useState, useEffect } from "react";
+﻿
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Sale, SaleItem, CartItem } from "@/types/sales";
@@ -12,9 +12,9 @@ export function useSales() {
   const [loading, setLoading] = useState(true);
 
   // Fetch all sales for the current user
-  const fetchSales = async () => {
-    if (!user) return;
-    
+  const fetchSales = useCallback(async () => {
+    if (!user?.id) return;
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -25,12 +25,11 @@ export function useSales() {
         `)
         .eq('user_id', user.id)
         .order('sale_date', { ascending: false });
-      
+
       if (error) throw error;
-      
-      // Type assertion to ensure proper typing
+
       const typedData = data as Sale[];
-      
+
       setSales(typedData);
     } catch (error) {
       console.error('Error fetching sales:', error);
@@ -42,7 +41,7 @@ export function useSales() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
 
   // Fetch details for a specific sale
   const fetchSaleDetails = async (saleId: string) => {
@@ -128,12 +127,12 @@ export function useSales() {
   const createSale = async (
       items: CartItem[],
       subtotal: number,
-      discount: number,           // ← total dos descontos individuais
-      surcharge: number,          // ← total dos acréscimos individuais
+      discount: number,           // �?� total dos descontos individuais
+      surcharge: number,          // �?� total dos acréscimos individuais
       total: number,
       clientId: string | null,
       clientName: string | null,
-      paymentMethod: string,      // ← inclui aqui
+      paymentMethod: string,      // �?� inclui aqui
       notes: string | null
     ) => {
     if (!user) return null;
@@ -240,8 +239,8 @@ export function useSales() {
   };
 
   useEffect(() => {
-    if (user) fetchSales();
-  }, [user]);
+    fetchSales();
+  }, [fetchSales]);
 
   return {
     sales,

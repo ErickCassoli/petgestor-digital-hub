@@ -46,12 +46,12 @@ export function StripeSubscriptionCheckout({
       } else {
         throw new Error("No checkout URL returned");
       }
-    } catch (err: any) {
-      console.error("Error creating checkout:", err);
+    } catch (error: unknown) {
+      console.error("Error creating checkout:", error);
       toast({
         variant: "destructive",
         title: "Erro ao processar assinatura",
-        description: err.message || "Não foi possível iniciar o processo de assinatura.",
+        description: (error instanceof Error ? error.message : undefined) || "Não foi possível iniciar o processo de assinatura.",
       });
     } finally {
       setLoading(false);
@@ -78,3 +78,5 @@ export function StripeSubscriptionCheckout({
     </Button>
   );
 }
+
+

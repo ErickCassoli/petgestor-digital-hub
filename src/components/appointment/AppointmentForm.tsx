@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { Database, Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -17,10 +19,45 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  defaultValues?: any;
-  supabase: any;
-  user: any;
+  defaultValues?: AppointmentFormDefaultValues;
+  supabase: SupabaseClient<Database>;
+  user: User;
 }
+
+type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed";
+
+type AppointmentFormValues = {
+  time: string;
+  petId: string;
+  clientId: string;
+  serviceId: string;
+  notes: string;
+  status: AppointmentStatus;
+};
+
+type AppointmentFormDefaultValues = {
+  id?: string;
+  date?: string;
+  time?: string;
+  notes?: string | null;
+  status?: string | null;
+  pet?: Pick<Tables<'pets'>, 'id' | 'name'>;
+  client?: Pick<Tables<'clients'>, 'id' | 'name'>;
+  service?: Pick<Tables<'services'>, 'id' | 'name' | 'price'>;
+};
+
+const ensureStatus = (status: string | null | undefined): AppointmentStatus => {
+  switch (status) {
+    case "confirmed":
+    case "cancelled":
+    case "completed":
+      return status;
+    case "pending":
+    default:
+      return "pending";
+  }
+};
+
 
 const AppointmentForm = ({
   open,
@@ -47,20 +84,22 @@ const AppointmentForm = ({
   const [clientQuery, setClientQuery] = useState("");
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
 
+  const defaultStatus = ensureStatus(defaultValues?.status);
+
   const {
     register,
     handleSubmit,
     reset,
     setValue,
     watch,
-  } = useForm({
+  } = useForm<AppointmentFormValues>({
     defaultValues: {
       time: defaultValues?.time || "",
       petId: defaultValues?.pet?.id || "",
       clientId: defaultValues?.client?.id || "",
       serviceId: defaultValues?.service?.id || "",
       notes: defaultValues?.notes || "",
-      status: defaultValues?.status || "pending",
+      status: defaultStatus,
     },
   });
 
@@ -95,8 +134,9 @@ const AppointmentForm = ({
           .order("name");
         if (servicesError) throw servicesError;
         setServices(servicesData || []);
-      } catch (e: any) {
-        toast({ variant: "destructive", title: "Erro ao carregar dados", description: e.message });
+      } catch (error: unknown) {
+        const description = error instanceof Error ? error.message : "Erro desconhecido ao carregar dados.";
+        toast({ variant: "destructive", title: "Erro ao carregar dados", description });
       } finally {
         setDataLoading(false);
       }
@@ -126,11 +166,11 @@ const AppointmentForm = ({
       setClientQuery(defaultValues.client?.name || "");
       setValue("serviceId", defaultValues.service?.id || "");
       setValue("notes", defaultValues.notes || "");
-      setValue("status", defaultValues.status || "pending");
+      setValue("status", ensureStatus(defaultValues.status));
     }
   }, [defaultValues, setValue]);
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: AppointmentFormValues) => {
     setLoading(true);
     try {
       if (!values.clientId || !values.petId || !values.serviceId || !values.time) {
@@ -179,8 +219,8 @@ const AppointmentForm = ({
       reset();
       onSuccess();
       onClose();
-    } catch (err) {
-      const friendly = buildSupabaseToast(err, {
+    } catch (error: unknown) {
+      const friendly = buildSupabaseToast(error, {
         title: 'Erro ao salvar',
         description: 'Ocorreu um erro ao salvar o agendamento.',
       });
@@ -273,7 +313,7 @@ const AppointmentForm = ({
                 </select>
               </div>
 
-              {/* SELECT SERVIÇO */}
+              {/* SELECT SERVI�?O */}
               <div>
                 <label className="block text-sm mb-1">Serviço</label>
                 <select
@@ -284,7 +324,7 @@ const AppointmentForm = ({
                   <option value="">Selecione um serviço</option>
                   {services.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} – R$ {s.price.toFixed(2)}
+                      {s.name} �?" R$ {s.price.toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -344,7 +384,7 @@ const AppointmentForm = ({
                 </select>
               </div>
 
-              {/* OBSERVAÇÕES */}
+              {/* OBSERVA�?�.ES */}
               <div>
                 <label className="block text-sm mb-1">Observações</label>
                 <textarea
@@ -355,7 +395,7 @@ const AppointmentForm = ({
                 />
               </div>
 
-              {/* AÇÕES */}
+              {/* A�?�.ES */}
               <div className="flex items-center gap-2 mt-4">
                 <Button
                   type="submit"
@@ -383,3 +423,5 @@ const AppointmentForm = ({
 };
 
 export default AppointmentForm;
+
+

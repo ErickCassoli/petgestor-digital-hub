@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ interface ItemSelectorProps {
 export function ItemSelector({ products, services, onAddItem }: ItemSelectorProps) {
   const [activeTab, setActiveTab] = useState<"products" | "services">("products");
   const [searchTerm, setSearchTerm] = useState("");
+  const handleTabChange = (value: string) => {
+    if (value === "products" || value === "services") {
+      setActiveTab(value);
+    }
+  };
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -59,7 +64,7 @@ export function ItemSelector({ products, services, onAddItem }: ItemSelectorProp
         />
       </div>
 
-      <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)} className="mt-2">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-2">
         <TabsList className="w-full mb-4">
           <TabsTrigger value="products" className="flex-1">
             <ShoppingBag className="h-4 w-4 mr-2" /> Produtos
@@ -130,3 +135,6 @@ export function ItemSelector({ products, services, onAddItem }: ItemSelectorProp
     </div>
   );
 }
+
+
+

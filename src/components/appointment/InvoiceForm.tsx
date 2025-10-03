@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { Tables } from "@/integrations/supabase/types";
+import type { AppDatabase } from "@/types/supabase-extensions";
 import { Button } from "@/components/ui/button";
 import { X, Save, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -12,17 +15,13 @@ interface InvoiceFormProps {
     pet: { id: string; name: string };
     service: { id: string; name: string };
   };
-  supabase: any;
-  user: any;
+  supabase: SupabaseClient<AppDatabase>;
+  user: User;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-}
+type ServiceOption = Pick<Tables<'services'>, 'id' | 'name' | 'price'>;
 interface LineItem {
   serviceId: string;
   quantity: number;
@@ -39,7 +38,7 @@ export default function InvoiceForm({
   onSuccess,
 }: InvoiceFormProps) {
   const { toast } = useToast();
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<ServiceOption[]>([]);
   const [items, setItems] = useState<LineItem[]>([]);
   const [discount, setDiscount] = useState<number>(0);
   const [surcharge, setSurcharge] = useState<number>(0);
@@ -70,15 +69,16 @@ export default function InvoiceForm({
         } else {
           setItems([]);
         }
-      } catch (e: any) {
+      } catch (error: unknown) {
+        const description = error instanceof Error ? error.message : "Erro desconhecido ao carregar serviços.";
         toast({
           variant: "destructive",
           title: "Erro ao carregar serviços",
-          description: e.message,
+          description,
         });
       }
     })();
-  }, [open]);
+  }, [open, supabase, user.id, appointment.service.id, toast]);
 
   const addLine = () => {
     if (services.length === 0) return;
@@ -156,11 +156,12 @@ export default function InvoiceForm({
       toast({ title: "Fatura gerada com sucesso!" });
       onSuccess();
       onClose();
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const description = error instanceof Error ? error.message : "Falha ao gerar a fatura.";
       toast({
         variant: "destructive",
         title: "Erro ao gerar fatura",
-        description: e.message,
+        description,
       });
     } finally {
       setLoading(false);
@@ -292,3 +293,7 @@ export default function InvoiceForm({
     </div>
   );
 }
+
+
+
+

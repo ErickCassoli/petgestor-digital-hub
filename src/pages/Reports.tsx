@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
@@ -30,10 +30,10 @@ import AppointmentsReport from "@/components/reports/AppointmentsReport";
 import { ReportMetrics } from "@/types/reports";
 
 const periodOptions = [
-  { label: "Últimos 7 dias", value: "7days" },
-  { label: "Últimos 30 dias", value: "30days" },
+  { label: "�sltimos 7 dias", value: "7days" },
+  { label: "�sltimos 30 dias", value: "30days" },
   { label: "Este mês", value: "thisMonth" },
-  { label: "Último mês", value: "lastMonth" },
+  { label: "�sltimo mês", value: "lastMonth" },
   { label: "Este ano", value: "thisYear" }
 ];
 
@@ -53,7 +53,7 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<ReportMetrics | null>(null);
 
-  const getDateRange = () => {
+  const getDateRange = useCallback(() => {
     const today = new Date();
     let startDate: Date;
     let endDate = new Date();
@@ -80,7 +80,7 @@ const Reports = () => {
     }
 
     return { startDate, endDate };
-  };
+  }, [selectedPeriod]);
 
   const getPeriodLabel = () => {
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
@@ -114,7 +114,7 @@ const Reports = () => {
       }
     };
     fetchReportData();
-  }, [user, toast, activeTab, selectedPeriod]);
+  }, [user, toast, activeTab, selectedPeriod, getDateRange]);
 
   if (loading) {
     return (
@@ -224,3 +224,5 @@ const Reports = () => {
 };
 
 export default Reports;
+
+

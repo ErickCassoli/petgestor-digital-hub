@@ -1,4 +1,4 @@
-// src/pages/Clients.tsx
+﻿// src/pages/Clients.tsx
 import React, { useState } from "react";
 import {
   Tabs,
@@ -18,7 +18,7 @@ import PetHistoryDialog from "@/components/clientpet/PetHistoryDialog";
 import { PlanLimitNotice } from "@/components/subscription/PlanLimitNotice";
 import { FreePlanAd } from "@/components/ads/FreePlanAd";
 import { useClientsPets } from "@/hooks/useClientsPets";
-import { Client, Pet } from "@/types/clients";
+import { Client, Pet, Appointment } from "@/types/clients";
 
 const Clients: React.FC = () => {
   const {
@@ -41,7 +41,7 @@ const Clients: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [petHistory, setPetHistory] = useState<any[]>([]);
+  const [petHistory, setPetHistory] = useState<Appointment[]>([]);
 
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -72,7 +72,7 @@ const Clients: React.FC = () => {
     setPetDialogOpen(true);
   };
 
-  const handleOpenDelete = (type: "client" | "pet", item: any) => {
+  const handleOpenDelete = (type: "client" | "pet", item: Client | Pet) => {
     setDeleteType(type);
     if (type === "client") setSelectedClient(item);
     else setSelectedPet(item);
@@ -228,3 +228,7 @@ const Clients: React.FC = () => {
 };
 
 export default Clients;
+
+
+
+

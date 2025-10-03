@@ -1,4 +1,4 @@
-// src/pages/LandingPage.tsx
+﻿// src/pages/LandingPage.tsx
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -52,9 +52,9 @@ function useStripePrices() {
       );
       if (error) throw error;
       setPrices(data as Prices);
-    } catch (err: any) {
+    } catch (error: unknown) {
       console.error("Erro ao carregar preços:", err);
-      setError(err.message);
+      setError(message);
     }
   };
 
@@ -644,3 +644,7 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
+
+
+

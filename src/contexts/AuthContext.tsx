@@ -1,3 +1,4 @@
+﻿/* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext,
   useContext,
@@ -37,6 +38,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
+const toError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error(String(error));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -149,12 +155,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         navigate("/dashboard");
-      } catch (err: any) {
-        console.error("Sign in error:", err);
+      } catch (error: unknown) {
+        console.error("Sign in error:", error);
         sonnerToast.error("Erro no login", {
-          description: err.message || "Verifique seu e-mail e senha.",
+          description: getErrorMessage(error, "Verifique seu e-mail e senha."),
         });
-        throw err;
+        throw toError(error);
       } finally {
         setLoading(false);
       }
@@ -178,12 +184,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sonnerToast.success("Conta criada com sucesso", {
           description: "Confirme seu e-mail para ativar sua conta.",
         });
-      } catch (err: any) {
-        console.error("Sign up error:", err);
+      } catch (error: unknown) {
+        console.error("Sign up error:", error);
         sonnerToast.error("Erro no cadastro", {
-          description: err.message || "Verifique os dados informados.",
+          description: getErrorMessage(error, "Verifique os dados informados."),
         });
-        throw err;
+        throw toError(error);
       } finally {
         setLoading(false);
       }
@@ -202,10 +208,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Você saiu da sua conta com sucesso.",
       });
       navigate("/login", { replace: true });
-    } catch (err: any) {
-      console.error("Sign out error:", err);
+    } catch (error: unknown) {
+      console.error("Sign out error:", error);
       sonnerToast.error("Erro ao sair", {
-        description: err.message || "Ocorreu um erro ao fazer logout.",
+        description: getErrorMessage(error, "Ocorreu um erro ao fazer logout."),
       });
     } finally {
       setLoading(false);
@@ -222,12 +228,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sonnerToast.success("Verifique seu e-mail", {
         description: "Enviamos um link para redefinir sua senha.",
       });
-    } catch (err: any) {
-      console.error("Reset password error:", err);
+    } catch (error: unknown) {
+      console.error("Reset password error:", error);
       sonnerToast.error("Erro ao redefinir senha", {
-        description: err.message || "Não foi possível enviar o e-mail de recuperação.",
+        description: getErrorMessage(error, "N?o foi poss?vel enviar o e-mail de recupera??o."),
       });
-      throw err;
+      throw toError(error);
     } finally {
       setLoading(false);
     }
@@ -247,12 +253,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sonnerToast.success("Perfil atualizado", {
           description: "Suas informações foram atualizadas com sucesso.",
         });
-      } catch (err: any) {
-        console.error("Update profile error:", err);
+      } catch (error: unknown) {
+        console.error("Update profile error:", error);
         sonnerToast.error("Erro ao atualizar perfil", {
-          description: err.message || "Ocorreu um erro ao atualizar suas informações.",
+          description: getErrorMessage(error, "Ocorreu um erro ao atualizar suas informa??es."),
         });
-        throw err;
+        throw toError(error);
       }
     },
     [user, fetchProfile]
@@ -284,6 +290,13 @@ export function useAuth() {
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
+
+
+
+
+
+
+
 
 
 

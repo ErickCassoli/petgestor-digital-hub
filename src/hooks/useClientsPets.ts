@@ -1,10 +1,15 @@
-// src/hooks/useClientsPets.ts
-import { useState, useEffect } from "react";
+﻿// src/hooks/useClientsPets.ts
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Client, Pet, Appointment } from "@/types/clients";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { buildSupabaseToast } from "@/utils/supabaseError";
+import type { Tables } from "@/integrations/supabase/types";
+
+type AppointmentHistoryRow = Tables<"appointments"> & {
+  services: { name: string | null } | null;
+};
 
 export function useClientsPets() {
   const { user } = useAuth();
@@ -13,8 +18,8 @@ export function useClientsPets() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchData = async () => {
-    if (!user) return;
+  const fetchData = useCallback(async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
       const { data: clientsData, error: clientsError } = await supabase
@@ -35,9 +40,9 @@ export function useClientsPets() {
       }));
 
       setClients(clientsWithPets);
-    } catch (err: unknown) {
-      console.error("Error fetching clients & pets", err);
-      const friendly = buildSupabaseToast(err, {
+    } catch (error: unknown) {
+      console.error("Error fetching clients & pets", error);
+      const friendly = buildSupabaseToast(error, {
         title: 'Erro ao carregar dados',
         description: 'Ocorreu um erro ao buscar clientes e pets.',
       });
@@ -45,11 +50,11 @@ export function useClientsPets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [fetchData]);
 
   const saveClient = async (
     data: Omit<Client, "id" | "pets">,
@@ -71,9 +76,9 @@ export function useClientsPets() {
         toast({ title: "Cliente adicionado", description: data.name });
       }
       await fetchData();
-    } catch (err: unknown) {
-      console.error("Error saving client", err);
-      const friendly = buildSupabaseToast(err, {
+    } catch (error: unknown) {
+      console.error("Error saving client", error);
+      const friendly = buildSupabaseToast(error, {
         title: 'Erro ao salvar cliente',
         description: 'Ocorreu um erro ao salvar o cliente.',
       });
@@ -90,9 +95,9 @@ export function useClientsPets() {
       if (error) throw error;
       toast({ title: "Cliente removido" });
       await fetchData();
-    } catch (err: unknown) {
-      console.error("Error deleting client", err);
-      const friendly = buildSupabaseToast(err, {
+    } catch (error: unknown) {
+      console.error("Error deleting client", error);
+      const friendly = buildSupabaseToast(error, {
         title: 'Erro ao remover cliente',
         description: 'Ocorreu um erro ao remover o cliente.',
       });
@@ -121,9 +126,9 @@ export function useClientsPets() {
         toast({ title: "Pet adicionado", description: data.name });
       }
       await fetchData();
-    } catch (err: unknown) {
-      console.error("Error saving pet", err);
-      const friendly = buildSupabaseToast(err, {
+    } catch (error: unknown) {
+      console.error("Error saving pet", error);
+      const friendly = buildSupabaseToast(error, {
         title: 'Erro ao salvar pet',
         description: 'Ocorreu um erro ao salvar o pet.',
       });
@@ -140,9 +145,9 @@ export function useClientsPets() {
       if (error) throw error;
       toast({ title: "Pet removido" });
       await fetchData();
-    } catch (err: unknown) {
-      console.error("Error deleting pet", err);
-      const friendly = buildSupabaseToast(err, {
+    } catch (error: unknown) {
+      console.error("Error deleting pet", error);
+      const friendly = buildSupabaseToast(error, {
         title: 'Erro ao remover pet',
         description: 'Ocorreu um erro ao remover o pet.',
       });
@@ -166,20 +171,22 @@ export function useClientsPets() {
         .order("date", { ascending: false });
       if (error) throw error;
 
-      return (data || []).map((row: any) => ({
+      const rows: AppointmentHistoryRow[] = (data as AppointmentHistoryRow[] | null) ?? [];
+      return rows.map((row) => ({
         id: row.id,
         date: row.date,
-        status: row.status,
+        status: row.status ?? "pending",
         notes: row.notes,
         pet_id: row.pet_id,
         service: row.services?.name ?? null,
       }));
-    } catch (err: any) {
-      console.error("Error fetching pet history", err);
+    } catch (error: unknown) {
+      console.error("Error fetching pet history", error);
+      const description = error instanceof Error ? error.message : "Não foi possível carregar o histórico.";
       toast({
         variant: "destructive",
         title: "Erro ao carregar histórico",
-        description: err.message,
+        description,
       });
       return [];
     }
@@ -195,3 +202,6 @@ export function useClientsPets() {
     fetchPetHistory,
   };
 }
+
+
+

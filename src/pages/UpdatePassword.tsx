@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ const UpdatePassword = () => {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
           console.error("Erro ao obter sessão de recuperação:", error);
-          sonnerToast.error("Link inválido ou expirado", {
+      sonnerToast.error("Nao foi possivel atualizar", {
             description: "Solicite um novo link de recuperação.",
           });
           navigate("/forgot-password", { replace: true });
@@ -51,13 +51,14 @@ const UpdatePassword = () => {
       if (error) throw error;
 
       sonnerToast.success("Senha atualizada", {
-        description: "Agora você pode fazer login com sua nova senha.",
+        description: "Agora voc� pode fazer login com sua nova senha.",
       });
       navigate("/login", { replace: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao atualizar senha:", error);
-      sonnerToast.error("Não foi possível atualizar", {
-        description: error.message || "Tente novamente mais tarde.",
+      const description = error instanceof Error ? error.message : "Tente novamente mais tarde.";
+      sonnerToast.error("Nao foi possivel atualizar", {
+        description,
       });
     } finally {
       setIsLoading(false);
@@ -88,7 +89,7 @@ const UpdatePassword = () => {
                 <Input
                   id="new-password"
                   type={showNew ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="�?��?��?��?��?��?��?��?�"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -110,7 +111,7 @@ const UpdatePassword = () => {
                 <Input
                   id="confirm-password"
                   type={showConfirm ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="�?��?��?��?��?��?��?��?�"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -152,7 +153,7 @@ const UpdatePassword = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Atualizando…
+                  Atualizando�?�
                 </span>
               ) : (
                 "Atualizar senha"
@@ -182,3 +183,13 @@ const UpdatePassword = () => {
 };
 
 export default UpdatePassword;
+
+
+
+
+
+
+
+
+
+

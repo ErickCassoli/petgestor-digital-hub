@@ -1,4 +1,4 @@
-// src/pages/ExpiredSubscription.tsx
+﻿// src/pages/ExpiredSubscription.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -33,11 +33,11 @@ function useStripePrices() {
         setPrices(data as Prices);
         setError(null);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "N�o foi poss�vel carregar os pre�os.";
+      setError(message);
     }
   }, []);
-
   useEffect(() => {
     fetchPrices();
   }, [fetchPrices]);
@@ -209,3 +209,9 @@ export default function ExpiredSubscription() {
     </div>
   );
 }
+
+
+
+
+
+

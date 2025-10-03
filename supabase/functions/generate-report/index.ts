@@ -1,4 +1,4 @@
-
+﻿
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
@@ -30,6 +30,19 @@ interface ReportMetrics {
   exportFormat?: string;
 }
 
+interface AggregatedItem {
+  id: string;
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+interface AggregatedClient {
+  id: string;
+  name: string;
+  visits: number;
+  spent: number;
+}
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -304,7 +317,7 @@ async function generateServicesReport(supabase, userId: string, startDate: strin
     throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
   }
 
-  const servicesData = {};
+  const servicesData: Record<string, AggregatedItem> = {};
   
   // Process sale items
   (saleItems || []).forEach(item => {
@@ -341,14 +354,14 @@ async function generateServicesReport(supabase, userId: string, startDate: strin
   });
 
   const topServices = Object.values(servicesData)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
+    .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
 
-  const totalRevenue = (topServices as any[]).reduce((sum, service) => sum + service.revenue, 0);
-  const totalItems = (topServices as any[]).reduce((sum, service) => sum + service.quantity, 0);
+  const totalRevenue = topServices.reduce((sum, service) => sum + service.revenue, 0);
+  const totalItems = topServices.reduce((sum, service) => sum + service.quantity, 0);
 
   return {
-    topServices: topServices as any[],
+    topServices,
     totalRevenue,
     totalItems,
     servicesRevenue: totalRevenue,
@@ -373,7 +386,7 @@ async function generateProductsReport(supabase, userId: string, startDate: strin
     throw new Error(`Error fetching product sales: ${saleItemsError.message}`);
   }
 
-  const productsData = {};
+  const productsData: Record<string, AggregatedItem> = {};
   
   (saleItems || []).forEach(item => {
     if (!item.product_id || !item.products) return;
@@ -392,14 +405,14 @@ async function generateProductsReport(supabase, userId: string, startDate: strin
   });
 
   const topProducts = Object.values(productsData)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
+    .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
 
-  const totalRevenue = (topProducts as any[]).reduce((sum, product) => sum + product.revenue, 0);
-  const totalItems = (topProducts as any[]).reduce((sum, product) => sum + product.quantity, 0);
+  const totalRevenue = topProducts.reduce((sum, product) => sum + product.revenue, 0);
+  const totalItems = topProducts.reduce((sum, product) => sum + product.quantity, 0);
 
   return {
-    topProducts: topProducts as any[],
+    topProducts,
     totalRevenue,
     totalItems,
     productsRevenue: totalRevenue,
@@ -433,7 +446,7 @@ async function generateClientsReport(supabase, userId: string, startDate: string
     throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
   }
 
-  const clientsData = {};
+  const clientsData: Record<string, AggregatedClient> = {};
 
   // Process sales data
   (salesData || []).forEach(sale => {
@@ -486,15 +499,15 @@ async function generateClientsReport(supabase, userId: string, startDate: string
   });
 
   const topClients = Object.values(clientsData)
-    .sort((a: any, b: any) => b.spent - a.spent)
+    .sort((a, b) => b.spent - a.spent)
     .slice(0, 10);
 
   const totalClients = Object.keys(clientsData).length;
-  const totalVisits = Object.values(clientsData).reduce((sum: number, client: any) => sum + client.visits, 0);
-  const totalSpent = Object.values(clientsData).reduce((sum: number, client: any) => sum + client.spent, 0);
+  const totalVisits = Object.values(clientsData).reduce((sum, client) => sum + client.visits, 0);
+  const totalSpent = Object.values(clientsData).reduce((sum, client) => sum + client.spent, 0);
 
   return {
-    topClients: topClients as any[],
+    topClients,
     totalClients,
     totalVisits,
     totalRevenue: totalSpent
@@ -567,9 +580,9 @@ async function generateAppointmentsReport(supabase, userId: string, startDate: s
   const statusTranslations = {
     'pending': 'Pendente',
     'confirmed': 'Confirmado',
-    'completed': 'Concluído',
+    'completed': 'ConcluÃ­do',
     'cancelled': 'Cancelado',
-    'no_show': 'Não Compareceu'
+    'no_show': 'NÃ£o Compareceu'
   };
 
   const appointmentStatusData = Object.entries(statusCounts).map(([status, count]) => ({
@@ -584,3 +597,9 @@ async function generateAppointmentsReport(supabase, userId: string, startDate: s
     appointmentStatusData
   };
 }
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-// src/components/PetFormDialog.tsx
+﻿// src/components/PetFormDialog.tsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -28,7 +28,6 @@ const PetFormDialog: React.FC<Props> = ({
   onClose,
   onSave,
 }) => {
-  if (!open || !client) return null;
 
   const [form, setForm] = useState<Omit<Pet, "id" | "client_id" | "user_id">>({
     name: "",
@@ -66,6 +65,10 @@ const PetFormDialog: React.FC<Props> = ({
     if (!form.name || !form.type) return;
     onSave(form);
   };
+
+  if (!open || !client) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

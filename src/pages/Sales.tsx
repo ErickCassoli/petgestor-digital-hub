@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -101,7 +101,7 @@ export default function Sales() {
         setTotalServicesAmount(updatedStats.totalServices);
       });
     }
-  }, [sales, selectedPeriod, selectedType, searchTerm]);
+  }, [sales, selectedPeriod, selectedType, searchTerm, calculateSalesStats, processMixedSaleItems]);
 
   const handleViewSaleDetails = async (saleId: string) => {
     setSelectedSaleId(saleId);
@@ -163,7 +163,7 @@ export default function Sales() {
       { label: "Hoje", value: "today" },
       { label: "Esta semana", value: "week" },
       { label: "Este mês", value: "month" },
-      { label: "Último mês", value: "lastMonth" }
+      { label: "�sltimo mês", value: "lastMonth" }
     ];
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
     return option ? option.label : "Período";
@@ -280,3 +280,4 @@ export default function Sales() {
     </div>
   );
 }
+

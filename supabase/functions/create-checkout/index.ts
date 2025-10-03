@@ -1,5 +1,4 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.0.0";
 
 const corsHeaders = {
@@ -7,8 +6,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface CheckoutItem {
+  quantity: number;
+}
+
+interface CheckoutRequest {
+  saleId: string;
+  saleTotal: number;
+  items: CheckoutItem[];
+  clientName?: string;
+  returnUrl: string;
+}
+
+const isCheckoutRequest = (value: unknown): value is CheckoutRequest => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  const hasSaleId = typeof candidate.saleId === "string" && candidate.saleId.length > 0;
+  const hasSaleTotal = typeof candidate.saleTotal === "number";
+  const hasReturnUrl = typeof candidate.returnUrl === "string" && candidate.returnUrl.length > 0;
+  const items = candidate.items;
+
+  const hasItems = Array.isArray(items) && items.every((item) => {
+    return typeof item === "object" && item !== null && typeof (item as Record<string, unknown>).quantity === "number";
+  });
+
+  return hasSaleId && hasSaleTotal && hasReturnUrl && hasItems;
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -18,24 +45,29 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const { saleId, saleTotal, items, clientName, returnUrl } = await req.json();
+    const body = (await req.json()) as unknown;
 
-    if (!saleId || !saleTotal || !items || !returnUrl) {
-      throw new Error("Missing required parameters");
+    if (!isCheckoutRequest(body)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
     }
-    
-    // Using line items with your specific price ID when a product matches
-    const lineItems = items.map((item: any) => {
-      // Check if this is the specific product you want to use the fixed price ID for
-      // You might want to add logic here to determine when to use the fixed price ID
-      // For now, we'll use it for all items as an example
-      return {
-        price: "price_1RLFGG2LlieYPA2tKF1LDpDf",
-        quantity: item.quantity,
-      };
-    });
 
-    // Create Stripe checkout session
+    const { saleId, saleTotal, items, clientName, returnUrl } = body;
+
+    if (saleTotal <= 0 || items.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid sale data" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+
+    const lineItems = items.map((item) => ({
+      price: "price_1RLFGG2LlieYPA2tKF1LDpDf",
+      quantity: item.quantity,
+    }));
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
@@ -45,7 +77,7 @@ serve(async (req) => {
       client_reference_id: saleId,
       metadata: {
         saleId,
-        clientName: clientName || "Cliente não informado"
+        clientName: clientName || "Cliente não informado",
       },
     });
 
@@ -54,16 +86,19 @@ serve(async (req) => {
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-      }
+      },
     );
   } catch (error) {
     console.error("Error creating checkout session:", error);
+    const message = error instanceof Error ? error.message : "Error creating checkout session";
     return new Response(
-      JSON.stringify({ error: error.message || "Error creating checkout session" }),
+      JSON.stringify({ error: message }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
-      }
+      },
     );
   }
 });
+
+

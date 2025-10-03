@@ -1,4 +1,4 @@
-
+﻿
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,7 +39,7 @@ const Login = () => {
       setIsLoading(true);
       await signIn(email, password);
       // Navigation will happen automatically through the auth state change in AuthContext
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Error is already handled in the signIn function
       console.error("Login error handling in component:", error);
     } finally {
@@ -88,7 +88,7 @@ const Login = () => {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="�?��?��?��?��?��?��?��?�"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -166,3 +166,7 @@ const Login = () => {
 };
 
 export default Login;
+
+
+
+

@@ -1,4 +1,7 @@
-
+﻿
+import { useCallback } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { Sale } from "@/types/sales";
 
 type SalesStats = {
@@ -9,7 +12,7 @@ type SalesStats = {
 
 export function useCalculateSaleStats() {
   // Calculate sales statistics from a list of sales
-  const calculateSalesStats = (sales: Sale[]): SalesStats => {
+  const calculateSalesStats = useCallback((sales: Sale[]): SalesStats => {
     const stats: SalesStats = {
       totalSales: 0,
       totalProducts: 0,
@@ -39,10 +42,10 @@ export function useCalculateSaleStats() {
     });
     
     return stats;
-  };
+  }, []);
   
   // Process mixed sale items to correctly distribute amounts
-  const processMixedSaleItems = async (stats: SalesStats, mixedSales: Sale[], supabaseClient: any) => {
+  const processMixedSaleItems = useCallback(async (stats: SalesStats, mixedSales: Sale[], supabaseClient: SupabaseClient<Database>) => {
     // For each mixed sale, we need to fetch its items
     for (const sale of mixedSales) {
       // Only process if it's a mixed sale
@@ -69,7 +72,12 @@ export function useCalculateSaleStats() {
     }
     
     return stats;
-  };
+  }, []);
   
   return { calculateSalesStats, processMixedSaleItems };
 }
+
+
+
+
+
